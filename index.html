@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Munkaidő / Szabi</title>
+  <style>
+    :root{
+      --bg:#2a2c2f; --panel:#3a3d41; --panel2:#44484d;
+      --text:#f2f2f2; --muted:#b9bec6;
+      --accent:#ff8a00; --ok:#2ecc71; --bad:#ff4d4d;
+      --tile:#e8e8e8; --tileRest:#cfd3d7; --tileVac:#a8d8ff; --tileHol:#ffb3b3;
+      --tileText:#111; --gap:10px;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text);}
+    #app{height:100%; display:flex; flex-direction:column;}
+    .topbar{height:10vh; min-height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:var(--panel);}
+    .brand{font-size:20px; font-weight:700;}
+    .badge{padding:8px 12px; background:var(--panel2); border-radius:999px; font-size:14px;}
+    .main{flex:1; display:flex; justify-content:center; padding:16px;}
+    .hidden{display:none !important;}
+
+    .card{width:min(520px,100%); background:var(--panel); border-radius:18px; padding:18px;}
+    h1{margin:0 0 12px 0; font-size:22px;}
+    .muted{color:var(--muted); margin:0 0 14px 0;}
+    .field{display:flex; flex-direction:column; gap:8px; margin:12px 0;}
+    input,select{font-size:18px; padding:14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:#1f2124; color:var(--text); width:100%;}
+    .btn{font-size:18px; padding:14px 16px; border-radius:14px; border:0; background:#5a5f66; color:var(--text);}
+    .btn.primary{background:var(--accent); color:#000;}
+    .btn.danger{background:#c0392b;}
+    .toast{margin-top:14px; padding:14px 16px; border-radius:14px; background:var(--accent); color:#000; font-size:18px;}
+
+    .monthbar{height:10vh; min-height:56px; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;}
+    .monthbar .btn{font-size:28px; padding:10px 16px; border-radius:16px;}
+    .monthTitle{flex:1; text-align:center; font-size:24px; font-weight:700;}
+
+    .dow{height:5vh; min-height:34px; display:grid; grid-template-columns:repeat(7,1fr); gap:var(--gap); align-items:center; margin-bottom:8px;}
+    .dow>div{text-align:center; font-size:20px;}
+
+    .grid{height:60vh; min-height:360px; display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; gap:var(--gap); width:100%; max-width:900px;}
+    .tile{background:var(--tile); color:var(--tileText); border-radius:14px; padding:8px; display:flex; flex-direction:column; overflow:hidden; border:0;}
+    .tile.rest{background:var(--tileRest);}
+    .tile.vac{background:var(--tileVac);}
+    .tile.hol{background:var(--tileHol);}
+    .tile.special{outline:3px solid var(--ok);}
+    .tile.today{background:var(--accent);} /* ma: teljes narancs */
+
+    .tDay{height:35%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:clamp(18px,4.2vw,34px);}
+    .lines{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:2px 0 4px 0; gap:1%;}
+    .line{text-align:center; white-space:nowrap; overflow:hidden; font-size:clamp(11px,2.6vw,16px); font-weight:400;}
+    .line.flex{color:#c40000;}
+    .line.bottom{color:#000;}
+
+    .summary{margin-top:12px; width:100%; max-width:900px;}
+    .summaryLine{width:100%; text-align:center; font-size:min(24px,5vw); padding:10px 0;}
+    .summaryLine .num{font-size:150%; font-weight:800;}
+
+    .modal{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center; padding:14px;}
+    .modalCard{width:min(680px,100%); background:#6b6f75; color:#000; border-radius:18px; padding:18px 18px 0 18px;}
+    .modalTitle{font-size:28px; font-weight:800; text-align:center; margin-bottom:14px;}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:14px;}
+    .row label{font-size:20px; flex:1;}
+    .row select,.row input{width:60%;}
+    .gap{height:75px;}
+    .vacRow{display:flex; gap:14px; align-items:center; padding:14px 12px; border-radius:14px; background:rgba(255,255,255,.25);}
+    .vacRow input{width:22px; height:22px;}
+    .errorBox{margin-top:12px; padding:14px; border-radius:14px; background:#ffd6d6; border:4px solid #ff0000; color:#b00000; font-size:20px; font-weight:800;}
+    .invalid select,.invalid input{background:#ffd6d6 !important; border:4px solid #ff0000 !important; color:#000 !important;}
+    .btns{display:flex; gap:12px; margin-top:16px;}
+    .btns .btn{flex:1; font-size:20px; padding:20px 16px;}
+    .bottomPad{height:50px;}
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">Munkaidő / Szabi</div>
+    <div id="userBadge" class="badge hidden"></div>
+    <button id="logoutBtn" class="btn hidden" type="button">Kilépés</button>
+  </header>
+
+  <main class="main">
+    <section id="loginView" class="card">
+      <h1>Belépés</h1>
+      <p class="muted">Email → Magic link. (Nincs ön-regisztráció.)</p>
+      <div class="field">
+        <span>Email</span>
+        <input id="emailInput" type="email" autocomplete="email" placeholder="név@céged.hu" />
+      </div>
+      <button id="sendLinkBtn" class="btn primary" type="button">Belépő link küldése</button>
+      <div id="loginMsg" class="toast hidden"></div>
+    </section>
+
+    <section id="calendarView" class="hidden" style="width:100%; display:flex; flex-direction:column; align-items:center;">
+      <div class="monthbar" style="width:100%; max-width:900px;">
+        <button id="prevBtn" class="btn" type="button">‹</button>
+        <div id="monthTitle" class="monthTitle">—</div>
+        <button id="nextBtn" class="btn" type="button">›</button>
+      </div>
+
+      <div class="dow" style="width:100%; max-width:900px;">
+        <div>H</div><div>K</div><div>SZ</div><div>CS</div><div>P</div><div>SZ</div><div>V</div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+
+      <div class="summary" style="max-width:900px;">
+        <div id="balanceLine" class="summaryLine">—</div>
+        <div id="vacLine" class="summaryLine">—</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div id="modalCard" class="modalCard">
+      <div id="modalTitle" class="modalTitle">—</div>
+
+      <div class="row"><label>Érkezés</label><select id="arrivalSel"></select></div>
+      <div class="gap"></div>
+
+      <div class="row"><label>Távozás</label><select id="departureSel"></select></div>
+      <div class="gap"></div>
+
+      <div class="row"><label>Csúsztatás</label><select id="flexSel"></select></div>
+      <div class="gap"></div>
+
+      <div id="vacRow" class="vacRow" tabindex="0" role="button" aria-pressed="false">
+        <input id="vacChk" type="checkbox" />
+        <div>
+          Szabi ezen a napon
+          <div class="muted" style="font-size:12px;" id="vacHint"></div>
+        </div>
+      </div>
+
+      <div class="gap"></div>
+
+      <div class="row"><label>Megjegyzés</label><input id="noteInput" type="text" placeholder="pl. csúsztatás oka, rendezvény neve, stb." /></div>
+
+      <div id="errorBox" class="errorBox hidden"></div>
+
+      <div class="btns">
+        <button id="deleteBtn" class="btn danger" type="button">Törlés</button>
+        <button id="saveBtn" class="btn primary" type="button">Vissza</button>
+      </div>
+      <div class="bottomPad"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+  const YEAR_MIN = 2026, YEAR_MAX = 2026;
+  const DEV_TODAY = null; // pl: '2026-04-16'
+
+  const $ = (id) => document.getElementById(id);
+
+  const loginView = $('loginView'), calendarView = $('calendarView');
+  const emailInput = $('emailInput'), sendLinkBtn = $('sendLinkBtn'), loginMsg = $('loginMsg');
+  const userBadge = $('userBadge'), logoutBtn = $('logoutBtn');
+  const prevBtn = $('prevBtn'), nextBtn = $('nextBtn'), monthTitle = $('monthTitle'), grid = $('grid');
+  const modal = $('modal'), modalCard = $('modalCard'), modalTitle = $('modalTitle');
+  const arrivalSel = $('arrivalSel'), departureSel = $('departureSel'), flexSel = $('flexSel');
+  const vacRow = $('vacRow'), vacChk = $('vacChk'), vacHint = $('vacHint');
+  const noteInput = $('noteInput'), errorBox = $('errorBox');
+  const deleteBtn = $('deleteBtn'), saveBtn = $('saveBtn');
+  const balanceLine = $('balanceLine'), vacLine = $('vacLine');
+
+  let supabase, session, profile;
+  let todayStr, viewYear=2026, viewMonth=4;
+  let monthRows = [];
+  let editingDate = null;
+  let originalDraft = null;
+
+  function isoDate(d){
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function getToday(){ return DEV_TODAY || isoDate(new Date()); }
+  function huMonthName(m){ return ['január','február','március','április','május','június','július','augusztus','szeptember','október','november','december'][m-1]||''; }
+  function formatMonthTitle(y,m){ return `${y}. ${huMonthName(m)}`; }
+  function fmtTime(t){ return t ? String(t).slice(0,5) : ''; }
+  function parseHmToMin(hm){ if(!hm) return null; const [h,m]=hm.split(':').map(Number); return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null; }
+  function minsToHM(mins){ const h=String(Math.floor(mins/60)); const m=String(mins%60).padStart(2,'0'); return `${h}:${m}`; }
+
+  async function loadConfig(){
+    const r = await fetch('/config', { cache:'no-store' });
+    if(!r.ok) throw new Error('Nem érem el a /config endpointot (Pages Function).');
+    return r.json();
+  }
+
+  function showLogin(){
+    calendarView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+    userBadge.classList.add('hidden');
+    logoutBtn.classList.add('hidden');
+  }
+  function showApp(){
+    loginView.classList.add('hidden');
+    calendarView.classList.remove('hidden');
+  }
+  function showLoginMsg(msg){
+    loginMsg.textContent = msg;
+    loginMsg.classList.remove('hidden');
+    setTimeout(()=>loginMsg.classList.add('hidden'), 3500);
+  }
+
+  function setViewToToday(){
+    const t = new Date(todayStr);
+    viewYear = t.getFullYear(); viewMonth = t.getMonth()+1;
+    if(viewYear<YEAR_MIN) viewYear=YEAR_MIN;
+    if(viewYear>YEAR_MAX) viewYear=YEAR_MAX;
+  }
+
+  function getMonthNav(y,m,dir){
+    const d=new Date(`${y}-${String(m).padStart(2,'0')}-15T00:00:00`);
+    d.setMonth(d.getMonth()+dir);
+    return { y:d.getFullYear(), m:d.getMonth()+1 };
+  }
+
+  function getWeekdayIndexISO(dateStr){
+    const d=new Date(dateStr+'T00:00:00');
+    const js=d.getDay(); // 0=V
+    return js===0?7:js;
+  }
+
+  function tileClass(row){
+    const isWeekend=[0,6].includes(new Date(row.date).getDay());
+    const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
+    if(row.is_vacation) return 'tile vac';
+    if(isHoliday) return 'tile hol';
+    if(!row.is_workday || isWeekend) return 'tile rest';
+    return 'tile';
+  }
+
+  function buildTimeOptions(sel, maxMinutes, blankAtMinutes){
+    sel.innerHTML='';
+    for(let mins=0; mins<=maxMinutes; mins+=15){
+      const h=String(Math.floor(mins/60)).padStart(2,'0');
+      const m=String(mins%60).padStart(2,'0');
+      const opt=document.createElement('option');
+      opt.value=`${h}:${m}`; opt.textContent=`${h}:${m}`;
+      sel.appendChild(opt);
+    }
+    const blank=document.createElement('option'); blank.value=''; blank.textContent='—';
+    const idx=Math.max(0, Math.floor(blankAtMinutes/15));
+    sel.insertBefore(blank, sel.children[idx]);
+    sel.value='';
+  }
+
+  async function loadProfile(){
+    const { data, error } = await supabase.schema('app').from('profiles')
+      .select('display_name, role, daily_expected_minutes')
+      .eq('user_id', session.user.id).maybeSingle();
+    if(error) throw error;
+    profile = data || { display_name:'', role:'user', daily_expected_minutes:480 };
+    userBadge.textContent = `${profile.display_name || session.user.email} (${profile.role})`;
+    userBadge.classList.remove('hidden');
+    logoutBtn.classList.remove('hidden');
+  }
+
+  async function loadMonth(){
+    monthTitle.textContent = formatMonthTitle(viewYear, viewMonth);
+    const { data, error } = await supabase.rpc('rpc_get_month', { p_year:viewYear, p_month:viewMonth });
+    if(error) throw error;
+    monthRows = data || [];
+    renderMonth();
+  }
+
+  function getRowByDate(dateStr){ return monthRows.find(r=>r.date===dateStr); }
+
+  function renderMonth(){
+    grid.innerHTML='';
+    const first=`${viewYear}-${String(viewMonth).padStart(2,'0')}-01`;
+    const lead=getWeekdayIndexISO(first)-1;
+
+    for(let i=0;i<lead;i++){
+      const pad=document.createElement('div');
+      pad.className='tile rest'; pad.style.opacity='0.15';
+      grid.appendChild(pad);
+    }
+
+    for(const row of monthRows){
+      const day=String(row.date).slice(8,10).replace(/^0/,'');
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className=tileClass(row);
+
+      if(row.special_workday) btn.classList.add('special');
+      if(row.date===todayStr) btn.classList.add('today');
+
+      btn.addEventListener('click', ()=>openEditor(row.date));
+
+      const d=document.createElement('div'); d.className='tDay'; d.textContent=day;
+
+      const lines=document.createElement('div'); lines.className='lines';
+
+      const arr=fmtTime(row.arrival), dep=fmtTime(row.departure), flex=row.flex_minutes||0;
+      const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
+
+      if(arr){ const l=document.createElement('div'); l.className='line'; l.textContent=arr; lines.appendChild(l); }
+      if(dep){ const l=document.createElement('div'); l.className='line'; l.textContent=dep; lines.appendChild(l); }
+      if(flex>0){ const l=document.createElement('div'); l.className='line flex'; l.textContent=minsToHM(flex); lines.appendChild(l); }
+
+      const bottom=document.createElement('div'); bottom.className='line bottom';
+      if(row.is_vacation) bottom.textContent='Szabi';
+      else if(isHoliday){
+        const hasAny=!!(arr||dep||flex>0);
+        bottom.textContent = hasAny ? '' : row.holiday_name;
+      } else bottom.textContent='';
+      lines.appendChild(bottom);
+
+      btn.appendChild(d); btn.appendChild(lines);
+      grid.appendChild(btn);
+    }
+  }
+
+  function draftFromRow(row){
+    return {
+      arrival: fmtTime(row.arrival)||'',
+      departure: fmtTime(row.departure)||'',
+      flex_minutes: row.flex_minutes||0,
+      is_vacation: !!row.is_vacation,
+      note: row.note||''
+    };
+  }
+  function applyDraft(d){
+    arrivalSel.value=d.arrival||'';
+    departureSel.value=d.departure||'';
+    flexSel.value=d.flex_minutes?String(minsToHM(d.flex_minutes)).padStart(5,'0'):'';
+    vacChk.checked=!!d.is_vacation;
+    vacRow.setAttribute('aria-pressed', vacChk.checked?'true':'false');
+    noteInput.value=d.note||'';
+  }
+  function readDraft(){
+    return {
+      arrival: arrivalSel.value||'',
+      departure: departureSel.value||'',
+      flex_minutes: flexSel.value?parseHmToMin(flexSel.value):0,
+      is_vacation: !!vacChk.checked,
+      note: noteInput.value||''
+    };
+  }
+  function isDirty(d){ return JSON.stringify(d)!==JSON.stringify(originalDraft); }
+
+  function setInvalid(msg){
+    modalCard.classList.add('invalid');
+    errorBox.textContent=msg;
+    errorBox.classList.remove('hidden');
+    saveBtn.disabled=true;
+  }
+  function clearInvalid(){
+    modalCard.classList.remove('invalid');
+    errorBox.classList.add('hidden');
+    errorBox.textContent='';
+    saveBtn.disabled=false;
+  }
+
+  function validate(dateStr, d){
+    const row=getRowByDate(dateStr);
+    const isWeekend=[0,6].includes(new Date(dateStr).getDay());
+    const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
+
+    if((isWeekend||isHoliday) && d.is_vacation) return 'Hétvégére/ünnepnapra nem lehet szabit rögzíteni.';
+    if((isWeekend||isHoliday) && d.flex_minutes>0) return 'Hétvégére/ünnepnapra nem lehet csúsztatást rögzíteni.';
+    if(d.arrival && d.departure){
+      const a=parseHmToMin(d.arrival), b=parseHmToMin(d.departure);
+      if(b<a) return 'A távozás nem lehet korábbi, mint az érkezés.';
+    }
+    if(d.is_vacation && (d.arrival||d.departure||d.flex_minutes>0)) return 'Szabi esetén érkezés/távozás/csúsztatás nem adható meg.';
+    return null;
+  }
+
+  async function save(dateStr, d){
+    const payload={
+      user_id: session.user.id,
+      date: dateStr,
+      arrival: d.arrival ? d.arrival+':00' : null,
+      departure: d.departure ? d.departure+':00' : null,
+      flex_minutes: d.flex_minutes||0,
+      is_vacation: !!d.is_vacation,
+      note: d.note||''
+    };
+    const empty=!payload.arrival && !payload.departure && !payload.is_vacation && !payload.note && payload.flex_minutes===0;
+    if(empty){
+      const { error } = await supabase.from('entries').delete().eq('user_id', session.user.id).eq('date', dateStr);
+      if(error) throw error;
+      return;
+    }
+    const { error } = await supabase.from('entries').upsert(payload, { onConflict:'user_id,date' });
+    if(error) throw error;
+  }
+
+  function openEditor(dateStr){
+    editingDate=dateStr;
+    const row=getRowByDate(dateStr);
+    const d=draftFromRow(row);
+    originalDraft=JSON.parse(JSON.stringify(d));
+
+    modalTitle.textContent=dateStr;
+
+    buildTimeOptions(arrivalSel, 23*60+45, 8*60);
+    buildTimeOptions(departureSel, 23*60+45, 17*60);
+    buildTimeOptions(flexSel, 8*60, 4*60);
+
+    applyDraft(d);
+
+    const isWeekend=[0,6].includes(new Date(dateStr).getDay());
+    const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
+    vacHint.textContent=(isWeekend||isHoliday)?'Hétvégén / ünnepnapon tiltva':'';
+    vacRow.style.opacity=(isWeekend||isHoliday)?'0.55':'1';
+
+    clearInvalid();
+    saveBtn.textContent='Vissza';
+    modal.classList.remove('hidden');
+  }
+
+  function closeEditor(){
+    modal.classList.add('hidden');
+    editingDate=null; originalDraft=null;
+    clearInvalid();
+  }
+
+  async function refreshSummary(){
+    const { data, error } = await supabase.rpc('rpc_get_summary_to_date', { p_today: todayStr });
+    if(error) throw error;
+    const s=data?.[0]; if(!s) return;
+
+    const bal=s.balance_minutes||0;
+    const abs=Math.abs(bal);
+    const hm=`${Math.floor(abs/60)}:${String(abs%60).padStart(2,'0')}`;
+    const expected=profile?.daily_expected_minutes||480;
+    const days = expected>0 ? Math.floor(abs/expected) : 0;
+
+    if(bal>=0){
+      balanceLine.innerHTML=`Összesen a mai napig <span class="num" style="color:var(--ok)">${hm}</span> túlórád van` + (days>=1?`, ez <span class="num" style="color:var(--ok)">${days}</span> napnak felel meg`:'') + `.`;
+    } else {
+      balanceLine.innerHTML=`A mai napig <span class="num" style="color:var(--bad)">${hm}</span> hátralékod van` + (days>=1?`, ez <span class="num" style="color:var(--bad)">${days}</span> napnak felel meg`:'') + `.`;
+    }
+    vacLine.innerHTML=`Még <span class="num">${s.vacation_remaining_days}</span> nap szabid van.`;
+  }
+
+  function bindDraftEvents(){
+    for(const el of [arrivalSel, departureSel, flexSel, vacChk, noteInput]){
+      el.addEventListener('input', ()=>{
+        if(!editingDate) return;
+        const d=readDraft();
+        const err=validate(editingDate, d);
+        if(err) setInvalid(err); else clearInvalid();
+        saveBtn.textContent = (err ? 'Vissza' : (isDirty(d) ? 'Mentés' : 'Vissza'));
+      });
+    }
+  }
+
+  sendLinkBtn.addEventListener('click', async ()=>{
+    const email=(emailInput.value||'').trim();
+    if(!email) return showLoginMsg('Add meg az email címet.');
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser:false, emailRedirectTo: window.location.origin }
+    });
+    if(error) showLoginMsg('Hiba: '+error.message);
+    else showLoginMsg('Elküldtem a belépő linket.');
+  });
+
+  logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); });
+
+  prevBtn.addEventListener('click', async ()=>{
+    const {y,m}=getMonthNav(viewYear,viewMonth,-1);
+    if(y<YEAR_MIN||y>YEAR_MAX) return;
+    viewYear=y; viewMonth=m;
+    await loadMonth(); await refreshSummary();
+  });
+  nextBtn.addEventListener('click', async ()=>{
+    const {y,m}=getMonthNav(viewYear,viewMonth, +1);
+    if(y<YEAR_MIN||y>YEAR_MAX) return;
+    viewYear=y; viewMonth=m;
+    await loadMonth(); await refreshSummary();
+  });
+
+  vacRow.addEventListener('click', ()=>{
+    if(!editingDate) return;
+    const row=getRowByDate(editingDate);
+    const isWeekend=[0,6].includes(new Date(editingDate).getDay());
+    const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
+    if(isWeekend||isHoliday) return;
+    vacChk.checked=!vacChk.checked;
+    vacRow.setAttribute('aria-pressed', vacChk.checked?'true':'false');
+    vacChk.dispatchEvent(new Event('input'));
+  });
+  vacRow.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); vacRow.click(); } });
+
+  deleteBtn.addEventListener('click', async ()=>{
+    arrivalSel.value=''; departureSel.value=''; flexSel.value=''; vacChk.checked=false; noteInput.value='';
+    const d=readDraft();
+    try{
+      await save(editingDate, d);
+      await loadMonth(); await refreshSummary();
+      closeEditor();
+    } catch(e){
+      showLoginMsg('Hiba: '+(e?.message||String(e)));
+    }
+  });
+
+  saveBtn.addEventListener('click', async ()=>{
+    if(!editingDate) return;
+    const d=readDraft();
+    const err=validate(editingDate, d);
+    if(err) return setInvalid(err);
+    if(!isDirty(d)){ return closeEditor(); }
+    try{
+      await save(editingDate, d);
+      await loadMonth(); await refreshSummary();
+      closeEditor();
+    } catch(e){
+      showLoginMsg('Hiba: '+(e?.message||String(e)));
+    }
+  });
+
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) closeEditor(); });
+
+  async function init(){
+    todayStr=getToday();
+    const cfg=await loadConfig();
+    supabase=createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      db:{schema:'app'},
+      auth:{persistSession:true, detectSessionInUrl:true}
+    });
+
+    if(window.location.hash && window.location.hash.includes('access_token')){
+      history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const { data } = await supabase.auth.getSession();
+    session = data.session;
+
+    if(!session){ showLogin(); }
+    else{
+      showApp();
+      setViewToToday();
+      await loadProfile();
+      await loadMonth();
+      await refreshSummary();
+    }
+
+    supabase.auth.onAuthStateChange(async ()=>{
+      const { data } = await supabase.auth.getSession();
+      session=data.session;
+      if(!session){ showLogin(); return; }
+      showApp();
+      setViewToToday();
+      await loadProfile();
+      await loadMonth();
+      await refreshSummary();
+    });
+
+    bindDraftEvents();
+  }
+
+  init();
+</script>
+</body>
+</html>
