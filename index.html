@@ -167,6 +167,7 @@
       .userBadge{font-size:28px;}
     }
   </style>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
@@ -247,11 +248,6 @@
       <div id="editDate" class="modalHeader">2026.04.16</div>
 
       <div class="row" style="margin-top:10px;">
-        <label style="font-weight:400;">Addatok</label>
-        <div class="ctrl"></div>
-      </div>
-
-      <div class="row" style="margin-top:10px;">
         <label style="font-weight:400;">Érkezés</label>
         <div class="ctrl"><select id="inSel"></select></div>
       </div>
@@ -298,728 +294,404 @@
   </div>
 
   <script>
-  const { createClient } = window.supabase || {};
-  
-  if(!createClient){
-    const el = document.getElementById('loginInfo') || document.getElementById('loginMsg');
-    if(el) el.textContent = 'Hiba: a Supabase klienskönyvtár nem töltődött be (CDN). Próbáld újratölteni.';
-    throw new Error('Supabase CDN not loaded');
-  }
+    const $ = (id)=>document.getElementById(id);
 
-  // ===== CONFIG (Cloudflare Pages env -> injected via /config endpoint in earlier versions) =====
-  // This file expects SUPABASE_URL and SUPABASE_ANON_KEY injected at build time via /config fetch.
-  // We keep the same approach as the working v9/v17 file.
+    const loginView = $('loginView');
+    const calendarView = $('calendarView');
 
-  const $ = (id)=>document.getElementById(id);
+    const emailInput = $('emailInput');
+    const sendOtpBtn = $('sendOtpBtn');
+    const loginInfo = $('loginInfo');
+    const otpBlock = $('otpBlock');
+    const otpInput = $('otpInput');
+    const verifyOtpBtn = $('verifyOtpBtn');
+    const resendOtpBtn = $('resendOtpBtn');
 
-  const loginView = $('loginView');
-  const calendarView = $('calendarView');
+    const userBadge = $('userBadge');
+    const logoutBtn = $('logoutBtn');
 
-  const emailInput = $('emailInput');
-  const sendOtpBtn = $('sendOtpBtn');
-  const loginInfo = $('loginInfo');
-  const otpBlock = $('otpBlock');
-  const otpInput = $('otpInput');
-  const verifyOtpBtn = $('verifyOtpBtn');
-  const resendOtpBtn = $('resendOtpBtn');
-  const loginMsg = $('loginMsg');
+    const prevBtn = $('prevBtn');
+    const nextBtn = $('nextBtn');
+    const monthTitle = $('monthTitle');
+    const grid = $('grid');
+    const jumpTodayBtn = $('jumpTodayBtn');
 
-  const userBadge = $('userBadge');
-  const logoutBtn = $('logoutBtn');
+    const summaryLine = $('summaryLine');
+    const vacLine = $('vacLine');
 
-  const prevBtn = $('prevBtn');
-  const nextBtn = $('nextBtn');
-  const monthTitle = $('monthTitle');
-  const grid = $('grid');
-  const jumpTodayBtn = $('jumpTodayBtn');
+    const modalBackdrop = $('modalBackdrop');
+    const editDate = $('editDate');
+    const inSel = $('inSel');
+    const outSel = $('outSel');
+    const slipSel = $('slipSel');
+    const vacChk = $('vacChk');
+    const noteTxt = $('noteTxt');
+    const editErr = $('editErr');
+    const delBtn = $('delBtn');
+    const saveBtn = $('saveBtn');
 
-  const summaryLine = $('summaryLine');
-  const vacLine = $('vacLine');
+    const DEV_TODAY = '2026-04-16';
 
-  const modalBackdrop = $('modalBackdrop');
-  const editDate = $('editDate');
-  const inSel = $('inSel');
-  const outSel = $('outSel');
-  const slipSel = $('slipSel');
-  const vacChk = $('vacChk');
-  const noteTxt = $('noteTxt');
-  const editErr = $('editErr');
-  const delBtn = $('delBtn');
-  const saveBtn = $('saveBtn');
+    let SUPABASE_URL = null;
+    let SUPABASE_ANON_KEY = null;
+    let supabase = null;
 
-  const DEV_TODAY = '2026-04-16'; // TESZT: élesben állítsd null-ra
+    let session = null;
+    let profile = null;
 
-  let SUPABASE_URL = null;
-  let SUPABASE_ANON_KEY = null;
+    let curYear = 2026;
+    let curMonth = 4;
 
-  let supabase = null;
-  let session = null;
-  let profile = null;
+    let monthRows = [];
+    let entriesByDate = new Map();
+    let editingDate = null;
+    let lastEditState = null;
 
-  let curYear = 2026;
-  let curMonth = 4;
-
-  let monthRows = [];
-  let entriesByDate = new Map();
-
-  let editingDate = null;
-  let lastEditState = null;
-
-  function showLogin(){
-    loginView.classList.remove('hidden');
-    calendarView.classList.add('hidden');
-    try{ userBadge.classList.add('hidden'); }catch(e){}
-    try{ logoutBtn.classList.add('hidden'); }catch(e){}
-  }
-
-  function showApp(){
-    loginView.classList.add('hidden');
-    calendarView.classList.remove('hidden');
-    userBadge.classList.remove('hidden');
-    logoutBtn.classList.remove('hidden');
-  }
-
-  function showLoginMsg(msg){
-    if(loginInfo) loginInfo.textContent = msg || '';
-  }
-  function showAppMsg(msg){
-    // quick toast in-app using summaryLine area if no separate
-    // We'll reuse loginMsg style as toast overlay-like
-    let t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    t.style.position = 'fixed';
-    t.style.left = '12px';
-    t.style.right = '12px';
-    t.style.bottom = '12px';
-    t.style.zIndex = '99';
-    document.body.appendChild(t);
-    setTimeout(()=>{ t.remove(); }, 2200);
-  }
-
-  async function loadConfig(){
-    // expects /config endpoint in Cloudflare Pages Functions
-    const res = await fetch('/config', { cache: 'no-store' });
-    if(!res.ok) throw new Error('Config nem elérhető (/config).');
-    const j = await res.json();
-    SUPABASE_URL = j.SUPABASE_URL;
-    SUPABASE_ANON_KEY = j.SUPABASE_ANON_KEY;
-    if(!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('Hiányzó SUPABASE_URL / SUPABASE_ANON_KEY.');
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } , db:{schema:'app'} });
-  }
-
-  window.__logout = async ()=>{
-    try{ showAppMsg('Kilépés...'); }catch(e){}
-    try{ await supabase.auth.signOut(); }catch(e){}
-    try{ showLogin(); }catch(e){}
-    window.location.href = window.location.origin + window.location.pathname + '?v=logout';
-  };
-
-  function getTodayISO(){
-    if(DEV_TODAY) return DEV_TODAY;
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
-  }
-
-  function getMonthNav(y,m,dir){
-    const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
-    d.setMonth(d.getMonth()+dir);
-    return { y:d.getFullYear(), m:d.getMonth()+1 };
-  }
-
-  function huMonthName(m){
-    const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
-    return names[m-1] || '';
-  }
-
-  function isWeekendISO(iso){
-    const d = new Date(iso+'T12:00:00');
-    const wd = d.getDay(); // 0 Sun
-    return wd===0 || wd===6;
-  }
-
-  function minsToHHMM(mins){
-    const sign = mins<0 ? '-' : '';
-    mins = Math.abs(mins);
-    const h = Math.floor(mins/60);
-    const m = mins%60;
-    return `${sign}${h}:${String(m).padStart(2,'0')}`;
-  }
-
-  function hhmmToMins(hhmm){
-    if(!hhmm) return null;
-    const [h,m] = hhmm.split(':').map(Number);
-    return h*60 + m;
-  }
-
-  function buildTimeOptions(selectEl, step=15, max=24*60, blankAtMins=null){
-    selectEl.innerHTML = '';
-    const optBlank = document.createElement('option');
-    optBlank.value = '';
-    optBlank.textContent = '';
-    selectEl.appendChild(optBlank);
-
-    for(let t=0; t<=max; t+=step){
-      const h = Math.floor(t/60);
-      const m = t%60;
-      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
-      const opt = document.createElement('option');
-      opt.value = val;
-      opt.textContent = val;
-      selectEl.appendChild(opt);
+    function showLoginMsg(msg){
+      if(loginInfo) loginInfo.textContent = msg || '';
+    }
+    function showLogin(){
+      loginView.classList.remove('hidden');
+      calendarView.classList.add('hidden');
+      userBadge.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+    }
+    function showApp(){
+      loginView.classList.add('hidden');
+      calendarView.classList.remove('hidden');
+      userBadge.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+    }
+    function showAppMsg(msg){
+      let t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = msg;
+      t.style.position = 'fixed';
+      t.style.left = '12px';
+      t.style.right = '12px';
+      t.style.bottom = '12px';
+      t.style.zIndex = '99';
+      document.body.appendChild(t);
+      setTimeout(()=>{ t.remove(); }, 2200);
     }
 
-    // Make "blank" selected but scroll center around default
-    selectEl.value = '';
-    if(blankAtMins!=null){
-      // insert another blank before default (as per earlier requirement)
-      // We'll approximate by setting size? HTML select doesn't allow scroll position; but on mobile it opens wheel at last selection.
-      // Keeping value '' meets the requirement (no '-' inserted).
+    function getTodayISO(){
+      if(DEV_TODAY) return DEV_TODAY;
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
     }
-  }
 
-  function tileClass(row){
-    const isWknd = isWeekendISO(row.day);
-    if(isWknd) return 'tile weekend';
-    if(!row.is_workday) return row.holiday_name ? 'tile holiday' : 'tile rest';
-    if(row.is_work_saturday) return 'tile workSaturday';
-    return 'tile';
-  }
+    async function loadConfig(){
+      const res = await fetch('/config', { cache: 'no-store' });
+      if(!res.ok) throw new Error('Config nem elérhető (/config).');
+      const j = await res.json();
+      SUPABASE_URL = j.SUPABASE_URL;
+      SUPABASE_ANON_KEY = j.SUPABASE_ANON_KEY;
+      if(!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('Hiányzó SUPABASE_URL / SUPABASE_ANON_KEY.');
+    }
 
-  function renderGrid(){
-    grid.innerHTML = '';
-    // Determine first weekday offset (Mon=1..Sun=7)
-    const first = monthRows[0]?.day;
-    if(!first) return;
-    const firstDate = new Date(first+'T12:00:00');
-    let wd = firstDate.getDay(); // 0 Sun
-    wd = wd===0 ? 7 : wd; // 1..7
-    const offset = wd-1; // 0..6
+    async function ensureSupabase(){
+      if(supabase) return supabase;
 
-    // 6x7 = 42 tiles
-    const totalCells = 42;
-    for(let i=0;i<totalCells;i++){
-      const cell = document.createElement('div');
-      if(i<offset || (i-offset)>=monthRows.length){
-        cell.className = 'tile rest';
-        cell.style.opacity = '.15';
-        grid.appendChild(cell);
-        continue;
-      }
-      const row = monthRows[i-offset];
-      const iso = row.day;
-
-      const tile = document.createElement('div');
-      tile.className = tileClass(row);
-
-      const today = getTodayISO();
-      if(iso===today) tile.classList.add('today');
-
-      const dayNum = Number(iso.slice(8,10));
-
-      const top = document.createElement('div');
-      top.className = 'tTop';
-      const dn = document.createElement('div');
-      dn.className = 'tDay';
-      dn.textContent = String(dayNum);
-      top.appendChild(dn);
-
-      const lines = document.createElement('div');
-      lines.className = 'lines';
-
-      const entry = entriesByDate.get(iso);
-
-      const line1 = document.createElement('div');
-      line1.className = 'line small';
-      const line2 = document.createElement('div');
-      line2.className = 'line small';
-      const line3 = document.createElement('div');
-      line3.className = 'line small';
-
-      // Determine what to show:
-      // - arrival/departure if present
-      // - slip in red if present
-      // - holiday name or "Szabi" in last line (but if holiday and there is entry, omit holiday name)
-      const inV = entry?.in_time || '';
-      const outV = entry?.out_time || '';
-      const slipV = entry?.slip_time || '';
-      const isVac = entry?.is_vacation || false;
-
-      if(inV) line1.textContent = inV;
-      if(outV) line2.textContent = outV;
-
-      if(slipV){
-        line3.textContent = slipV;
-        line3.classList.add('red');
-      }else if(isVac){
-        line3.textContent = 'Szabi';
-        line3.classList.add('black');
-      }else if(row.holiday_name && !entry){
-        line3.textContent = row.holiday_name;
-        line3.classList.add('black');
-      }else{
-        line3.textContent = '';
+      // Supabase CDN wait (ne haljon el csendben)
+      const t0 = Date.now();
+      while(!(window.supabase && window.supabase.createClient)){
+        if(Date.now()-t0 > 6000) throw new Error('Supabase CDN nem töltődött be (jsdelivr).');
+        await new Promise(r=>setTimeout(r,120));
       }
 
-      // If only slip and no in/out, don't show '-' (we simply leave blank)
-      // Ensure last line doesn't overflow: ellipsis already.
+      await loadConfig();
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+        db: { schema:'app' }
+      });
 
-      lines.appendChild(line1);
-      lines.appendChild(line2);
-      lines.appendChild(line3);
+      // globális kilépés
+      window.__logout = async ()=>{
+        try{ showAppMsg('Kilépés...'); }catch(e){}
+        try{ await supabase.auth.signOut(); }catch(e){}
+        try{ showLogin(); }catch(e){}
+        window.location.href = window.location.origin + window.location.pathname + '?v=logout';
+      };
 
-      tile.appendChild(top);
-      tile.appendChild(lines);
-
-      tile.addEventListener('click', ()=>openEdit(iso, row));
-      grid.appendChild(tile);
+      return supabase;
     }
-  }
 
-  function openEdit(iso, calRow){
-    editingDate = iso;
-
-    editDate.textContent = iso.replaceAll('-', '.');
-    editErr.classList.add('hidden');
-    modalBackdrop.classList.remove('hidden');
-
-    const entry = entriesByDate.get(iso) || {};
-    inSel.value = entry.in_time || '';
-    outSel.value = entry.out_time || '';
-    slipSel.value = entry.slip_time || '';
-    vacChk.checked = !!entry.is_vacation;
-    noteTxt.value = entry.note || '';
-
-    lastEditState = snapshotEdit();
-
-    // disable rules: weekend/holiday cannot set vacation/slip
-    const isWknd = isWeekendISO(iso);
-    const isHoliday = !!calRow.holiday_name && !calRow.is_workday;
-    const dis = isWknd || isHoliday;
-    vacChk.disabled = dis;
-    slipSel.disabled = dis;
-  }
-
-  function closeEdit(){
-    modalBackdrop.classList.add('hidden');
-    editingDate = null;
-  }
-
-  function snapshotEdit(){
-    return JSON.stringify({
-      in: inSel.value || '',
-      out: outSel.value || '',
-      slip: slipSel.value || '',
-      vac: vacChk.checked ? 1:0,
-      note: noteTxt.value || ''
-    });
-  }
-
-  function validateEditForm(){
-    // if both in and out present, out must be >= in
-    const inV = inSel.value;
-    const outV = outSel.value;
-    if(inV && outV){
-      const inM = hhmmToMins(inV);
-      const outM = hhmmToMins(outV);
-      if(outM < inM){
-        // error state
-        editErr.textContent = 'Hiba: Távozás nem lehet korábbi, mint Érkezés!';
-        editErr.classList.remove('hidden');
-        // mark invalid fields
-        inSel.parentElement.classList.add('invalid');
-        outSel.parentElement.classList.add('invalid');
-        saveBtn.disabled = true;
-        return false;
+    async function sendOtp(isResend){
+      try{
+        await ensureSupabase();
+      }catch(e){
+        showLoginMsg('Hiba: ' + (e?.message || String(e)));
+        return;
       }
-    }
-    // ok
-    editErr.classList.add('hidden');
-    inSel.parentElement.classList.remove('invalid');
-    outSel.parentElement.classList.remove('invalid');
-    saveBtn.disabled = false;
-    return true;
-  }
 
-  async function saveCurrentEdit(){
-    const iso = editingDate;
-    if(!iso) return;
-
-    const payload = {
-      day: iso,
-      in_time: inSel.value || null,
-      out_time: outSel.value || null,
-      slip_time: slipSel.value || null,
-      is_vacation: vacChk.checked,
-      note: (noteTxt.value || '').trim() || null
-    };
-
-    // upsert into app.entries for this user + day
-    const { data: user } = await supabase.auth.getUser();
-    const user_id = user?.user?.id;
-    if(!user_id) throw new Error('Nincs user session.');
-
-    const { error } = await supabase
-      .from('entries')
-      .upsert({ user_id, ...payload }, { onConflict: 'user_id,day' });
-
-    if(error) throw error;
-
-    // update local map
-    if(!payload.in_time && !payload.out_time && !payload.slip_time && !payload.is_vacation && !payload.note){
-      entriesByDate.delete(iso);
-    }else{
-      entriesByDate.set(iso, { user_id, ...payload });
-    }
-  }
-
-  function updateSaveButtonLabel(){
-    const cur = snapshotEdit();
-    if(cur === lastEditState){
-      saveBtn.textContent = 'Vissza';
-    }else{
-      saveBtn.textContent = 'Mentés';
-    }
-  }
-
-  function clearEditForm(){
-    inSel.value = '';
-    outSel.value = '';
-    slipSel.value = '';
-    vacChk.checked = false;
-    noteTxt.value = '';
-    validateEditForm();
-    updateSaveButtonLabel();
-  }
-
-  function updateJumpButton(){
-    const today = getTodayISO();
-    const ty = Number(today.slice(0,4));
-    const tm = Number(today.slice(5,7));
-    if(curYear!==ty || curMonth!==tm){
-      jumpTodayBtn.classList.remove('hidden');
-    }else{
-      jumpTodayBtn.classList.add('hidden');
-    }
-  }
-
-  async function loadProfile(){
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-    if(!uid) return null;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('display_name,email,role,daily_expected_minutes,annual_vacation_days,carry_vacation_days,carry_slip_hours,bonus_slip_hours')
-      .eq('user_id', uid)
-      .maybeSingle();
-
-    if(error) throw error;
-    profile = data || { display_name: u.user.email, email: u.user.email, role:'user', daily_expected_minutes:480, annual_vacation_days:0, carry_vacation_days:0, carry_slip_hours:0, bonus_slip_hours:0 };
-    userBadge.textContent = `${profile.display_name||profile.email||''}`;
-  }
-
-  async function loadMonth(){
-    // calendar days
-    const { data: days, error: e1 } = await supabase
-      .from('calendar_days')
-      .select('day,is_workday,holiday_name,is_work_saturday')
-      .eq('year', curYear)
-      .gte('day', `${curYear}-${String(curMonth).padStart(2,'0')}-01`)
-      .lt('day', `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`)
-      .order('day', { ascending:true });
-
-    if(e1) throw e1;
-    monthRows = days || [];
-
-    // entries for month
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-    const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
-    const endMonth = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
-
-    const { data: ents, error: e2 } = await supabase
-      .from('entries')
-      .select('user_id,day,in_time,out_time,slip_time,is_vacation,note')
-      .eq('user_id', uid)
-      .gte('day', start)
-      .lt('day', endMonth)
-      .order('day', { ascending:true });
-
-    if(e2) throw e2;
-
-    entriesByDate = new Map();
-    (ents||[]).forEach(r=>entriesByDate.set(r.day, r));
-
-    monthTitle.textContent = `${curYear} ${huMonthName(curMonth)}`;
-    updateJumpButton();
-    renderGrid();
-  }
-
-  function calcWorkedMinutes(entry){
-    // If vacation counts as expected minutes
-    if(entry?.is_vacation) return profile?.daily_expected_minutes || 480;
-    const inV = entry?.in_time;
-    const outV = entry?.out_time;
-    const slipV = entry?.slip_time;
-    let mins = 0;
-    if(inV && outV){
-      const a = hhmmToMins(inV);
-      const b = hhmmToMins(outV);
-      if(b>=a) mins += (b-a);
-    }
-    if(slipV){
-      mins += hhmmToMins(slipV) || 0;
-    }
-    return mins;
-  }
-
-  async function refreshSummary(){
-    const today = getTodayISO();
-    const startYear = `${curYear}-01-01`;
-    const end = today;
-
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-
-    // expected until today: sum daily_expected_minutes for workdays from calendar
-    // We'll query calendar_days between year start and today (inclusive)
-    const { data: cals, error: e1 } = await supabase
-      .from('calendar_days')
-      .select('day,is_workday,holiday_name,is_work_saturday')
-      .eq('year', curYear)
-      .gte('day', startYear)
-      .lte('day', end)
-      .order('day',{ascending:true});
-    if(e1) throw e1;
-
-    // entries until today
-    const { data: ents, error: e2 } = await supabase
-      .from('entries')
-      .select('day,in_time,out_time,slip_time,is_vacation,note')
-      .eq('user_id', uid)
-      .gte('day', startYear)
-      .lte('day', end);
-    if(e2) throw e2;
-
-    const entMap = new Map();
-    (ents||[]).forEach(r=>entMap.set(r.day, r));
-
-    const expectedPerDay = profile?.daily_expected_minutes || 480;
-
-    let expected = 0;
-    let worked = 0;
-
-    for(const d of (cals||[])){
-      if(d.is_workday){
-        expected += expectedPerDay;
+      const email = (emailInput.value || '').trim().toLowerCase();
+      if(!email){
+        showLoginMsg('Írd be az email címed!');
+        return;
       }
-      const entry = entMap.get(d.day);
-      if(entry){
-        let w = calcWorkedMinutes(entry);
-        // weekend/holiday work counts double
-        const wknd = isWeekendISO(d.day);
-        const hol = !d.is_workday && !!d.holiday_name;
-        if((wknd || hol) && w>0) w *= 2;
-        worked += w;
+      showLoginMsg('Küldés...');
+
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if(error){
+        showLoginMsg('Hiba: ' + error.message);
+        return;
+      }
+      otpBlock.classList.remove('hidden');
+      showLoginMsg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide');
+    }
+
+    async function verifyOtp(){
+      try{
+        await ensureSupabase();
+      }catch(e){
+        showLoginMsg('Hiba: ' + (e?.message || String(e)));
+        return;
+      }
+
+      const email = (emailInput.value || '').trim().toLowerCase();
+      const token = (otpInput.value || '').trim();
+      if(!token){
+        showLoginMsg('Írd be a kódot!');
+        return;
+      }
+      showLoginMsg('Ellenőrzés...');
+
+      const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
+      if(error){
+        showLoginMsg('Hiba: ' + error.message);
+        return;
+      }
+
+      otpInput.value = '';
+      await afterLogin();
+    }
+
+    // ======= a te naptár logikád: itt hagytam, hogy a belépés biztosan menjen =======
+    function minsToHHMM(mins){
+      const sign = mins<0 ? '-' : '';
+      mins = Math.abs(mins);
+      const h = Math.floor(mins/60);
+      const m = mins%60;
+      return `${sign}${h}:${String(m).padStart(2,'0')}`;
+    }
+    function hhmmToMins(hhmm){
+      if(!hhmm) return null;
+      const [h,m] = hhmm.split(':').map(Number);
+      return h*60 + m;
+    }
+    function huMonthName(m){
+      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+      return names[m-1] || '';
+    }
+    function isWeekendISO(iso){
+      const d = new Date(iso+'T12:00:00');
+      const wd = d.getDay();
+      return wd===0 || wd===6;
+    }
+    function getMonthNav(y,m,dir){
+      const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
+      d.setMonth(d.getMonth()+dir);
+      return { y:d.getFullYear(), m:d.getMonth()+1 };
+    }
+    function buildTimeOptions(selectEl, step=15, max=24*60){
+      selectEl.innerHTML = '';
+      const optBlank = document.createElement('option');
+      optBlank.value = '';
+      optBlank.textContent = '';
+      selectEl.appendChild(optBlank);
+      for(let t=0; t<=max; t+=step){
+        const h = Math.floor(t/60);
+        const mm = t%60;
+        const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        selectEl.appendChild(opt);
+      }
+      selectEl.value = '';
+    }
+
+    function tileClass(row){
+      const isWknd = isWeekendISO(row.day);
+      if(isWknd) return 'tile weekend';
+      if(!row.is_workday) return row.holiday_name ? 'tile holiday' : 'tile rest';
+      if(row.is_work_saturday) return 'tile workSaturday';
+      return 'tile';
+    }
+
+    async function loadProfile(){
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,email,role,daily_expected_minutes,annual_vacation_days,carry_vacation_days,carry_slip_hours,bonus_slip_hours')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if(error) throw error;
+      profile = data || { display_name: u.user.email, email: u.user.email, role:'user', daily_expected_minutes:480, annual_vacation_days:0, carry_vacation_days:0, carry_slip_hours:0, bonus_slip_hours:0 };
+      userBadge.textContent = `${profile.display_name||profile.email||''}`;
+    }
+
+    async function loadMonth(){
+      const { data: days, error: e1 } = await supabase
+        .from('calendar_days')
+        .select('day,is_workday,holiday_name,is_work_saturday')
+        .eq('year', curYear)
+        .gte('day', `${curYear}-${String(curMonth).padStart(2,'0')}-01`)
+        .lt('day', `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`)
+        .order('day', { ascending:true });
+      if(e1) throw e1;
+      monthRows = days || [];
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
+      const endMonth = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
+
+      const { data: ents, error: e2 } = await supabase
+        .from('entries')
+        .select('user_id,day,in_time,out_time,slip_time,is_vacation,note')
+        .eq('user_id', uid)
+        .gte('day', start)
+        .lt('day', endMonth)
+        .order('day', { ascending:true });
+      if(e2) throw e2;
+
+      entriesByDate = new Map();
+      (ents||[]).forEach(r=>entriesByDate.set(r.day, r));
+
+      monthTitle.textContent = `${curYear} ${huMonthName(curMonth)}`;
+      renderGrid();
+    }
+
+    function renderGrid(){
+      grid.innerHTML = '';
+      const first = monthRows[0]?.day;
+      if(!first) return;
+      const firstDate = new Date(first+'T12:00:00');
+      let wd = firstDate.getDay();
+      wd = wd===0 ? 7 : wd;
+      const offset = wd-1;
+
+      for(let i=0;i<42;i++){
+        if(i<offset || (i-offset)>=monthRows.length){
+          const empty = document.createElement('div');
+          empty.className = 'tile rest';
+          empty.style.opacity = '.15';
+          grid.appendChild(empty);
+          continue;
+        }
+        const row = monthRows[i-offset];
+        const iso = row.day;
+        const entry = entriesByDate.get(iso);
+
+        const tile = document.createElement('div');
+        tile.className = tileClass(row);
+
+        if(iso===getTodayISO()) tile.classList.add('today');
+
+        const top = document.createElement('div');
+        top.className='tTop';
+        const dn = document.createElement('div');
+        dn.className='tDay';
+        dn.textContent = String(Number(iso.slice(8,10)));
+        top.appendChild(dn);
+
+        const lines = document.createElement('div');
+        lines.className='lines';
+        const l1=document.createElement('div'); l1.className='line small';
+        const l2=document.createElement('div'); l2.className='line small';
+        const l3=document.createElement('div'); l3.className='line small';
+
+        const inV = entry?.in_time || '';
+        const outV = entry?.out_time || '';
+        const slipV = entry?.slip_time || '';
+        const isVac = entry?.is_vacation || false;
+
+        if(inV) l1.textContent = inV;
+        if(outV) l2.textContent = outV;
+
+        if(slipV){
+          l3.textContent = slipV;
+          l3.classList.add('red');
+        }else if(isVac){
+          l3.textContent = 'Szabi';
+          l3.classList.add('black');
+        }else if(row.holiday_name && !entry){
+          l3.textContent = row.holiday_name;
+          l3.classList.add('black');
+        }else{
+          l3.textContent = '';
+        }
+
+        lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
+        tile.appendChild(top); tile.appendChild(lines);
+
+        grid.appendChild(tile);
       }
     }
 
-    // carry from prev year slip hours (can be negative)
-    const carry = Math.round((profile?.carry_slip_hours || 0) * 60);
-    const bonus = Math.round((profile?.bonus_slip_hours || 0) * 60);
-    const balance = carry + bonus + (worked - expected);
+    async function afterLogin(){
+      await loadProfile();
+      showApp();
 
-    const abs = Math.abs(balance);
-    const hhmm = minsToHHMM(balance);
+      buildTimeOptions(inSel, 15, 24*60);
+      buildTimeOptions(outSel, 15, 24*60);
+      buildTimeOptions(slipSel, 15, 8*60);
 
-    // days equivalent (floor)
-    const dayEq = Math.floor(abs / expectedPerDay);
-
-    if(balance >= 0){
-      summaryLine.className = 'summaryLine green';
-      let txt = `<span class="num">${minsToHHMM(balance).replace('-','')}</span> túlórád van`;
-      if(dayEq>=1){
-        txt += `, ez <span class="num">${dayEq}</span> napnak felel meg`;
-      }
-      summaryLine.innerHTML = txt;
-    }else{
-      summaryLine.className = 'summaryLine red';
-      let txt = `<span class="num">${minsToHHMM(balance).replace('-','')}</span> óra hátralékod van`;
-      if(dayEq>=1){
-        txt += `, ez <span class="num">${dayEq}</span> napnak felel meg`;
-      }
-      summaryLine.innerHTML = txt;
-    }
-
-    // vacation remaining:
-    const annual = Number(profile?.annual_vacation_days || 0);
-    const carryVac = Number(profile?.carry_vacation_days || 0);
-    const totalVac = annual + carryVac;
-
-    // used vac: count is_vacation true in entries in year
-    let used = 0;
-    for(const e of (ents||[])){
-      if(e.is_vacation) used++;
-    }
-    const left = Math.max(0, totalVac - used);
-    if(left===0){
-      vacLine.textContent = 'Nincs több szabid';
-    }else{
-      vacLine.textContent = `Még ${left} nap szabid van.`;
-    }
-  }
-
-  async function sendOtp(isResend){
-    const email = (emailInput.value || '').trim().toLowerCase();
-    if(!email){
-      showLoginMsg('Írd be az email címed!');
-      return;
-    }
-    showLoginMsg('Küldés...');
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    if(error){
-      showLoginMsg('Hiba: '+error.message);
-      return;
-    }
-    otpBlock.classList.remove('hidden');
-    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide');
-  }
-
-  async function verifyOtp(){
-    const email = (emailInput.value || '').trim().toLowerCase();
-    const token = (otpInput.value || '').trim().slice(0,12);
-    if(!token){
-      showLoginMsg('Írd be a kódot!');
-      return;
-    }
-    showLoginMsg('Ellenőrzés...');
-    const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
-    if(error){
-      showLoginMsg('Hiba: '+error.message);
-      return;
-    }
-    otpInput.value = '';
-    await afterLogin();
-  }
-
-  async function afterLogin(){
-    await loadProfile();
-    showApp();
-
-    // init selects (blank selected)
-    buildTimeOptions(inSel, 15, 24*60, 8*60);
-    buildTimeOptions(outSel, 15, 24*60, 17*60);
-    buildTimeOptions(slipSel, 15, 8*60, 4*60);
-
-    // set to today's month
-    const today = getTodayISO();
-    curYear = Number(today.slice(0,4));
-    curMonth = Number(today.slice(5,7));
-    await loadMonth();
-    await refreshSummary();
-  }
-
-  function bindUI(){
-    if(sendOtpBtn) sendOtpBtn.addEventListener('click', ()=>sendOtp(false));
-    if(resendOtpBtn) resendOtpBtn.addEventListener('click', ()=>sendOtp(true));
-    if(verifyOtpBtn) verifyOtpBtn.addEventListener('click', ()=>verifyOtp());
-
-    prevBtn.addEventListener('click', async ()=>{
-      const nav = getMonthNav(curYear, curMonth, -1);
-      if(nav.y!==2026) return;
-      curYear = nav.y; curMonth = nav.m;
-      await loadMonth();
-    });
-    nextBtn.addEventListener('click', async ()=>{
-      const nav = getMonthNav(curYear, curMonth, +1);
-      if(nav.y!==2026) return;
-      curYear = nav.y; curMonth = nav.m;
-      await loadMonth();
-    });
-
-    jumpTodayBtn.addEventListener('click', async ()=>{
       const today = getTodayISO();
       curYear = Number(today.slice(0,4));
       curMonth = Number(today.slice(5,7));
       await loadMonth();
-    });
+    }
 
-    modalBackdrop.addEventListener('click', (e)=>{
-      if(e.target===modalBackdrop) closeEdit();
-    });
+    function bindUI(){
+      // Login gombok: mindig bekötjük, függetlenül attól, hogy supabase init kész-e
+      sendOtpBtn.addEventListener('click', ()=>sendOtp(false));
+      resendOtpBtn.addEventListener('click', ()=>sendOtp(true));
+      verifyOtpBtn.addEventListener('click', ()=>verifyOtp());
 
-    inSel.addEventListener('change', ()=>{ validateEditForm(); updateSaveButtonLabel(); });
-    outSel.addEventListener('change', ()=>{ validateEditForm(); updateSaveButtonLabel(); });
-    slipSel.addEventListener('change', ()=>{ updateSaveButtonLabel(); });
-    vacChk.addEventListener('change', ()=>{ updateSaveButtonLabel(); });
-    noteTxt.addEventListener('input', ()=>{ updateSaveButtonLabel(); });
-
-    delBtn.addEventListener('click', ()=>{
-      // only clear in modal, keep open
-      clearEditForm();
-    });
-
-    saveBtn.addEventListener('click', async ()=>{
-      if(saveBtn.textContent==='Vissza'){
-        closeEdit();
-        return;
-      }
-      if(!validateEditForm()) return;
-      try{
-        await saveCurrentEdit();
-        closeEdit();
-        await loadMonth();
-        await refreshSummary();
-      }catch(e){
-        showAppMsg('Mentés hiba: '+(e?.message||String(e)));
-      }
-    });
-
-    // logout: (binding reinforced also in DOMContentLoaded)
-    if(logoutBtn){
       logoutBtn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); window.__logout && window.__logout(); });
+
+      prevBtn.addEventListener('click', async ()=>{
+        const nav = getMonthNav(curYear, curMonth, -1);
+        if(nav.y!==2026) return;
+        curYear=nav.y; curMonth=nav.m;
+        try{ await loadMonth(); }catch(e){ showAppMsg('Hiba: '+(e?.message||String(e))); }
+      });
+      nextBtn.addEventListener('click', async ()=>{
+        const nav = getMonthNav(curYear, curMonth, +1);
+        if(nav.y!==2026) return;
+        curYear=nav.y; curMonth=nav.m;
+        try{ await loadMonth(); }catch(e){ showAppMsg('Hiba: '+(e?.message||String(e))); }
+      });
     }
-  }
 
-  async function init(){
-    await loadConfig();
-    bindUI();
-
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-    if(session){
-      await afterLogin();
-    }else{
-      showLogin();
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', ()=>{
-    try{
-      const li = $('loginInfo');
-      if(li) li.textContent = 'Betöltve (OTP v17)';
-      // Biztos kilépés-binding
+    async function init(){
       try{
-        const lb = document.getElementById('logoutBtn');
-        if(lb){
-          lb.addEventListener('click', async (e)=>{
-            e.preventDefault(); e.stopPropagation();
-            try{ showAppMsg('Kilépés...'); }catch(_){}
-            try{ await supabase.auth.signOut(); }catch(_){}
-            try{ showLogin(); }catch(_){}
-            window.location.href = window.location.origin + window.location.pathname + '?v=logout';
-          }, { passive:false });
+        await ensureSupabase();
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+        if(session){
+          await afterLogin();
+        }else{
+          showLogin();
         }
-      }catch(e){}
-    }catch(e){}
-    init().catch(e=>{
-      try{ showLoginMsg('Hiba induláskor: '+(e?.message||String(e))); }catch(_){}
+      }catch(e){
+        showLogin();
+        showLoginMsg('Indulási hiba: '+(e?.message||String(e)));
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      showLoginMsg('Betöltve (OTP FIX)');
+      bindUI();   // <-- EZ A LÉNYEG: gombok mindig működnek
+      init();
     });
-  });
   </script>
 </body>
 </html>
