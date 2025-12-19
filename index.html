@@ -95,7 +95,7 @@
       <div id="otpBlock" class="hidden" style="margin-top:14px;">
         <div class="field" style="margin-top:0;">
           <span>Egyszer használatos kód</span>
-          <input id="otpInput" inputmode="numeric" autocomplete="one-time-code" placeholder="6 számjegy" />
+          <input id="otpInput" inputmode="numeric" autocomplete="one-time-code" placeholder="Írd be a kapott kódot" />
         </div>
 
         <div style="display:flex; gap:12px;">
@@ -522,7 +522,7 @@
       return;
     }
     showOtpBlock();
-    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'Elküldtem a kódot. Írd be a 6 számjegyet.');
+    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'Elküldtem a kódot. Írd be a leveledben kapott kódot.');
   }
 
   sendOtpBtn.addEventListener('click', ()=>sendOtp(false));
@@ -546,7 +546,7 @@
   });
 
   otpInput.addEventListener('input', ()=>{
-    otpInput.value = otpInput.value.replace(/\D/g,'').slice(0,6);
+    otpInput.value = otpInput.value.replace(/\D/g,'').slice(0,12);
   });
 
 
