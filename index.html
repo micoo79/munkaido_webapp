@@ -521,12 +521,30 @@
   async function sendOtp(isResend=false){
     sendOtpBtn.disabled = true;
     resendOtpBtn.disabled = true;
-    const email=(emailInput.value||'').trim();
-    if(!email){ sendOtpBtn.disabled=false; resendOtpBtn.disabled=false; return showLoginMsg('Add meg az email címed.'); }
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser:false }
-    });
+    showLoginMsg(isResend ? 'Kód újraküldése...' : 'Kód küldése...');
+    try{
+      const email=(emailInput.value||'').trim();
+      if(!email){ return showLoginMsg('Add meg az email címed.'); }
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser:false }
+      });
+
+      if(error){
+        // Tipikus: user nincs felvéve az Auth Users-be → ilyenkor nem küld
+        return showLoginMsg('Nem sikerült kódot küldeni: ' + error.message);
+      }
+
+      showOtpBlock();
+      showLoginMsg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide');
+    }catch(e){
+      showLoginMsg('Nem sikerült kódot küldeni: ' + (e?.message || String(e)));
+    }finally{
+      sendOtpBtn.disabled = false;
+      resendOtpBtn.disabled = false;
+    }
+  });
     if(error){
       sendOtpBtn.disabled=false; resendOtpBtn.disabled=false;
       showLoginMsg('Hiba: '+error.message);
