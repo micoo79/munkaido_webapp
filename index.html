@@ -85,18 +85,19 @@
   <main class="main">
     <section id="loginView" class="card">
       <h1>Belépés</h1>
-      <p class="muted">Email → egyszer használatos kód (OTP). (Nincs ön-regisztráció.)</p>
 
       <div class="field">
-        <span>Email</span>
-        <input id="emailInput" type="email" autocomplete="email" placeholder="név@céged.hu" />
+        <span>Add meg az email címed</span>
+        <input id="emailInput" type="email" autocomplete="email" />
       </div>
 
       <button id="sendOtpBtn" class="btn primary" type="button">Kód küldése</button>
 
+      <div id="loginInfo" class="muted" style="margin-top:10px;"></div>
+
       <div id="otpBlock" class="hidden" style="margin-top:14px;">
         <div class="field" style="margin-top:0;">
-          <span>Egyszer használatos kód</span>
+          <span>Kód</span>
           <input id="otpInput" inputmode="numeric" autocomplete="one-time-code" placeholder="Írd be a kapott kódot" />
         </div>
 
@@ -174,7 +175,7 @@
   const $ = (id) => document.getElementById(id);
 
   const loginView = $('loginView'), calendarView = $('calendarView');
-  const emailInput = $('emailInput'), sendOtpBtn = $('sendOtpBtn'), otpBlock = $('otpBlock'), otpInput = $('otpInput'), verifyOtpBtn = $('verifyOtpBtn'), resendOtpBtn = $('resendOtpBtn'), loginMsg = $('loginMsg');
+  const emailInput = $('emailInput'), sendOtpBtn = $('sendOtpBtn'), loginInfo = $('loginInfo'), otpBlock = $('otpBlock'), otpInput = $('otpInput'), verifyOtpBtn = $('verifyOtpBtn'), resendOtpBtn = $('resendOtpBtn'), loginMsg = $('loginMsg');
   const userBadge = $('userBadge'), logoutBtn = $('logoutBtn');
   const prevBtn = $('prevBtn'), nextBtn = $('nextBtn'), monthTitle = $('monthTitle'), grid = $('grid');
   const modal = $('modal'), modalCard = $('modalCard'), modalTitle = $('modalTitle');
@@ -229,11 +230,16 @@
     calendarView.classList.remove('hidden');
   }
   function showLoginMsg(msg){
+    if(typeof loginInfo !== 'undefined' && loginInfo){
+      loginInfo.textContent = msg || '';
+    }
+    // vész fallback (ha mégis kellene)
     if(typeof loginMsg !== 'undefined' && loginMsg){
       loginMsg.textContent = msg;
       loginMsg.classList.remove('hidden');
       setTimeout(()=>loginMsg.classList.add('hidden'), 3500);
     }
+  }
 
   function showAppMsg(msg){
     const t = $('appToast');
@@ -513,37 +519,44 @@
   }
 
   async function sendOtp(isResend=false){
+    sendOtpBtn.disabled = true;
+    resendOtpBtn.disabled = true;
     const email=(emailInput.value||'').trim();
-    if(!email) return showLoginMsg('Add meg az email címet.');
+    if(!email){ sendOtpBtn.disabled=false; resendOtpBtn.disabled=false; return showLoginMsg('Add meg az email címed.'); }
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser:false }
     });
     if(error){
+      sendOtpBtn.disabled=false; resendOtpBtn.disabled=false;
       showLoginMsg('Hiba: '+error.message);
       return;
     }
     showOtpBlock();
-    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'Elküldtem a kódot. Írd be a leveledben kapott kódot.');
+    sendOtpBtn.disabled=false; resendOtpBtn.disabled=false;
+    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide');
   }
 
   sendOtpBtn.addEventListener('click', ()=>sendOtp(false));
   resendOtpBtn.addEventListener('click', ()=>sendOtp(true));
 
   verifyOtpBtn.addEventListener('click', async ()=>{
+    verifyOtpBtn.disabled = true;
     const email=(emailInput.value||'').trim();
     const token=(otpInput.value||'').trim();
-    if(!email) return showLoginMsg('Add meg az email címet.');
-    if(!token) return showLoginMsg('Add meg a kódot.');
+    if(!email){ sendOtpBtn.disabled=false; resendOtpBtn.disabled=false; return showLoginMsg('Add meg az email címed.'); }
+    if(!token){ verifyOtpBtn.disabled=false; return showLoginMsg('Add meg a kódot.'); }
     const { error } = await supabase.auth.verifyOtp({
       email,
       token,
       type: 'email'
     });
     if(error){
+      verifyOtpBtn.disabled=false;
       showLoginMsg('Hibás kód vagy lejárt. Kérj új kódot.');
       return;
     }
+    verifyOtpBtn.disabled=false;
     // session beállítódik; az onAuthStateChange lekezeli
   });
 
