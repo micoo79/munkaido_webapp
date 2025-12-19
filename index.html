@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Munkaidő v7</title>
+  <title>Munkaidő 8 / Szabi</title>
   <style>
     :root{
       --bg:#2a2c2f; --panel:#3a3d41; --panel2:#44484d;
@@ -71,6 +71,7 @@
     .btns .btn{flex:1; font-size:20px; padding:20px 16px;}
     .bottomPad{height:50px;}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div id="app">
@@ -166,8 +167,15 @@
   </div>
 </div>
 
-<script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+<script>
+  const { createClient } = window.supabase || {};
+
+  if(!createClient){
+    const el = document.getElementById('loginInfo') || document.getElementById('loginMsg');
+    if(el) el.textContent = 'Hiba: a Supabase klienskönyvtár nem töltődött be (CDN). Próbáld újratölteni.';
+    throw new Error('Supabase CDN not loaded');
+  }
+
 
   const YEAR_MIN = 2026, YEAR_MAX = 2026;
   const DEV_TODAY = '2026-04-16'; // TESZT: könnyen visszaállítható null-ra élesben // pl: '2026-04-16'
