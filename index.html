@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Munkaidő / Szabi (build v4-001)</title>
+  <title>Munkaidő / Szabi</title>
   <style>
     :root{
       --bg:#2a2c2f; --panel:#3a3d41; --panel2:#44484d;
@@ -83,12 +83,27 @@
   <main class="main">
     <section id="loginView" class="card">
       <h1>Belépés</h1>
-      <p class="muted">Email → Magic link. (Nincs ön-regisztráció.)</p>
+      <p class="muted">Email → egyszer használatos kód (OTP). (Nincs ön-regisztráció.)</p>
+
       <div class="field">
         <span>Email</span>
         <input id="emailInput" type="email" autocomplete="email" placeholder="név@céged.hu" />
       </div>
-      <button id="sendLinkBtn" class="btn primary" type="button">Belépő link küldése</button>
+
+      <button id="sendOtpBtn" class="btn primary" type="button">Kód küldése</button>
+
+      <div id="otpBlock" class="hidden" style="margin-top:14px;">
+        <div class="field" style="margin-top:0;">
+          <span>Egyszer használatos kód</span>
+          <input id="otpInput" inputmode="numeric" autocomplete="one-time-code" placeholder="6 számjegy" />
+        </div>
+
+        <div style="display:flex; gap:12px;">
+          <button id="verifyOtpBtn" class="btn primary" type="button" style="flex:1;">Belépés</button>
+          <button id="resendOtpBtn" class="btn" type="button" style="flex:1;">Újraküldés</button>
+        </div>
+      </div>
+
       <div id="loginMsg" class="toast hidden"></div>
     </section>
 
@@ -157,7 +172,7 @@
   const $ = (id) => document.getElementById(id);
 
   const loginView = $('loginView'), calendarView = $('calendarView');
-  const emailInput = $('emailInput'), sendLinkBtn = $('sendLinkBtn'), loginMsg = $('loginMsg');
+  const emailInput = $('emailInput'), sendOtpBtn = $('sendOtpBtn'), otpBlock = $('otpBlock'), otpInput = $('otpInput'), verifyOtpBtn = $('verifyOtpBtn'), resendOtpBtn = $('resendOtpBtn'), loginMsg = $('loginMsg');
   const userBadge = $('userBadge'), logoutBtn = $('logoutBtn');
   const prevBtn = $('prevBtn'), nextBtn = $('nextBtn'), monthTitle = $('monthTitle'), grid = $('grid');
   const modal = $('modal'), modalCard = $('modalCard'), modalTitle = $('modalTitle');
@@ -217,6 +232,7 @@
     loginView.classList.remove('hidden');
     userBadge.classList.add('hidden');
     logoutBtn.classList.add('hidden');
+    if(typeof hideOtpBlock==='function') hideOtpBlock();
   }
   function showApp(){
     loginView.classList.add('hidden');
@@ -484,16 +500,55 @@
     }
   }
 
-  sendLinkBtn.addEventListener('click', async ()=>{
+  
+  function showOtpBlock(){
+    otpBlock.classList.remove('hidden');
+    otpInput.focus();
+  }
+  function hideOtpBlock(){
+    otpBlock.classList.add('hidden');
+    otpInput.value='';
+  }
+
+  async function sendOtp(isResend=false){
     const email=(emailInput.value||'').trim();
     if(!email) return showLoginMsg('Add meg az email címet.');
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser:false, emailRedirectTo: window.location.origin }
+      options: { shouldCreateUser:false }
     });
-    if(error) showLoginMsg('Hiba: '+error.message);
-    else showLoginMsg('Elküldtem a belépő linket.');
+    if(error){
+      showLoginMsg('Hiba: '+error.message);
+      return;
+    }
+    showOtpBlock();
+    showLoginMsg(isResend ? 'Új kódot küldtem.' : 'Elküldtem a kódot. Írd be a 6 számjegyet.');
+  }
+
+  sendOtpBtn.addEventListener('click', ()=>sendOtp(false));
+  resendOtpBtn.addEventListener('click', ()=>sendOtp(true));
+
+  verifyOtpBtn.addEventListener('click', async ()=>{
+    const email=(emailInput.value||'').trim();
+    const token=(otpInput.value||'').trim();
+    if(!email) return showLoginMsg('Add meg az email címet.');
+    if(!token) return showLoginMsg('Add meg a kódot.');
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+    if(error){
+      showLoginMsg('Hibás kód vagy lejárt. Kérj új kódot.');
+      return;
+    }
+    // session beállítódik; az onAuthStateChange lekezeli
   });
+
+  otpInput.addEventListener('input', ()=>{
+    otpInput.value = otpInput.value.replace(/\D/g,'').slice(0,6);
+  });
+
 
   logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); });
 
