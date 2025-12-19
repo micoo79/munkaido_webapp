@@ -80,6 +80,8 @@
     <button id="logoutBtn" class="btn hidden" type="button">Kilépés</button>
   </header>
 
+  <div id="appToast" class="toast hidden" style="position:fixed; left:12px; right:12px; bottom:12px; z-index:9999; text-align:center;"></div>
+
   <main class="main">
     <section id="loginView" class="card">
       <h1>Belépés</h1>
@@ -239,9 +241,19 @@
     calendarView.classList.remove('hidden');
   }
   function showLoginMsg(msg){
-    loginMsg.textContent = msg;
-    loginMsg.classList.remove('hidden');
-    setTimeout(()=>loginMsg.classList.add('hidden'), 3500);
+    // login toast (ha látszik)
+    if(typeof loginMsg !== 'undefined' && loginMsg){
+      loginMsg.textContent = msg;
+      loginMsg.classList.remove('hidden');
+      setTimeout(()=>loginMsg.classList.add('hidden'), 3500);
+    }
+    // globális toast (mindig látszik)
+    const t = $('appToast');
+    if(t){
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(()=>t.classList.add('hidden'), 3500);
+    }
   }
 
   function setViewToToday(){
@@ -309,7 +321,7 @@
 
   async function loadMonth(){
     monthTitle.textContent = formatMonthTitle(viewYear, viewMonth);
-    const { data, error } = await supabase.rpc('rpc_get_month', { p_year:viewYear, p_month:viewMonth });
+    const { data, error } = await supabase.schema('app').rpc('rpc_get_month', { p_year:viewYear, p_month:viewMonth });
     if(error) throw error;
     monthRows = data || [];
     renderMonth();
@@ -470,7 +482,7 @@
   }
 
   async function refreshSummary(){
-    const { data, error } = await supabase.rpc('rpc_get_summary_to_date', { p_today: todayStr });
+    const { data, error } = await supabase.schema('app').rpc('rpc_get_summary_to_date', { p_today: todayStr });
     if(error) throw error;
     const s=data?.[0]; if(!s) return;
 
@@ -556,13 +568,15 @@
     const {y,m}=getMonthNav(viewYear,viewMonth,-1);
     if(y<YEAR_MIN||y>YEAR_MAX) return;
     viewYear=y; viewMonth=m;
-    await loadMonth(); await refreshSummary();
+    try{ await loadMonth(); await refreshSummary(); }
+    catch(e){ showLoginMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
   });
   nextBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth, +1);
     if(y<YEAR_MIN||y>YEAR_MAX) return;
     viewYear=y; viewMonth=m;
-    await loadMonth(); await refreshSummary();
+    try{ await loadMonth(); await refreshSummary(); }
+    catch(e){ showLoginMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
   });
 
   vacRow.addEventListener('click', ()=>{
@@ -639,9 +653,13 @@
       cleanupAuthQuery();
       showApp();
       setViewToToday();
-      await loadProfile();
-      await loadMonth();
-      await refreshSummary();
+      try{
+        await loadProfile();
+        await loadMonth();
+        await refreshSummary();
+      } catch(e){
+        showLoginMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
+      }
     }
 
     supabase.auth.onAuthStateChange(async ()=>{
@@ -652,9 +670,13 @@
       cleanupAuthQuery();
       showApp();
       setViewToToday();
-      await loadProfile();
-      await loadMonth();
-      await refreshSummary();
+      try{
+        await loadProfile();
+        await loadMonth();
+        await refreshSummary();
+      } catch(e){
+        showLoginMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
+      }
     });
 
     bindDraftEvents();
