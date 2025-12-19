@@ -300,7 +300,7 @@
   }
 
   async function loadProfile(){
-    const { data, error } = await supabase.schema('app').from('profiles')
+    const { data, error } = await supabase.from('profiles')
       .select('display_name, role, daily_expected_minutes')
       .eq('user_id', session.user.id).maybeSingle();
     if(error) throw error;
@@ -321,7 +321,7 @@
 
   async function loadMonth(){
     monthTitle.textContent = formatMonthTitle(viewYear, viewMonth);
-    const { data, error } = await supabase.schema('app').rpc('rpc_get_month', { p_year:viewYear, p_month:viewMonth });
+    const { data, error } = await supabase.rpc('rpc_get_month', { p_year:viewYear, p_month:viewMonth });
     if(error) throw error;
     monthRows = data || [];
     renderMonth();
@@ -482,7 +482,7 @@
   }
 
   async function refreshSummary(){
-    const { data, error } = await supabase.schema('app').rpc('rpc_get_summary_to_date', { p_today: todayStr });
+    const { data, error } = await supabase.rpc('rpc_get_summary_to_date', { p_today: todayStr });
     if(error) throw error;
     const s=data?.[0]; if(!s) return;
 
