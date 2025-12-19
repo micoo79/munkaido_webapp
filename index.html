@@ -254,7 +254,16 @@
       .select('display_name, role, daily_expected_minutes')
       .eq('user_id', session.user.id).maybeSingle();
     if(error) throw error;
-    profile = data || { display_name:'', role:'user', daily_expected_minutes:480 };
+
+    // Ha nincs profile sor, akkor az auth user nincs "felvéve" az appba.
+    if(!data){
+      try { await supabase.auth.signOut(); } catch(e) {}
+      showLogin();
+      showLoginMsg('Nincs jogosultságod ehhez az alkalmazáshoz. Kérd az admin/manager felvételét.');
+      throw new Error('NO_PROFILE');
+    }
+
+    profile = data;
     userBadge.textContent = `${profile.display_name || session.user.email} (${profile.role})`;
     userBadge.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
