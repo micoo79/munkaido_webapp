@@ -13,7 +13,7 @@
       --tileText:#111; --gap:10px;
     }
     *{box-sizing:border-box;}
-    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text);}
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); min-height:100vh;}
     #app{height:100%; display:flex; flex-direction:column;}
     .topbar{height:10vh; min-height:56px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:var(--panel);}
     .brand{font-size:20px; font-weight:700;}
@@ -39,14 +39,16 @@
     .dow>div{text-align:center; font-size:20px;}
 
     .grid{height:60vh; min-height:360px; display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; gap:var(--gap); width:100%; max-width:900px;}
-    .tile{background:var(--tile); color:var(--tileText); border-radius:14px; padding:8px; display:flex; flex-direction:column; overflow:hidden; border:0;}
+    .tile{background:var(--tile); color:var(--tileText); border-radius:7%; padding:8px; display:flex; flex-direction:column; overflow:hidden; border:0;}
     .tile.rest{background:var(--tileRest);}
+    .tile.weekend{background:#3f434a;}
+
     .tile.vac{background:var(--tileVac);}
     .tile.hol{background:var(--tileHol);}
     .tile.special{outline:3px solid var(--ok);}
     .tile.today{background:var(--accent);} /* ma: teljes narancs */
 
-    .tDay{height:35%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:clamp(18px,4.2vw,34px);}
+    .tDay{height:35%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:clamp(18px,4.2vw,34px); text-align:left; padding-left:6%;}
     .lines{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:2px 0 4px 0; gap:1%;}
     .line{text-align:center; white-space:nowrap; overflow:hidden; font-size:clamp(11px,2.6vw,16px); font-weight:400;}
     .line.flex{color:#c40000;}
@@ -273,7 +275,8 @@
     const isHoliday=!!(row.holiday_name && row.holiday_name.trim());
     if(row.is_vacation) return 'tile vac';
     if(isHoliday) return 'tile hol';
-    if(!row.is_workday || isWeekend) return 'tile rest';
+    if(isWeekend) return 'tile weekend';
+    if(!row.is_workday) return 'tile rest';
     return 'tile';
   }
 
@@ -307,7 +310,7 @@
     }
 
     profile = data;
-    userBadge.textContent = `${profile.display_name || session.user.email} (${profile.role})`;
+    userBadge.textContent = `${profile.display_name||profile.email||''}`;
     userBadge.classList.remove('hidden');
     logoutBtn.classList.remove('hidden');
   }
@@ -555,7 +558,7 @@
   });
 
 
-  logoutBtn.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(); }catch(e){} showLogin(); });
+  logoutBtn.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(); }catch(e){} window.location.reload(); });
 
   prevBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth,-1);
@@ -590,7 +593,7 @@
       await loadMonth(); await refreshSummary();
       closeEditor();
     } catch(e){
-      showLoginMsg('Hiba: '+(e?.message||String(e)));
+      showAppMsg('Mentés hiba: '+(e?.message||String(e)));
     }
   });
 
@@ -605,7 +608,7 @@
       await loadMonth(); await refreshSummary();
       closeEditor();
     } catch(e){
-      showLoginMsg('Hiba: '+(e?.message||String(e)));
+      showAppMsg('Mentés hiba: '+(e?.message||String(e)));
     }
   });
 
