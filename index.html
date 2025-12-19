@@ -184,6 +184,16 @@
   function parseHmToMin(hm){ if(!hm) return null; const [h,m]=hm.split(':').map(Number); return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null; }
   function minsToHM(mins){ const h=String(Math.floor(mins/60)); const m=String(mins%60).padStart(2,'0'); return `${h}:${m}`; }
 
+
+  function cleanupAuthFragment(){
+    // Implicit flow esetén a tokenek a URL fragmentben (#...) jönnek vissza.
+    // Ne töröljük túl korán, mert akkor a kliens nem tudja kiolvasni.
+    if(window.location.hash && (window.location.hash.includes('access_token') || window.location.hash.includes('refresh_token'))){
+      const newUrl = window.location.pathname + window.location.search;
+      history.replaceState({}, document.title, newUrl);
+    }
+  }
+
   async function loadConfig(){
     const r = await fetch('/config', { cache:'no-store' });
     if(!r.ok) throw new Error('Nem érem el a /config endpointot (Pages Function).');
@@ -537,15 +547,12 @@
       auth:{persistSession:true, detectSessionInUrl:true}
     });
 
-    if(window.location.hash && window.location.hash.includes('access_token')){
-      history.replaceState({}, document.title, window.location.pathname);
-    }
-
     const { data } = await supabase.auth.getSession();
     session = data.session;
 
     if(!session){ showLogin(); }
     else{
+      cleanupAuthFragment();
       showApp();
       setViewToToday();
       await loadProfile();
@@ -557,6 +564,7 @@
       const { data } = await supabase.auth.getSession();
       session=data.session;
       if(!session){ showLogin(); return; }
+      cleanupAuthFragment();
       showApp();
       setViewToToday();
       await loadProfile();
