@@ -79,7 +79,7 @@
 
     .right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
 
-    .logoutLink{pointer-events:auto; z-index:5;font-size:18px; text-decoration:underline; color:var(--text); cursor:pointer; user-select:none;}
+    .logoutLink{font-size:18px; text-decoration:underline; color:var(--text); cursor:pointer; user-select:none;}
     .logoutLink:active{opacity:.7;}
 </style>
 </head>
@@ -88,7 +88,7 @@
   <header class="topbar">
     <div class="brand"><img src="kultora_logo.png" alt="Kultora" class="logo" /></div>
     <div id="userBadge" class="badge hidden"></div>
-    <a id="logoutLink" class="logoutLink" href="#">Kilépés</a>
+    <a id="logoutBtn" class="logoutLink" href="#">Kilépés</a>
   </header>
 
   <main class="main">
@@ -185,7 +185,7 @@
 
   const loginView = $('loginView'), calendarView = $('calendarView');
   const emailInput = $('emailInput'), sendOtpBtn = $('sendOtpBtn'), loginInfo = $('loginInfo'), otpBlock = $('otpBlock'), otpInput = $('otpInput'), verifyOtpBtn = $('verifyOtpBtn'), resendOtpBtn = $('resendOtpBtn'), loginMsg = $('loginMsg');
-  const userBadge = $('userBadge'), logoutLink = $('logoutLink');
+  const userBadge = $('userBadge'), logoutBtn = $('logoutBtn');
   const prevBtn = $('prevBtn'), nextBtn = $('nextBtn'), monthTitle = $('monthTitle'), grid = $('grid');
   const modal = $('modal'), modalCard = $('modalCard'), modalTitle = $('modalTitle');
   const arrivalSel = $('arrivalSel'), departureSel = $('departureSel'), flexSel = $('flexSel');
@@ -249,9 +249,6 @@
   function showApp(){
     loginView.classList.add('hidden');
     calendarView.classList.remove('hidden');
-    userBadge.classList.remove('hidden');
-    logoutLink.classList.remove('hidden');
-  }
   function showLoginMsg(msg){
     if(typeof loginInfo !== 'undefined' && loginInfo){
       loginInfo.textContent = msg || '';
@@ -323,7 +320,7 @@
     profile = data;
     userBadge.textContent = `${profile.display_name||profile.email||''}`;
     userBadge.classList.remove('hidden');
-    logoutLink.classList.remove('hidden');
+    logoutBtn.classList.remove('hidden');
   }
 
   async function loadMonth(){
@@ -504,7 +501,7 @@
     } else {
       balanceLine.innerHTML=`<span class="num" style="color:var(--bad)">${hm}</span> hátralékod van` + (days>=1?`, ez <span class="num" style="color:var(--bad)">${days}</span> napnak felel meg`:'') + `.`;
     }
-    vacLine.innerHTML=`Még <span class="num">${s.vacation_remaining_days}</span> óra nap szabid van.`;
+    vacLine.innerHTML=`Még <span class="num">${s.vacation_remaining_days}</span> nap szabid van.`;
   }
 
   function bindDraftEvents(){
@@ -569,7 +566,7 @@
   });
 
 
-  if(logoutLink){ logoutLink.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); window.__logout && window.__logout(); }); }
+  if(logoutBtn){ logoutBtn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); window.__logout && window.__logout(); }); }
 
   prevBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth,-1);
