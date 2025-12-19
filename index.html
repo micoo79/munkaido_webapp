@@ -41,14 +41,14 @@
     .grid{height:60vh; min-height:360px; display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; gap:var(--gap); width:100%; max-width:900px;}
     .tile{background:var(--tile); color:var(--tileText); border-radius:7%; padding:8px; display:flex; flex-direction:column; overflow:hidden; border:0;}
     .tile.rest{background:var(--tileRest);}
-    .tile.weekend{background:#3f434a;}
+    .tile.weekend{background:#777b81;}
 
     .tile.vac{background:var(--tileVac);}
     .tile.hol{background:var(--tileHol);}
     .tile.special{outline:3px solid var(--ok);}
     .tile.today{background:var(--accent);} /* ma: teljes narancs */
 
-    .tDay{height:35%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:clamp(18px,4.2vw,34px); text-align:left; padding-left:6%;}
+    .tDay{height:35%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:clamp(18px,4.2vw,34px); text-align:left; padding-left:6%; padding-left:6%;}
     .lines{flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:2px 0 4px 0; gap:1%;}
     .line{text-align:center; white-space:nowrap; overflow:hidden; font-size:clamp(11px,2.6vw,16px); font-weight:400;}
     .line.flex{color:#c40000;}
@@ -56,7 +56,7 @@
 
     .summary{margin-top:12px; width:100%; max-width:900px;}
     .summaryLine{width:100%; text-align:center; font-size:min(24px,5vw); padding:10px 0;}
-    .summaryLine .num{font-size:150%; font-weight:800;}
+    .summaryLine .num{font-size:115%; font-weight:800;}
 
     .modal{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center; padding:14px;}
     .modalCard{width:min(680px,100%); background:#6b6f75; color:#000; border-radius:18px; padding:18px 18px 0 18px;}
@@ -72,14 +72,16 @@
     .btns{display:flex; gap:12px; margin-top:16px;}
     .btns .btn{flex:1; font-size:20px; padding:20px 16px;}
     .bottomPad{height:50px;}
-  </style>
+  
+    #vacChk{pointer-events:auto; width:28px; height:28px;}
+</style>
 </head>
 <body>
 <div id="app">
   <header class="topbar">
     <div class="brand">Munkaidő / Szabi</div>
     <div id="userBadge" class="badge hidden"></div>
-    <button id="logoutBtn" class="btn hidden" type="button">Kilépés</button>
+    <button id="logoutBtn" class="btn hidden" type="button" onclick=\"window.__logout && window.__logout()\">Kilépés</button>
   </header>
 
   <main class="main">
@@ -491,7 +493,7 @@
     if(bal>=0){
       balanceLine.innerHTML=`Összesen a mai napig <span class="num" style="color:var(--ok)">${hm}</span> túlórád van` + (days>=1?`, ez <span class="num" style="color:var(--ok)">${days}</span> napnak felel meg`:'') + `.`;
     } else {
-      balanceLine.innerHTML=`A mai napig <span class="num" style="color:var(--bad)">${hm}</span> hátralékod van` + (days>=1?`, ez <span class="num" style="color:var(--bad)">${days}</span> napnak felel meg`:'') + `.`;
+      balanceLine.innerHTML=`<span class="num" style="color:var(--bad)">${hm}</span> hátralékod van` + (days>=1?`, ez <span class="num" style="color:var(--bad)">${days}</span> napnak felel meg`:'') + `.`;
     }
     vacLine.innerHTML=`Még <span class="num">${s.vacation_remaining_days}</span> nap szabid van.`;
   }
@@ -558,7 +560,7 @@
   });
 
 
-  logoutBtn.addEventListener('click', async ()=>{ try{ await supabase.auth.signOut(); }catch(e){} window.location.reload(); });
+  logoutBtn.addEventListener('click', ()=>window.__logout && window.__logout());
 
   prevBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth,-1);
