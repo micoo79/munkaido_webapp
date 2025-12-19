@@ -26,14 +26,14 @@
     .muted{color:var(--muted); margin:0 0 14px 0;}
     .field{display:flex; flex-direction:column; gap:8px; margin:12px 0;}
     input,select{font-size:18px; padding:14px 12px; border-radius:14px; border:1px solid rgba(255,255,255,.15); background:#1f2124; color:var(--text); width:100%;}
-    .btn{font-size:18px; padding:14px 16px; border-radius:14px; border:0; background:#5a5f66; color:var(--text);}
+    .btn{font-size:clamp(16px,2.6vw,22px); padding:14px 16px; border-radius:14px; border:0; background:#5a5f66; color:var(--text);} 
     .btn.primary{background:var(--accent); color:#000;}
     .btn.danger{background:#c0392b;}
     .toast{margin-top:14px; padding:14px 16px; border-radius:14px; background:var(--accent); color:#000; font-size:18px;}
 
     .monthbar{height:10vh; min-height:56px; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;}
-    .monthbar .btn{font-size:28px; padding:10px 16px; border-radius:16px;}
-    .monthTitle{flex:1; text-align:center; font-size:24px; font-weight:700;}
+    .monthbar .btn{font-size:clamp(32px,5vw,54px); padding:12px 18px; border-radius:18px; min-width:64px;}
+    .monthTitle{flex:1; text-align:center; font-size:clamp(22px,4vw,42px); font-weight:700;}
 
     .dow{height:5vh; min-height:34px; display:grid; grid-template-columns:repeat(7,1fr); gap:var(--gap); align-items:center; margin-bottom:8px;}
     .dow>div{text-align:center; font-size:20px;}
@@ -169,7 +169,7 @@
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
   const YEAR_MIN = 2026, YEAR_MAX = 2026;
-  const DEV_TODAY = null; // pl: '2026-04-16'
+  const DEV_TODAY = '2026-04-16'; // TESZT: könnyen visszaállítható null-ra élesben // pl: '2026-04-16'
 
   const $ = (id) => document.getElementById(id);
 
@@ -196,22 +196,10 @@
   }
   function getToday(){ return DEV_TODAY || isoDate(new Date()); }
   function huMonthName(m){ return ['január','február','március','április','május','június','július','augusztus','szeptember','október','november','december'][m-1]||''; }
-  function formatMonthTitle(y,m){ return `${y}. ${huMonthName(m)}`; }
-  function fmtTime(t){ return t ? String(t).slice(0,5) : ''; }
-  function parseHmToMin(hm){ if(!hm) return null; const [h,m]=hm.split(':').map(Number); return Number.isFinite(h)&&Number.isFinite(m)?h*60+m:null; }
-  function minsToHM(mins){ const h=String(Math.floor(mins/60)); const m=String(mins%60).padStart(2,'0'); return `${h}:${m}`; }
-
-
-  function cleanupAuthQuery(){
-    // PKCE flow esetén a tokencsere után a ?code=... maradhat az URL-ben. Takarítsuk ki.
-    const url = new URL(window.location.href);
-    if(url.searchParams.has('code') || url.searchParams.has('error') || url.searchParams.has('error_description')){
-      url.searchParams.delete('code');
-      url.searchParams.delete('error');
-      url.searchParams.delete('error_description');
-      const qs = url.searchParams.toString();
-      history.replaceState({}, document.title, url.pathname + (qs ? ('?'+qs) : '') );
-    }
+  function formatMonthTitle(y,m){
+    const names=['január','február','március','április','május','június','július','augusztus','szeptember','október','november','december'];
+    return `${y}. ${names[m-1]}`;
+  }
   }
 
   function cleanupAuthFragment(){
@@ -241,19 +229,20 @@
     calendarView.classList.remove('hidden');
   }
   function showLoginMsg(msg){
-    // login toast (ha látszik)
     if(typeof loginMsg !== 'undefined' && loginMsg){
       loginMsg.textContent = msg;
       loginMsg.classList.remove('hidden');
       setTimeout(()=>loginMsg.classList.add('hidden'), 3500);
     }
-    // globális toast (mindig látszik)
+
+  function showAppMsg(msg){
     const t = $('appToast');
-    if(t){
-      t.textContent = msg;
-      t.classList.remove('hidden');
-      setTimeout(()=>t.classList.add('hidden'), 3500);
-    }
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    setTimeout(()=>t.classList.add('hidden'), 3500);
+  }
+
   }
 
   function setViewToToday(){
@@ -264,7 +253,8 @@
   }
 
   function getMonthNav(y,m,dir){
-    const d=new Date(`${y}-${String(m).padStart(2,'0')}-15T00:00:00`);
+    // Safari-kompatibilis (ne stringből parse-oljuk a dátumot)
+    const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
     d.setMonth(d.getMonth()+dir);
     return { y:d.getFullYear(), m:d.getMonth()+1 };
   }
@@ -562,21 +552,24 @@
   });
 
 
-  logoutBtn.addEventListener('click', async ()=>{ await supabase.auth.signOut(); });
+  logoutBtn.addEventListener('click', async ()=>{
+    try{ await supabase.auth.signOut(); }catch(e){}
+    showLogin();
+  });
 
   prevBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth,-1);
     if(y<YEAR_MIN||y>YEAR_MAX) return;
     viewYear=y; viewMonth=m;
     try{ await loadMonth(); await refreshSummary(); }
-    catch(e){ showLoginMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
+    catch(e){ showAppMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
   });
   nextBtn.addEventListener('click', async ()=>{
     const {y,m}=getMonthNav(viewYear,viewMonth, +1);
     if(y<YEAR_MIN||y>YEAR_MAX) return;
     viewYear=y; viewMonth=m;
     try{ await loadMonth(); await refreshSummary(); }
-    catch(e){ showLoginMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
+    catch(e){ showAppMsg('Hiba betöltéskor: '+(e?.message||String(e))); }
   });
 
   vacRow.addEventListener('click', ()=>{
@@ -658,7 +651,7 @@
         await loadMonth();
         await refreshSummary();
       } catch(e){
-        showLoginMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
+        showAppMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
       }
     }
 
@@ -675,7 +668,7 @@
         await loadMonth();
         await refreshSummary();
       } catch(e){
-        showLoginMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
+        showAppMsg('Hiba inicializáláskor: '+(e?.message||String(e)));
       }
     });
 
