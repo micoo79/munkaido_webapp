@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Manager – Munkaidő</title>
+
+  <style>
+    :root{
+      --bg:#27272a;
+      --panel:#27272a;
+      --card:#2f2f33;
+      --text:#f2f3f5;
+      --muted:#c9cbd1;
+      --accent:#ff8a00;
+      --danger:#ff453a;
+      --ok:#22c55e;
+      --border:#3f3f46;
+      --input:#ffffff;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    a{color:var(--text); text-decoration:none;}
+    .wrap{max-width:980px; margin:0 auto; padding:14px 16px 24px;}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 0 14px;
+    }
+    .topbarLeft{display:flex; align-items:center; gap:10px;}
+    .title{font-size:22px; font-weight:800;}
+    .who{font-size:14px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55vw;}
+
+    .btn{
+      border:0;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      background:var(--border);
+      color:var(--text);
+      transition:background .15s, transform .05s;
+    }
+    .btn:hover{background:#52525b;}
+    .btn:active{transform:scale(.98);}
+    .btn.primary{background:var(--accent); color:#111;}
+    .btn.primary:hover{filter:brightness(1.03);}
+    .btn.danger{background:var(--danger); color:#111;}
+    .btn.ghost{background:transparent; border:1px solid var(--border);}
+    .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
+
+    .grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:12px;}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+    }
+    .panelHead{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:6px 4px 10px;
+    }
+    .panelHead h2{margin:0; font-size:16px; font-weight:800;}
+    .panelHead .hint{color:var(--muted); font-size:13px;}
+
+    .list{display:flex; flex-direction:column; gap:10px;}
+    .userCard{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .userMeta{min-width:0;}
+    .userName{font-size:15px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .userEmail{font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      background:#3f3f46;
+      color:var(--text);
+      margin-top:6px;
+    }
+    .pill.manager{background:#2563eb;}
+    .pill.admin{background:#7c3aed;}
+    .pill.user{background:#3f3f46;}
+
+    .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+
+    label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px;}
+    input, select{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--input);
+      color:#111;
+      font-size:14px;
+      outline:none;
+    }
+    input:focus, select:focus{border-color:#8b8b93; box-shadow:0 0 0 2px rgba(255,138,0,.2);}
+
+    .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+    @media (max-width:520px){ .row2{grid-template-columns:1fr;} }
+
+    .help{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35;}
+
+    /* Modal */
+    .hidden{display:none !important;}
+    .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50;}
+    .modal{
+      width:min(920px,100%);
+      background:#52525b;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      padding:14px;
+    }
+    .modalHead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+    .modalTitle{margin:0; font-size:18px; font-weight:900;}
+    .modalSub{font-size:13px; color:rgba(255,255,255,.8); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw;}
+    .modalBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+    .hr{height:1px; background:rgba(255,255,255,.12); margin:12px 0;}
+    .note{font-size:12px; color:rgba(255,255,255,.8); margin-top:8px;}
+
+    .toast{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      background:var(--accent); color:#111;
+      padding:14px; border-radius:14px;
+      font-size:18px;
+      z-index:99;
+      font-weight:800;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbarLeft">
+        <a class="btn ghost" href="/app.html">← Naptár</a>
+        <div>
+          <div class="title">Manager felület</div>
+          <div id="who" class="who">—</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button id="refreshBtn" class="btn" type="button">Frissítés</button>
+        <button id="logoutBtn" class="btn" type="button">Kijelentkezés</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Users -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Felhasználók</h2>
+          <div class="hint">Szerkesztés a listából</div>
+        </div>
+        <div id="usersList" class="list"></div>
+        <div class="help">
+          Tipp: új felhasználónál először “Meghívás” → majd a user egyszer belép OTP-vel (email kód), és utána a profilja már a listában lesz.
+        </div>
+      </section>
+
+      <!-- Invite / Defaults -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Új felhasználó meghívása</h2>
+          <div class="hint">OTP belépéshez</div>
+        </div>
+
+        <label>Email</label>
+        <input id="invEmail" type="email" inputmode="email" autocomplete="email" placeholder="pl. valaki@ceg.hu" />
+
+        <label>Név</label>
+        <input id="invName" type="text" autocomplete="name" placeholder="pl. Kovács Béla" />
+
+        <div class="row2">
+          <div>
+            <label>Szerep</label>
+            <select id="invRole">
+              <option value="user">user</option>
+              <option value="manager">manager</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div>
+            <label>Napi elvárt munkaidő (perc)</label>
+            <input id="invDaily" type="number" min="0" step="1" placeholder="480" />
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Éves szabadság keret (nap)</label>
+            <input id="invVacEnt" type="number" min="0" step="1" placeholder="pl. 20" />
+          </div>
+          <div>
+            <label>Előző évről áthozott szabadság (nap)</label>
+            <input id="invVacCarry" type="number" min="0" step="1" placeholder="pl. 0" />
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Előző évről áthozott csúsztatás (óra)</label>
+            <input id="invFlexCarryH" type="number" step="0.25" placeholder="pl. 42" />
+          </div>
+          <div>
+            <label>Jutalom csúsztatás (óra)</label>
+            <input id="invFlexBonusH" type="number" step="0.25" placeholder="pl. 0" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button id="inviteBtn" class="btn primary" type="button">Meghívás mentése</button>
+          <button id="copyInviteBtn" class="btn" type="button">Szöveg másolása</button>
+        </div>
+
+        <div class="help" id="inviteHelp">
+          A meghívás után a felhasználó menjen a belépő oldalra (index.html), adja meg az emailjét, majd írja be az OTP kódot.
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Edit modal -->
+  <div id="backdrop" class="backdrop hidden">
+    <div class="modal">
+      <div class="modalHead">
+        <div style="min-width:0;">
+          <h3 id="mTitle" class="modalTitle">Profil szerkesztése</h3>
+          <div id="mSub" class="modalSub">—</div>
+        </div>
+        <div class="modalBtns">
+          <button id="closeBtn" class="btn" type="button">Bezár</button>
+          <button id="saveBtn" class="btn primary" type="button">Mentés</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row2">
+        <div>
+          <label>Név</label>
+          <input id="mName" type="text" />
+        </div>
+        <div>
+          <label>Email (csak megjelenítés)</label>
+          <input id="mEmail" type="text" disabled />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Szerep</label>
+          <select id="mRole">
+            <option value="user">user</option>
+            <option value="manager">manager</option>
+            <option value="admin">admin</option>
+          </select>
+          <div class="note">Admin/manager jogosultsággal mindenki szerkeszthető. Ha ezt később szigorítjuk, itt majd korlátozunk.</div>
+        </div>
+        <div>
+          <label>Napi elvárt munkaidő (perc)</label>
+          <input id="mDaily" type="number" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Éves szabadság keret (nap)</label>
+          <input id="mVacEnt" type="number" min="0" step="1" />
+        </div>
+        <div>
+          <label>Előző évről áthozott szabadság (nap)</label>
+          <input id="mVacCarry" type="number" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Előző évről áthozott csúsztatás (óra)</label>
+          <input id="mFlexCarryH" type="number" step="0.25" />
+        </div>
+        <div>
+          <label>Jutalom csúsztatás (óra)</label>
+          <input id="mFlexBonusH" type="number" step="0.25" />
+        </div>
+      </div>
+
+      <div class="note">
+        Megjegyzés: a DB-ben a csúsztatás percekben van tárolva (flex_carryover_minutes / flex_bonus_minutes), itt órában mutatjuk.
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+
+    const toast = (t) => {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = t;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2200);
+    };
+
+    let supabase = null;
+    let me = null;
+    let isMgr = false;
+
+    let profiles = [];
+    let editing = null; // current profile row
+
+    async function ensureSupabase(){
+      if(supabase) return supabase;
+
+      const t0=Date.now();
+      while(!(window.supabase && window.supabase.createClient)){
+        if(Date.now()-t0>6000) throw new Error('Supabase CDN nem töltődött be.');
+        await new Promise(r=>setTimeout(r,120));
+      }
+
+      const r = await fetch('/config', { cache:'no-store' });
+      if(!r.ok) throw new Error('Nem elérhető a /config.');
+      const j = await r.json();
+      const url = j.SUPABASE_URL || j.supabaseUrl;
+      const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
+      if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
+
+      supabase = window.supabase.createClient(url, key, {
+        auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+        db:{ schema:'app' }
+      });
+      return supabase;
+    }
+
+    function hoursToMinutes(h){
+      if(h === null || h === undefined || h === '') return 0;
+      const n = Number(h);
+      if(Number.isNaN(n)) return 0;
+      return Math.round(n * 60);
+    }
+    function minutesToHours(m){
+      const n = Number(m||0);
+      return (n/60).toFixed(2).replace(/\.00$/, '');
+    }
+
+    function rolePill(role){
+      const cls = role === 'admin' ? 'admin' : (role === 'manager' ? 'manager' : 'user');
+      return `<span class="pill ${cls}">${role}</span>`;
+    }
+
+    function renderUsers(){
+      const el = $('usersList');
+      el.innerHTML = '';
+
+      if(!profiles.length){
+        el.innerHTML = `<div class="help">Nincs megjeleníthető profil (vagy nincs jogosultság a listázáshoz).</div>`;
+        return;
+      }
+
+      for(const p of profiles){
+        const card = document.createElement('div');
+        card.className = 'userCard';
+
+        const meta = document.createElement('div');
+        meta.className = 'userMeta';
+        meta.innerHTML = `
+          <div class="userName">${escapeHtml(p.display_name || '(névtelen)')}</div>
+          <div class="userEmail">${escapeHtml(p.email || '')}</div>
+          ${rolePill(p.role)}
+        `;
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const btn = document.createElement('button');
+        btn.className = 'btn small';
+        btn.type = 'button';
+        btn.textContent = 'Szerkesztés';
+        btn.addEventListener('click', () => openEdit(p));
+
+        actions.appendChild(btn);
+        card.appendChild(meta);
+        card.appendChild(actions);
+        el.appendChild(card);
+      }
+    }
+
+    function openEdit(p){
+      editing = {...p};
+
+      $('mTitle').textContent = 'Profil szerkesztése';
+      $('mSub').textContent = `${p.email || ''} • user_id: ${p.user_id}`;
+
+      $('mName').value = p.display_name || '';
+      $('mEmail').value = p.email || '';
+
+      $('mRole').value = p.role || 'user';
+      $('mDaily').value = p.daily_expected_minutes ?? 480;
+
+      $('mVacEnt').value = p.vacation_entitlement_days ?? 0;
+      $('mVacCarry').value = p.vacation_carryover_days ?? 0;
+
+      $('mFlexCarryH').value = minutesToHours(p.flex_carryover_minutes);
+      $('mFlexBonusH').value = minutesToHours(p.flex_bonus_minutes);
+
+      $('backdrop').classList.remove('hidden');
+    }
+
+    function closeEdit(){
+      $('backdrop').classList.add('hidden');
+      editing = null;
+    }
+
+    async function saveEdit(){
+      if(!editing) return;
+
+      const patch = {
+        display_name: ($('mName').value || '').trim(),
+        role: $('mRole').value,
+        daily_expected_minutes: Number($('mDaily').value || 0),
+
+        vacation_entitlement_days: Number($('mVacEnt').value || 0),
+        vacation_carryover_days: Number($('mVacCarry').value || 0),
+
+        flex_carryover_minutes: hoursToMinutes($('mFlexCarryH').value),
+        flex_bonus_minutes: hoursToMinutes($('mFlexBonusH').value),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(patch)
+        .eq('user_id', editing.user_id);
+
+      if(error) throw error;
+
+      toast('Mentve');
+      closeEdit();
+      await refresh();
+    }
+
+    async function refresh(){
+      await ensureSupabase();
+
+      const { data: sess } = await supabase.auth.getSession();
+      if(!sess.session){
+        location.replace('/index.html?v=' + Date.now());
+        return;
+      }
+
+      // Saját profil: ezt engedi a meglévő policy is
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      const { data: myProf, error: e1 } = await supabase
+        .from('profiles')
+        .select('user_id,email,display_name,role')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if(e1) throw e1;
+
+      me = myProf;
+      isMgr = (me?.role === 'manager' || me?.role === 'admin');
+      $('who').textContent = me ? `${me.display_name || me.email || ''} (${me.role})` : '—';
+
+      if(!isMgr){
+        toast('Nincs jogosultság');
+        setTimeout(()=>location.replace('/app.html'), 700);
+        return;
+      }
+
+      // ÖSSZES profil listázása (ehhez kell új RLS policy!)
+      const { data: all, error: e2 } = await supabase
+        .from('profiles')
+        .select('user_id,email,display_name,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
+        .order('display_name', { ascending:true });
+
+      if(e2){
+        throw new Error('Profil lista lekérés hiba. Valószínűleg hiányzik a manager/admin RLS policy a profiles táblán. Részletek: ' + (e2.message || String(e2)));
+      }
+
+      profiles = all || [];
+      renderUsers();
+    }
+
+    function inviteText(){
+      const email = ($('invEmail').value || '').trim();
+      return `Belépés a Munkaidő appba:\n1) Nyisd meg: ${location.origin}/index.html\n2) Add meg ezt az email címet: ${email}\n3) A kapott kódot írd be.\n`;
+    }
+
+    async function saveInvite(){
+      const email = ($('invEmail').value || '').trim().toLowerCase();
+      const name  = ($('invName').value || '').trim();
+      if(!email) { toast('Adj meg emailt'); return; }
+
+      const payload = {
+        email,
+        display_name: name || null,
+        role: $('invRole').value || 'user',
+        daily_expected_minutes: Number($('invDaily').value || 480),
+
+        vacation_entitlement_days: Number($('invVacEnt').value || 0),
+        vacation_carryover_days: Number($('invVacCarry').value || 0),
+
+        flex_carryover_minutes: hoursToMinutes($('invFlexCarryH').value),
+        flex_bonus_minutes: hoursToMinutes($('invFlexBonusH').value),
+      };
+
+      const { error } = await supabase
+        .from('user_invites')
+        .upsert(payload, { onConflict:'email' });
+
+      if(error) throw new Error('Meghívás mentési hiba (valószínűleg hiányzik a user_invites tábla/RLS): ' + (error.message || String(error)));
+
+      toast('Meghívás elmentve');
+      $('inviteHelp').textContent = 'Mentve. A felhasználó most már beléphet OTP-vel. A profilja az első belépés után automatikusan létrejön.';
+    }
+
+    function escapeHtml(s){
+      return String(s||'')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try{
+        await ensureSupabase();
+
+        $('refreshBtn').addEventListener('click', refresh);
+        $('logoutBtn').addEventListener('click', async ()=>{
+          try{ await supabase.auth.signOut(); }catch(_){}
+          location.replace('/index.html?v=' + Date.now());
+        });
+
+        $('closeBtn').addEventListener('click', closeEdit);
+        $('backdrop').addEventListener('click', (e)=>{ if(e.target === $('backdrop')) closeEdit(); });
+        $('saveBtn').addEventListener('click', async ()=>{ try{ await saveEdit(); }catch(e){ toast(e.message||String(e)); } });
+
+        $('inviteBtn').addEventListener('click', async ()=>{ try{ await saveInvite(); }catch(e){ toast(e.message||String(e)); } });
+        $('copyInviteBtn').addEventListener('click', async ()=>{
+          try{
+            await navigator.clipboard.writeText(inviteText());
+            toast('Szöveg másolva');
+          }catch(_){
+            toast('Másolás nem sikerült');
+          }
+        });
+
+        await refresh();
+      }catch(e){
+        toast(e?.message || String(e));
+      }
+    });
+  })();
+  </script>
+</body>
+</html>
