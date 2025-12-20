@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Munkaidő</title>
+  <style>
+    :root{ --bg:#2f3237; --text:#f2f3f5; --accent:#ff8a00; --muted:#c9cbd1; }
+    *{box-sizing:border-box;}
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    .top{max-width:900px; margin:0 auto; padding:18px 18px 0; display:flex; align-items:flex-start; justify-content:space-between;}
+    .logo{height:100px; width:auto; display:block; margin-top:40px;}
+    .right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
+    .name{font-size:28px; font-weight:800; text-align:right;}
+    .logout{font-size:18px; text-decoration:underline; cursor:pointer; display:inline-block; padding:6px 0;}
+    .wrap{max-width:900px; margin:0 auto; padding:10px 18px 24px;}
+    .msg{color:var(--muted); margin-top:10px;}
+    .toast{position:fixed; left:12px; right:12px; bottom:12px; background:var(--accent); color:#111; padding:14px; border-radius:14px; font-size:18px; z-index:99;}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="top">
+    <img src="kultora_logo.png" alt="Kultora" class="logo" />
+    <div class="right">
+      <div id="name" class="name"></div>
+      <a id="logout" class="logout" href="#">Kilépés</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="msg" id="msg">Betöltés…</div>
+    <div class="msg">Itt jön majd a naptár. Ez az oldal szándékosan csak az app nézetet tartalmazza.</div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id)=>document.getElementById(id);
+  const toast = (t)=>{
+    const el = document.createElement('div');
+    el.className='toast';
+    el.textContent=t;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 1800);
+  };
+
+  let supabase=null;
+
+  async function ensureSupabase(){
+    if(supabase) return supabase;
+
+    const t0=Date.now();
+    while(!(window.supabase && window.supabase.createClient)){
+      if(Date.now()-t0>6000) throw new Error('Supabase CDN nem töltődött be.');
+      await new Promise(r=>setTimeout(r,120));
+    }
+
+    const r = await fetch('/config', { cache:'no-store' });
+    if(!r.ok) throw new Error('Nem elérhető a /config.');
+    const j = await r.json();
+    if(!j.SUPABASE_URL || !j.SUPABASE_ANON_KEY) throw new Error('Hiányzó SUPABASE_URL / SUPABASE_ANON_KEY.');
+
+    supabase = window.supabase.createClient(j.SUPABASE_URL, j.SUPABASE_ANON_KEY, {
+      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+      db:{ schema:'app' }
+    });
+    return supabase;
+  }
+
+  async function boot(){
+    try{
+      await ensureSupabase();
+      const { data } = await supabase.auth.getSession();
+      if(!data.session){
+        location.replace('/index.html?v=' + Date.now());
+        return;
+      }
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+
+      let display = u?.user?.email || '';
+      try{
+        const { data: p } = await supabase.from('profiles').select('display_name,email').eq('user_id', uid).maybeSingle();
+        display = p?.display_name || p?.email || display;
+      }catch(_){}
+
+      $('name').textContent = display;
+      $('msg').textContent = 'Bejelentkezve ✓';
+
+    }catch(e){
+      $('msg').textContent = 'Hiba: ' + (e?.message||String(e));
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', ()=>{
+    $('logout').addEventListener('click', async (e)=>{
+      e.preventDefault();
+      try{
+        await ensureSupabase();
+        toast('Kilépés…');
+        await supabase.auth.signOut();
+      }catch(_){}
+      location.replace('/index.html?v=' + Date.now());
+    });
+
+    boot();
+  });
+})();
+</script>
+</body>
+</html>
