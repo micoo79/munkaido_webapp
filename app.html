@@ -5,24 +5,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Munkaidő</title>
-  <style>
+<style>
     :root{
-      --bg:#2f3237;
-      --panel:#3a3f45;
+      --bg:#27272a;           /* zinc-800 */
+      --panel:#27272a;        /* zinc-800 */
       --text:#f2f3f5;
       --muted:#c9cbd1;
-      --accent:#ff8a00;
+      --accent:#ff8a00;       /* orange-500 */
 
-      --rest:#6d7078;
+      --rest:#3f3f46;         /* zinc-700 - előző/következő hónap */
       --holiday:#f6b2b2;
       --vac:#b9d9ff;
-      --work:#5b6068;
-      --weekend:#777b81;
+      --work:#ffffff;         /* fehér - hétköznap */
+      --weekend:#52525b;      /* gray-600 - hétvége */
       --zold:#1ecb5b;
       --piros:#ff3b30;
     }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    
     .topbar{
       max-width:900px; margin:0 auto; padding:14px 16px 0;
       display:flex; align-items:center; justify-content:flex-end; gap:12px;
@@ -33,76 +34,130 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw;
     }
     .logoutBtn{
-      border:0; background:transparent; color:var(--text);
+      border:0; background:#3f3f46; color:var(--text);
       font-size:16px; font-weight:700;
       cursor:pointer;
       padding:10px 12px;
       border-radius:12px;
     }
-    .logoutBtn:active{background:rgba(255,255,255,.12);}
+    .logoutBtn:hover{background:#52525b;}
+    .logoutBtn:active{background:#52525b;}
 
     .wrap{max-width:900px; margin:0 auto; padding:10px 16px 18px;}
-    .card{background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:12px;}
+    .card{background:var(--panel); border:0; border-radius:16px; padding:12px;}
     .hidden{display:none !important;}
 
     /* Calendar layout */
-    .pager{height:10vh; min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .pager{
+      height:10vh; min-height:70px; 
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:0 4px;
+    }
     .arrow{
       width:16%;
       min-width:64px;
       height:100%;
       display:flex; align-items:center; justify-content:center;
-      background:rgba(255,255,255,.10);
-      border-radius:16px;
+      background:#3f3f46;
+      border-radius:12px;
       cursor:pointer;
       user-select:none;
       font-size:44px;
+      transition:background 0.2s;
     }
+    .arrow:hover{background:#52525b;}
     .spacer{width:14%;}
     .title{width:42%; text-align:center; font-size:28px; font-weight:800;}
-    .dow{height:5vh; min-height:40px; display:grid; grid-template-columns:repeat(7,1fr); gap:10px; align-items:center; margin-top:4px;}
-    .dow div{ text-align:center; font-size:22px; font-weight:800; }
+    
+    .dow{
+      height:5vh; min-height:40px; 
+      display:grid; grid-template-columns:repeat(7,1fr); gap:8px; 
+      align-items:center; margin-top:4px;
+    }
+    .dow div{ 
+      text-align:center; 
+      font-size:16px; 
+      font-weight:600;
+    }
+    
     .gridWrap{height:60vh; min-height:360px; margin-top:8px;}
-    .grid{height:100%; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); gap:10px;}
+    .grid{
+      height:100%; 
+      display:grid; 
+      grid-template-columns:repeat(7,1fr); 
+      grid-template-rows:repeat(6,1fr); 
+      gap:8px;
+    }
 
     .tile{
       background:var(--work);
-      border-radius:7%;
+      border-radius:3.2px;  /* 0.2rem */
       display:flex;
       flex-direction:column;
       overflow:hidden;
       cursor:pointer;
       position:relative;
       border:0;
+      padding:0.5rem;
+      transition:transform 0.2s;
     }
-    .tile.rest{background:var(--rest); opacity:.55;}
+    .tile:hover{transform:scale(1.05);}
+    .tile:active{transform:scale(0.95);}
+    
+    .tile.rest{background:var(--rest); opacity:1;}
     .tile.weekend{background:var(--weekend);}
     .tile.holiday{background:var(--holiday);}
     .tile.vac{background:var(--vac);}
     .tile.workSaturday{background:var(--work); border:3px solid var(--zold);}
     .tile.todayFill{background:var(--accent) !important; color:#111;}
 
-    .tTop{height:35%; display:flex; align-items:center; justify-content:flex-start; padding:0 8%;}
-    .tDay{font-size:calc(10px + 3.2vh); font-weight:900; line-height:1; text-align:left;}
+    .tTop{
+      height:auto; 
+      display:flex; 
+      align-items:flex-start; 
+      justify-content:flex-start; 
+      padding:0;
+      margin-bottom:0.25rem;
+    }
+    .tDay{
+      font-size:1.2rem;  /* 19.2px */
+      font-weight:900; 
+      line-height:1; 
+      text-align:left;
+    }
 
     .lines{
       flex:1;
       display:flex;
       flex-direction:column;
-      padding:0 8% 8%;
-      gap:1%;
-      justify-content:space-evenly;
+      padding:0;
+      gap:0;
+      justify-content:flex-start;
     }
     .line{
-      font-size:calc(9px + 1.3vh);
-      line-height:1;
+      font-size:0.75rem;  /* 12px */
+      line-height:1.2;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      font-weight:600;
+      font-weight:500;
     }
-    .line.red{color:var(--piros);}
-    .line.black{color:#111;}
+    
+    /* Szöveg színek a csempéken */
+    .tile .tDay{color:#000;}
+    .tile .line{color:#374151;}  /* gray-700 */
+    
+    .tile.weekend .tDay{color:#fff;}
+    .tile.weekend .line{color:#e5e7eb;}  /* gray-200 */
+    
+    .tile.rest .tDay{color:#9ca3af;}  /* gray-400 */
+    .tile.rest .line{color:#9ca3af;}
+    
+    .tile.todayFill .tDay{color:#111;}
+    .tile.todayFill .line{color:#fff;}
+    
+    .line.red{color:var(--piros) !important;}
+    .line.black{color:#111 !important;}
 
     /* Toast */
     .toast{
@@ -114,8 +169,19 @@
     }
 
     /* Edit modal */
-    .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:18px; z-index:50;}
-    .modal{width:min(900px,100%); background:#5b6068; border-radius:20px; padding:18px; border:1px solid rgba(255,255,255,.10);}
+    .modalBackdrop{
+      position:fixed; inset:0; 
+      background:rgba(0,0,0,.55); 
+      display:flex; align-items:center; justify-content:center; 
+      padding:18px; z-index:50;
+    }
+    .modal{
+      width:min(900px,100%); 
+      background:#52525b; 
+      border-radius:20px; 
+      padding:18px; 
+      border:1px solid rgba(255,255,255,.10);
+    }
     .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
     .row{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
     .row label{font-size:20px; font-weight:400; min-width:140px;}
@@ -149,11 +215,13 @@
 
     @media (max-width:520px){
       .title{font-size:24px;}
-      .dow div{font-size:20px;}
+      .dow div{font-size:14px;}
       .modalHeader{font-size:30px;}
       .row label{font-size:18px;}
       select, textarea{font-size:18px;}
       .btn{font-size:20px;}
+      .tDay{font-size:1rem;}
+      .line{font-size:0.625rem;}
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
