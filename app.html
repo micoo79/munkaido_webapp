@@ -43,6 +43,14 @@
     .logoutBtn:hover{background:#52525b;}
     .logoutBtn:active{background:#52525b;}
 
+    /* Beállítások gomb (manager/admin) */
+    #settingsBtn{
+      background:transparent;
+      border:1px solid #3f3f46;
+    }
+    #settingsBtn:hover{background:rgba(255,255,255,.06);}
+    #settingsBtn:active{background:rgba(255,255,255,.10);}
+
     .wrap{max-width:900px; margin:0 auto; padding:10px 16px 18px;}
     .card{background:var(--panel); border:0; border-radius:16px; padding:12px;}
     .hidden{display:none !important;}
@@ -152,38 +160,12 @@
     
     .tile.rest .tDay{color:#9ca3af;}  /* gray-400 */
     .tile.rest .line{color:#9ca3af;}
-
-    /* Szabi csempén legyen fekete (kék háttéren jól olvasható) */
-    .tile.vac .tDay{color:#111;}
-    .tile.vac .line{color:#111;}
-
+    
     .tile.todayFill .tDay{color:#111;}
     .tile.todayFill .line{color:#fff;}
     
     .line.red{color:var(--piros) !important;}
     .line.black{color:#111 !important;}
-
-    /* Ugrás gomb blokk */
-    .jumpWrap{
-      margin-top:10px;
-      display:flex;
-      justify-content:center;
-    }
-    .jumpBtn{
-      width:100%;
-      max-width:520px;
-      border:0;
-      border-radius:12px;
-      padding:14px 16px;
-      background:#3f3f46;
-      color:var(--text);
-      font-size:18px;
-      font-weight:700;
-      cursor:pointer;
-      transition:background 0.2s;
-    }
-    .jumpBtn:hover{background:#52525b;}
-    .jumpBtn:active{background:#52525b;}
 
     /* Toast */
     .toast{
@@ -255,6 +237,7 @@
 <body>
   <header class="topbar">
     <div id="userName" class="userName"></div>
+    <button id="settingsBtn" class="logoutBtn hidden" type="button">Beállítások</button>
     <button id="logoutBtn" class="logoutBtn" type="button">Kijelentkezés</button>
   </header>
 
@@ -274,11 +257,6 @@
 
       <div class="gridWrap">
         <div id="grid" class="grid"></div>
-      </div>
-
-      <!-- Ugrás a mai naphoz gomb -->
-      <div id="jumpWrap" class="jumpWrap hidden">
-        <button id="jumpBtn" class="jumpBtn" type="button">Ugrás a mai naphoz</button>
       </div>
     </section>
   </main>
@@ -366,17 +344,6 @@
     const m = String(d.getMonth()+1).padStart(2,'0');
     const day = String(d.getDate()).padStart(2,'0');
     return `${y}-${m}-${day}`;
-  }
-
-  function getTodayYM(){
-    const t = getTodayISO();
-    return { y:Number(t.slice(0,4)), m:Number(t.slice(5,7)) };
-  }
-
-  function updateJumpButton(){
-    const { y, m } = getTodayYM();
-    const show = (curYear !== y) || (curMonth !== m);
-    $('jumpWrap').classList.toggle('hidden', !show);
   }
 
   function huMonthName(m){
@@ -467,8 +434,8 @@
     selectEl.value = '';
   }
 
-  // Alapszínezés a calendar_days alapján
-  function baseTileClassFromCalendar(row){
+  // Színezés: ünnep > special_workday > hétvége > sima pihenő > munkanap
+  function tileClass(row){
     const iso = row.date;
     const isHol = (!row.is_workday && !!row.holiday_name);
 
@@ -507,21 +474,9 @@
       const row = monthRows[i-offset];
       const iso = row.date;
 
-      const entry = entriesByDate.get(iso);
-      const isVac = !!entry?.is_vacation;
-
       const tile = document.createElement('div');
+      tile.className = tileClass(row);
 
-      // 1) alap osztály calendar szerint
-      tile.className = baseTileClassFromCalendar(row);
-
-      // 2) ha Szabi van rögzítve, legyen kék csempe (felülírja a base színt)
-      if(isVac){
-        tile.classList.remove('holiday','weekend','rest','workSaturday');
-        tile.classList.add('vac');
-      }
-
-      // 3) mai nap narancs kitöltés
       if(iso===getTodayISO()) tile.classList.add('todayFill');
 
       const top = document.createElement('div');
@@ -538,22 +493,23 @@
       const l2 = document.createElement('div'); l2.className='line';
       const l3 = document.createElement('div'); l3.className='line';
 
+      const entry = entriesByDate.get(iso);
+
       const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
       const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
       const flexMin = Number(entry?.flex_minutes || 0);
+      const isVac = !!entry?.is_vacation;
 
       if(arr) l1.textContent = arr;
       if(dep) l2.textContent = dep;
 
-      // LEGALSÓ SOR (l3): Szabi / Csúsztatás / Ünnepnév
-      if(isVac){
-        l3.textContent = 'Szabi';
-        l3.classList.add('black');
-      }else if(flexMin > 0){
+      if(flexMin > 0){
         l3.textContent = minsToHHMM(flexMin);
         l3.classList.add('red');
+      }else if(isVac){
+        l3.textContent = 'Szabi';
+        l3.classList.add('black');
       }else if(row.holiday_name && !entry){
-        // ha ünnepnap és NINCS rögzítés, akkor kiírjuk a nevét
         l3.textContent = row.holiday_name;
         l3.classList.add('black');
       }else{
@@ -612,8 +568,6 @@
     $('vacChk').checked = !!entry.is_vacation;
     $('noteTxt').value = entry.note ? String(entry.note) : '';
 
-    // Szabály: hétvégén és ünnepnapon (nem munkanap) ne lehessen Szabi/Flex,
-    // kivéve ha special_workday=true (munkanap szombat)
     const isSpecial = !!calRow.special_workday;
     const dis = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
 
@@ -646,14 +600,22 @@
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('display_name,email')
+      .select('display_name,email,role')
       .eq('user_id', uid)
       .maybeSingle();
 
     if(error) throw error;
 
-    profile = data || { display_name: u.user.email, email: u.user.email };
+    profile = data || { display_name: u.user.email, email: u.user.email, role:'user' };
     $('userName').textContent = profile.display_name || profile.email || '';
+
+    const role = String(profile?.role || '').toLowerCase();
+    const canManage = (role === 'admin' || role === 'manager');
+    if(canManage){
+      $('settingsBtn').classList.remove('hidden');
+    }else{
+      $('settingsBtn').classList.add('hidden');
+    }
   }
 
   async function loadMonth(){
@@ -691,7 +653,6 @@
 
     $('monthTitle').textContent = `${curYear} ${huMonthName(curMonth)}`;
     renderGrid();
-    updateJumpButton();
   }
 
   async function saveCurrentEdit(){
@@ -753,6 +714,10 @@
   }
 
   window.addEventListener('DOMContentLoaded', ()=>{
+    $('settingsBtn').addEventListener('click', ()=>{
+      location.href = '/manager.html';
+    });
+
     $('logoutBtn').addEventListener('click', async ()=>{
       try{
         await ensureSupabase();
@@ -772,12 +737,6 @@
       const nav = getMonthNav(curYear, curMonth, +1);
       if(nav.y!==2026) return;
       curYear = nav.y; curMonth = nav.m;
-      await loadMonth();
-    });
-
-    $('jumpBtn').addEventListener('click', async ()=>{
-      const { y, m } = getTodayYM();
-      curYear = y; curMonth = m;
       await loadMonth();
     });
 
