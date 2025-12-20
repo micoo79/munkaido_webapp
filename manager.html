@@ -1,3 +1,4 @@
+<!-- manager.html -->
 <!doctype html>
 <html lang="hu">
 <head>
@@ -7,61 +8,85 @@
 
   <style>
     :root{
+      /* ugyanazok a színek mint app.html */
       --bg:#27272a;
       --panel:#27272a;
-      --card:#2f2f33;
       --text:#f2f3f5;
       --muted:#c9cbd1;
       --accent:#ff8a00;
-      --danger:#ff453a;
+
+      --rest:#3f3f46;
+      --holiday:#f6b2b2;
+      --vac:#b9d9ff;          /* itt csak vizuál, naptárban nem használjuk */
+      --work:#ffffff;
+      --weekend:#52525b;
+      --zold:#1ecb5b;
+      --piros:#ff3b30;
+
       --border:#3f3f46;
-      --input:#ffffff;
+      --card:#2f2f33;
+
       --pillAdmin:#7c3aed;
       --pillMgr:#2563eb;
     }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     a{color:var(--text); text-decoration:none;}
-    .wrap{max-width:980px; margin:0 auto; padding:14px 16px 24px;}
+    .wrap{max-width:1100px; margin:0 auto; padding:14px 16px 28px;}
+
     .topbar{
       display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:10px 0 14px;
+      padding:8px 0 12px;
     }
-    .topbarLeft{display:flex; align-items:center; gap:10px;}
-    .title{font-size:22px; font-weight:800;}
-    .who{font-size:14px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:55vw;}
+    .topbarLeft{display:flex; align-items:center; gap:10px; min-width:0;}
+    .title{font-size:22px; font-weight:900;}
+    .who{font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw;}
 
     .btn{
       border:0;
       border-radius:12px;
       padding:10px 12px;
       font-size:14px;
-      font-weight:700;
+      font-weight:800;
       cursor:pointer;
       background:var(--border);
       color:var(--text);
       transition:background .15s, transform .05s;
+      user-select:none;
     }
     .btn:hover{background:#52525b;}
     .btn:active{transform:scale(.98);}
     .btn.primary{background:var(--accent); color:#111;}
-    .btn.primary:hover{filter:brightness(1.03);}
     .btn.ghost{background:transparent; border:1px solid var(--border);}
+    .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
 
-    .grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:12px;}
-    @media (max-width:900px){ .grid{grid-template-columns:1fr;} }
+    .tabs{display:flex; gap:8px; flex-wrap:wrap;}
+    .tab{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--text);
+      font-weight:900;
+      cursor:pointer;
+    }
+    .tab.active{background:#3f3f46;}
 
     .panel{
       background:var(--panel);
       border:1px solid var(--border);
       border-radius:16px;
       padding:12px;
+      margin-top:12px;
     }
-    .panelHead{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:6px 4px 10px;
-    }
-    .panelHead h2{margin:0; font-size:16px; font-weight:800;}
+    .hidden{display:none !important;}
+
+    /* --- USERS --- */
+    .gridUsers{display:grid; grid-template-columns: 1.15fr .85fr; gap:12px;}
+    @media (max-width:900px){ .gridUsers{grid-template-columns:1fr;} }
+
+    .panelHead{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 4px 10px;}
+    .panelHead h2{margin:0; font-size:16px; font-weight:900;}
 
     .list{display:flex; flex-direction:column; gap:10px;}
     .userCard{
@@ -77,14 +102,13 @@
     .userMeta{min-width:0;}
     .userNameRow{display:flex; align-items:center; gap:8px; min-width:0;}
     .userName{
-      font-size:15px; font-weight:800;
+      font-size:15px; font-weight:900;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .userEmail{
       font-size:13px; color:var(--muted);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-
     .pill{
       display:inline-flex;
       align-items:center;
@@ -97,23 +121,20 @@
     }
     .pill.admin{background:var(--pillAdmin);}
     .pill.manager{background:var(--pillMgr);}
-
     .actions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
-    .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
 
     label{display:block; font-size:13px; color:var(--muted); margin:10px 0 6px;}
-    input{
+    input, select, textarea{
       width:100%;
       padding:12px 12px;
       border-radius:12px;
       border:1px solid var(--border);
-      background:var(--input);
+      background:#fff;
       color:#111;
       font-size:14px;
       outline:none;
     }
-    input:focus{border-color:#8b8b93; box-shadow:0 0 0 2px rgba(255,138,0,.2);}
-
+    textarea{min-height:90px; resize:none;}
     .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
     @media (max-width:520px){ .row2{grid-template-columns:1fr;} }
 
@@ -130,7 +151,7 @@
       margin:0;
       color:#111;
       font-size:14px;
-      font-weight:800;
+      font-weight:900;
       display:flex;
       align-items:center;
       gap:8px;
@@ -142,9 +163,81 @@
       accent-color: var(--accent);
     }
 
-    /* Modal */
-    .hidden{display:none !important;}
-    .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; z-index:50;}
+    /* --- YEAR CALENDAR --- */
+    .yearHeader{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:6px 4px 12px;
+    }
+    .yearTitle{font-size:18px; font-weight:900;}
+    .monthsGrid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:12px;
+    }
+    @media (max-width:980px){ .monthsGrid{grid-template-columns:repeat(2, 1fr);} }
+    @media (max-width:620px){ .monthsGrid{grid-template-columns:1fr;} }
+
+    .monthCard{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:10px;
+    }
+    .monthName{font-size:15px; font-weight:900; margin:0 0 8px 0;}
+    .dowMini{
+      display:grid; grid-template-columns:repeat(7, 1fr);
+      gap:6px;
+      margin-bottom:6px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:900;
+      text-align:center;
+    }
+    .miniGrid{
+      display:grid;
+      grid-template-columns:repeat(7, 1fr);
+      grid-template-rows:repeat(6, 1fr);
+      gap:6px;
+    }
+    .miniTile{
+      border-radius:10px;
+      padding:6px 6px;
+      min-height:34px;
+      display:flex; align-items:flex-start; justify-content:flex-start;
+      cursor:pointer;
+      background:var(--work);
+      border:0;
+      overflow:hidden;
+      position:relative;
+    }
+    .miniTile.rest{background:var(--rest);}
+    .miniTile.weekend{background:var(--weekend);}
+    .miniTile.holiday{background:var(--holiday);}
+    .miniTile.workSaturday{background:var(--work); border:2px solid var(--zold);}
+
+    .miniDay{
+      font-size:12px;
+      font-weight:900;
+      line-height:1;
+      color:#111;
+    }
+    .miniTile.weekend .miniDay,
+    .miniTile.rest .miniDay{ color:#fff; }
+
+    .miniHint{
+      position:absolute;
+      left:6px; right:6px; bottom:5px;
+      font-size:10px;
+      font-weight:900;
+      color:#111;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      opacity:.9;
+    }
+
+    /* MODAL (year editor) */
+    .backdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; z-index:60;}
     .modal{
       width:min(920px,100%);
       background:#52525b;
@@ -154,20 +247,22 @@
     }
     .modalHead{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
     .modalTitle{margin:0; font-size:18px; font-weight:900;}
-    .modalSub{font-size:13px; color:rgba(255,255,255,.8); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw;}
     .modalBtns{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
     .hr{height:1px; background:rgba(255,255,255,.12); margin:12px 0;}
-    .note{font-size:12px; color:rgba(255,255,255,.8); margin-top:8px;}
+    .note{font-size:12px; color:rgba(255,255,255,.85); margin-top:8px;}
 
-    select{
-      width:100%;
-      padding:12px 12px;
+    .chkRow{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      padding:12px;
       border-radius:12px;
-      border:1px solid var(--border);
       background:#fff;
       color:#111;
-      font-size:14px;
-      outline:none;
+      border:1px solid var(--border);
+    }
+    .chkRow .left{font-weight:900;}
+    .chkRow input[type="checkbox"]{
+      width:22px; height:22px; accent-color: var(--accent);
     }
 
     .toast{
@@ -187,7 +282,7 @@
     <div class="topbar">
       <div class="topbarLeft">
         <a class="btn ghost" href="/app.html">← Naptár</a>
-        <div>
+        <div style="min-width:0;">
           <div class="title">Manager felület</div>
           <div id="who" class="who">—</div>
         </div>
@@ -198,69 +293,92 @@
       </div>
     </div>
 
-    <div class="grid">
-      <!-- Users -->
-      <section class="panel">
-        <div class="panelHead">
-          <h2>Felhasználók</h2>
-        </div>
-        <div id="usersList" class="list"></div>
-      </section>
-
-      <!-- Add user -->
-      <section class="panel">
-        <div class="panelHead">
-          <h2>Felhasználó hozzáadása</h2>
-        </div>
-
-        <label>Email</label>
-        <input id="invEmail" type="email" inputmode="email" autocomplete="email" />
-
-        <label>Név</label>
-        <input id="invName" type="text" autocomplete="name" />
-
-        <label>Napi elvárt munkaidő</label>
-        <div class="radioRow">
-          <label><input type="radio" name="invDailyKind" value="8" checked> 8 órás</label>
-          <label><input type="radio" name="invDailyKind" value="4"> 4 órás</label>
-        </div>
-
-        <div class="row2">
-          <div>
-            <label>Éves szabadság keret (nap)</label>
-            <input id="invVacEnt" type="number" min="0" step="1" />
-          </div>
-          <div>
-            <label>Előző évről áthozott szabadság (nap)</label>
-            <input id="invVacCarry" type="number" min="0" step="1" />
-          </div>
-        </div>
-
-        <div class="row2">
-          <div>
-            <label>Előző évről áthozott csúsztatás (óra)</label>
-            <input id="invFlexCarryH" type="number" step="0.25" />
-          </div>
-          <div>
-            <label>Jutalom csúsztatás (óra)</label>
-            <input id="invFlexBonusH" type="number" step="0.25" />
-          </div>
-        </div>
-
-        <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button id="inviteBtn" class="btn primary" type="button">Hozzáadás</button>
-        </div>
-      </section>
+    <div class="tabs">
+      <button id="tabUsers" class="tab active" type="button">Felhasználók</button>
+      <button id="tabYear" class="tab" type="button">Naptár (2026)</button>
     </div>
+
+    <!-- USERS VIEW -->
+    <section id="usersView" class="panel">
+      <div class="gridUsers">
+        <section class="panel" style="margin-top:0;">
+          <div class="panelHead">
+            <h2>Felhasználók</h2>
+          </div>
+          <div id="usersList" class="list"></div>
+        </section>
+
+        <section class="panel" style="margin-top:0;">
+          <div class="panelHead">
+            <h2>Felhasználó hozzáadása</h2>
+          </div>
+
+          <label>Email</label>
+          <input id="invEmail" type="email" inputmode="email" autocomplete="email" />
+
+          <label>Név</label>
+          <input id="invName" type="text" autocomplete="name" />
+
+          <label>Napi elvárt munkaidő</label>
+          <div class="radioRow">
+            <label><input type="radio" name="invDailyKind" value="8" checked> 8 órás</label>
+            <label><input type="radio" name="invDailyKind" value="4"> 4 órás</label>
+          </div>
+
+          <div class="row2">
+            <div>
+              <label>Éves szabadság keret (nap)</label>
+              <input id="invVacEnt" type="number" min="0" step="1" />
+            </div>
+            <div>
+              <label>Előző évről áthozott szabadság (nap)</label>
+              <input id="invVacCarry" type="number" min="0" step="1" />
+            </div>
+          </div>
+
+          <div class="row2">
+            <div>
+              <label>Előző évről áthozott csúsztatás (óra)</label>
+              <input id="invFlexCarryH" type="number" step="0.25" />
+            </div>
+            <div>
+              <label>Jutalom csúsztatás (óra)</label>
+              <input id="invFlexBonusH" type="number" step="0.25" />
+            </div>
+          </div>
+
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="inviteBtn" class="btn primary" type="button">Hozzáadás</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- YEAR VIEW -->
+    <section id="yearView" class="panel hidden">
+      <div class="yearHeader">
+        <div class="yearTitle">2026 – ünnepnapok és szombati munkanapok</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="reloadYearBtn" class="btn" type="button">Újratöltés</button>
+        </div>
+      </div>
+
+      <div id="monthsGrid" class="monthsGrid"></div>
+
+      <div class="note">
+        Színek: munkanap (fehér), pihenőnap (sötétszürke), hétvége (szürkés), ünnepnap (pasztell piros),
+        szombati munkanap (fehér + zöld border).
+      </div>
+    </section>
   </div>
 
-  <!-- Edit modal -->
+  <!-- PROFILE EDIT MODAL -->
   <div id="backdrop" class="backdrop hidden">
     <div class="modal">
       <div class="modalHead">
         <div style="min-width:0;">
           <h3 id="mTitle" class="modalTitle">Profil szerkesztése</h3>
-          <div id="mSub" class="modalSub">—</div>
+          <div id="mSub" class="who">—</div>
         </div>
         <div class="modalBtns">
           <button id="closeBtn" class="btn" type="button">Bezár</button>
@@ -276,7 +394,7 @@
           <input id="mName" type="text" />
         </div>
         <div>
-          <label>Email (csak megjelenítés)</label>
+          <label>Email</label>
           <input id="mEmail" type="text" disabled />
         </div>
       </div>
@@ -289,7 +407,6 @@
             <option value="manager">manager</option>
             <option value="admin">admin</option>
           </select>
-          <div class="note">Itt továbbra is lehet szerepet állítani (admin/manager/user).</div>
         </div>
         <div>
           <label>Napi elvárt munkaidő (perc)</label>
@@ -320,7 +437,49 @@
       </div>
 
       <div class="note">
-        Megjegyzés: a DB-ben a csúsztatás percekben van tárolva (flex_carryover_minutes / flex_bonus_minutes), itt órában mutatjuk.
+        A DB-ben a csúsztatás percekben van tárolva (flex_carryover_minutes / flex_bonus_minutes), itt órában mutatjuk.
+      </div>
+    </div>
+  </div>
+
+  <!-- YEAR DAY EDIT MODAL -->
+  <div id="dayBackdrop" class="backdrop hidden">
+    <div class="modal">
+      <div class="modalHead">
+        <div style="min-width:0;">
+          <h3 id="dTitle" class="modalTitle">Dátum</h3>
+          <div id="dSub" class="who">—</div>
+        </div>
+        <div class="modalBtns">
+          <button id="dCloseBtn" class="btn" type="button">Bezár</button>
+          <button id="dResetBtn" class="btn" type="button">Alapértelmezett</button>
+          <button id="dSaveBtn" class="btn primary" type="button">Mentés</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="chkRow">
+        <div class="left">Ünnepnap</div>
+        <input id="dHolidayChk" type="checkbox" />
+      </div>
+
+      <div style="height:10px;"></div>
+
+      <div id="holidayNameWrap">
+        <label>Ünnep neve</label>
+        <input id="dHolidayName" type="text" />
+      </div>
+
+      <div style="height:14px;"></div>
+
+      <div id="workSatWrap" class="chkRow hidden">
+        <div class="left">Szombati munkanap</div>
+        <input id="dWorkSatChk" type="checkbox" />
+      </div>
+
+      <div class="note">
+        Ünnepnap: is_workday=false + holiday_name. Szombati munkanap: special_workday=true + is_workday=true.
       </div>
     </div>
   </div>
@@ -341,8 +500,14 @@
     let me = null;
     let isMgr = false;
 
+    // USERS state
     let profiles = [];
     let editing = null;
+
+    // YEAR state
+    const YEAR = 2026;
+    let daysByIso = new Map(); // iso -> row
+    let editingIso = null;
 
     async function ensureSupabase(){
       if(supabase) return supabase;
@@ -383,102 +548,19 @@
       if(role === 'manager') return `<span class="pill manager">manager</span>`;
       return '';
     }
-
     function roleWeight(role){
       if(role === 'admin') return 0;
       if(role === 'manager') return 1;
       return 2;
     }
 
-    function renderUsers(){
-      const el = $('usersList');
-      el.innerHTML = '';
-
-      if(!profiles.length){
-        return;
-      }
-
-      for(const p of profiles){
-        const card = document.createElement('div');
-        card.className = 'userCard';
-
-        const meta = document.createElement('div');
-        meta.className = 'userMeta';
-        meta.innerHTML = `
-          <div class="userNameRow">
-            <div class="userName">${escapeHtml(p.display_name || '(névtelen)')}</div>
-            ${roleBadge(p.role)}
-          </div>
-          <div class="userEmail">${escapeHtml(p.email || '')}</div>
-        `;
-
-        const actions = document.createElement('div');
-        actions.className = 'actions';
-
-        const btn = document.createElement('button');
-        btn.className = 'btn small';
-        btn.type = 'button';
-        btn.textContent = 'Szerkesztés';
-        btn.addEventListener('click', () => openEdit(p));
-
-        actions.appendChild(btn);
-        card.appendChild(meta);
-        card.appendChild(actions);
-        el.appendChild(card);
-      }
-    }
-
-    function openEdit(p){
-      editing = {...p};
-
-      $('mTitle').textContent = 'Profil szerkesztése';
-      $('mSub').textContent = `${p.email || ''} • user_id: ${p.user_id}`;
-
-      $('mName').value = p.display_name || '';
-      $('mEmail').value = p.email || '';
-
-      $('mRole').value = p.role || 'user';
-      $('mDaily').value = p.daily_expected_minutes ?? 480;
-
-      $('mVacEnt').value = p.vacation_entitlement_days ?? 0;
-      $('mVacCarry').value = p.vacation_carryover_days ?? 0;
-
-      $('mFlexCarryH').value = minutesToHours(p.flex_carryover_minutes);
-      $('mFlexBonusH').value = minutesToHours(p.flex_bonus_minutes);
-
-      $('backdrop').classList.remove('hidden');
-    }
-
-    function closeEdit(){
-      $('backdrop').classList.add('hidden');
-      editing = null;
-    }
-
-    async function saveEdit(){
-      if(!editing) return;
-
-      const patch = {
-        display_name: ($('mName').value || '').trim(),
-        role: $('mRole').value,
-        daily_expected_minutes: Number($('mDaily').value || 0),
-
-        vacation_entitlement_days: Number($('mVacEnt').value || 0),
-        vacation_carryover_days: Number($('mVacCarry').value || 0),
-
-        flex_carryover_minutes: hoursToMinutes($('mFlexCarryH').value),
-        flex_bonus_minutes: hoursToMinutes($('mFlexBonusH').value),
-      };
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(patch)
-        .eq('user_id', editing.user_id);
-
-      if(error) throw error;
-
-      toast('Mentve');
-      closeEdit();
-      await refresh();
+    function escapeHtml(s){
+      return String(s||'')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#039;");
     }
 
     function getDailyMinutesFromRadio(){
@@ -494,7 +576,7 @@
       const payload = {
         email,
         display_name: name || null,
-        role: 'user', // MINDEN hozzáadott felhasználó user jogot kap
+        role: 'user', // minden felvett user
 
         daily_expected_minutes: getDailyMinutesFromRadio(),
         vacation_entitlement_days: Number($('invVacEnt').value || 0),
@@ -518,7 +600,321 @@
       $('invFlexBonusH').value = '';
     }
 
-    async function refresh(){
+    function renderUsers(){
+      const el = $('usersList');
+      el.innerHTML = '';
+      for(const p of profiles){
+        const card = document.createElement('div');
+        card.className = 'userCard';
+
+        const meta = document.createElement('div');
+        meta.className = 'userMeta';
+        meta.innerHTML = `
+          <div class="userNameRow">
+            <div class="userName">${escapeHtml(p.display_name || '(névtelen)')}</div>
+            ${roleBadge(p.role)}
+          </div>
+          <div class="userEmail">${escapeHtml(p.email || '')}</div>
+        `;
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const btn = document.createElement('button');
+        btn.className = 'btn small';
+        btn.type = 'button';
+        btn.textContent = 'Szerkesztés';
+        btn.addEventListener('click', () => openEditProfile(p));
+        actions.appendChild(btn);
+
+        card.appendChild(meta);
+        card.appendChild(actions);
+        el.appendChild(card);
+      }
+    }
+
+    function openEditProfile(p){
+      editing = {...p};
+      $('mTitle').textContent = 'Profil szerkesztése';
+      $('mSub').textContent = `${p.email || ''} • user_id: ${p.user_id}`;
+
+      $('mName').value = p.display_name || '';
+      $('mEmail').value = p.email || '';
+
+      $('mRole').value = p.role || 'user';
+      $('mDaily').value = p.daily_expected_minutes ?? 480;
+
+      $('mVacEnt').value = p.vacation_entitlement_days ?? 0;
+      $('mVacCarry').value = p.vacation_carryover_days ?? 0;
+
+      $('mFlexCarryH').value = minutesToHours(p.flex_carryover_minutes);
+      $('mFlexBonusH').value = minutesToHours(p.flex_bonus_minutes);
+
+      $('backdrop').classList.remove('hidden');
+    }
+    function closeEditProfile(){
+      $('backdrop').classList.add('hidden');
+      editing = null;
+    }
+
+    async function saveEditProfile(){
+      if(!editing) return;
+
+      const patch = {
+        display_name: ($('mName').value || '').trim(),
+        role: $('mRole').value,
+        daily_expected_minutes: Number($('mDaily').value || 0),
+
+        vacation_entitlement_days: Number($('mVacEnt').value || 0),
+        vacation_carryover_days: Number($('mVacCarry').value || 0),
+
+        flex_carryover_minutes: hoursToMinutes($('mFlexCarryH').value),
+        flex_bonus_minutes: hoursToMinutes($('mFlexBonusH').value),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(patch)
+        .eq('user_id', editing.user_id);
+
+      if(error) throw error;
+
+      toast('Mentve');
+      closeEditProfile();
+      await refreshAll();
+    }
+
+    // --- YEAR CALENDAR ---
+    function huMonthName(m){
+      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+      return names[m-1] || '';
+    }
+    function isWeekendISO(iso){
+      const d = new Date(iso+'T12:00:00');
+      const wd = d.getDay();
+      return wd===0 || wd===6;
+    }
+    function isSaturdayISO(iso){
+      const d = new Date(iso+'T12:00:00');
+      return d.getDay() === 6;
+    }
+
+    function tileClass(row){
+      const iso = row.date;
+      const isHol = (!row.is_workday && !!row.holiday_name);
+
+      if(isHol) return 'miniTile holiday';
+      if(!!row.special_workday) return 'miniTile workSaturday';
+      if(isWeekendISO(iso)) return 'miniTile weekend';
+      if(!row.is_workday) return 'miniTile rest';
+      return 'miniTile';
+    }
+
+    function iso(y,m,d){
+      return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    function renderYear(){
+      const host = $('monthsGrid');
+      host.innerHTML = '';
+
+      for(let m=1;m<=12;m++){
+        const card = document.createElement('div');
+        card.className = 'monthCard';
+
+        const h = document.createElement('div');
+        h.className = 'monthName';
+        h.textContent = `${huMonthName(m)} ${YEAR}`;
+        card.appendChild(h);
+
+        const dow = document.createElement('div');
+        dow.className = 'dowMini';
+        dow.innerHTML = `<div>H</div><div>K</div><div>SZ</div><div>CS</div><div>P</div><div>SZO</div><div>V</div>`;
+        card.appendChild(dow);
+
+        const grid = document.createElement('div');
+        grid.className = 'miniGrid';
+
+        const first = new Date(`${YEAR}-${String(m).padStart(2,'0')}-01T12:00:00`);
+        let wd = first.getDay(); wd = wd===0 ? 7 : wd;
+        const offset = wd-1;
+
+        const last = new Date(YEAR, m, 0, 12,0,0); // last day of month
+        const daysInMonth = last.getDate();
+
+        for(let i=0;i<42;i++){
+          const cell = document.createElement('div');
+
+          if(i<offset || (i-offset)>=daysInMonth){
+            cell.className = 'miniTile rest';
+            cell.style.opacity = '.20';
+            grid.appendChild(cell);
+            continue;
+          }
+
+          const dayNum = (i-offset)+1;
+          const dIso = iso(YEAR, m, dayNum);
+
+          const row = daysByIso.get(dIso);
+          // ha valamiért nincs sor, akkor fallback
+          const r = row || { date:dIso, year:YEAR, is_workday: !isWeekendISO(dIso), holiday_name:null, special_workday:false };
+
+          cell.className = tileClass(r);
+
+          const dn = document.createElement('div');
+          dn.className = 'miniDay';
+          dn.textContent = String(dayNum);
+          cell.appendChild(dn);
+
+          // ünnepnév mini jelzés (csak ha van)
+          if(r.holiday_name){
+            const hint = document.createElement('div');
+            hint.className = 'miniHint';
+            hint.textContent = r.holiday_name;
+            cell.appendChild(hint);
+          }
+
+          cell.addEventListener('click', ()=>openDayEditor(r));
+          grid.appendChild(cell);
+        }
+
+        card.appendChild(grid);
+        host.appendChild(card);
+      }
+    }
+
+    function openDayEditor(row){
+      editingIso = row.date;
+      $('dTitle').textContent = row.date.replaceAll('-', '.');
+      $('dSub').textContent =
+        row.holiday_name ? `Ünnep: ${row.holiday_name}` :
+        row.special_workday ? 'Szombati munkanap' :
+        row.is_workday ? 'Munkanap' : 'Pihenőnap';
+
+      const isHol = (!row.is_workday && !!row.holiday_name);
+      $('dHolidayChk').checked = isHol;
+      $('dHolidayName').value = row.holiday_name || '';
+
+      const sat = isSaturdayISO(row.date);
+      $('workSatWrap').classList.toggle('hidden', !sat);
+
+      $('dWorkSatChk').checked = !!row.special_workday;
+
+      // ha ünnep -> workSat off, név mező látszik
+      $('holidayNameWrap').style.display = $('dHolidayChk').checked ? 'block' : 'none';
+
+      $('dayBackdrop').classList.remove('hidden');
+    }
+
+    function closeDayEditor(){
+      $('dayBackdrop').classList.add('hidden');
+      editingIso = null;
+    }
+
+    function currentEditedRow(){
+      if(!editingIso) return null;
+      return daysByIso.get(editingIso);
+    }
+
+    function computeDefaultForIso(isoStr){
+      // alap: hétvége -> pihenő; hétköznap -> munkanap
+      const weekend = isWeekendISO(isoStr);
+      return {
+        date: isoStr,
+        year: YEAR,
+        is_workday: !weekend,
+        holiday_name: null,
+        special_workday: false
+      };
+    }
+
+    async function saveDayEditor(){
+      const row = currentEditedRow();
+      if(!row) return;
+
+      const isoStr = row.date;
+      const sat = isSaturdayISO(isoStr);
+
+      const holidayOn = $('dHolidayChk').checked;
+      let holidayName = ($('dHolidayName').value || '').trim();
+
+      const workSatOn = sat ? $('dWorkSatChk').checked : false;
+
+      // szabályok:
+      // - ha ünnep: is_workday=false, holiday_name kell, special_workday=false
+      // - ha szombati munkanap: is_workday=true, special_workday=true, holiday_name=null
+      // - egyéb: marad alap/korábbi is_workday, holiday_name null, special_workday false
+
+      let patch = {};
+
+      if(holidayOn){
+        if(!holidayName){
+          toast('Adj meg ünnepnevet');
+          return;
+        }
+        patch = { is_workday:false, holiday_name:holidayName, special_workday:false };
+      }else if(workSatOn){
+        patch = { is_workday:true, holiday_name:null, special_workday:true };
+      }else{
+        // nem ünnep, nem szombati munkanap -> legyen holiday_name null, special_workday false
+        // is_workday-t itt nem “találgatjuk”, hanem visszaállítható az "Alapértelmezett" gombbal.
+        patch = { holiday_name:null, special_workday:false };
+      }
+
+      const { error } = await supabase
+        .from('calendar_days')
+        .update(patch)
+        .eq('date', isoStr);
+
+      if(error) throw error;
+
+      // local cache frissítése
+      const newRow = { ...row, ...patch };
+      daysByIso.set(isoStr, newRow);
+
+      toast('Mentve');
+      closeDayEditor();
+      renderYear();
+    }
+
+    async function resetDayEditor(){
+      const row = currentEditedRow();
+      if(!row) return;
+
+      const def = computeDefaultForIso(row.date);
+
+      const { error } = await supabase
+        .from('calendar_days')
+        .update({ is_workday:def.is_workday, holiday_name:null, special_workday:false })
+        .eq('date', row.date);
+
+      if(error) throw error;
+
+      daysByIso.set(row.date, { ...row, is_workday:def.is_workday, holiday_name:null, special_workday:false });
+
+      toast('Alapértelmezett');
+      closeDayEditor();
+      renderYear();
+    }
+
+    async function loadYear(){
+      const { data, error } = await supabase
+        .from('calendar_days')
+        .select('date,year,is_workday,holiday_name,special_workday')
+        .eq('year', YEAR)
+        .order('date', { ascending:true });
+
+      if(error) throw error;
+
+      daysByIso = new Map();
+      (data||[]).forEach(r=>{
+        const d = String(r.date).slice(0,10);
+        daysByIso.set(d, { ...r, date:d });
+      });
+
+      renderYear();
+    }
+
+    async function refreshAll(){
       await ensureSupabase();
 
       const { data: sess } = await supabase.auth.getSession();
@@ -527,7 +923,6 @@
         return;
       }
 
-      // saját profil
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
 
@@ -548,58 +943,94 @@
         return;
       }
 
-      // összes profil
+      // profiles list
       const { data: all, error: e2 } = await supabase
         .from('profiles')
-        .select('user_id,email,display_name,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
-      if(e2){
-        throw new Error('Profil lista lekérés hiba: ' + (e2.message || String(e2)));
-      }
+        .select('user_id,email,display_name,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes');
+      if(e2) throw e2;
 
       profiles = (all || []).slice().sort((a,b)=>{
         const wa = roleWeight(a.role);
         const wb = roleWeight(b.role);
         if(wa !== wb) return wa - wb;
-        if(wa === 2){ // user: név szerinti betűrend
-          const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
-          const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
-          return an.localeCompare(bn, 'hu');
-        }
-        // admin/manager egymáshoz képest: név szerint
+
         const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
         const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
+
+        // admin, manager után a userek név szerint
         return an.localeCompare(bn, 'hu');
       });
 
       renderUsers();
     }
 
-    function escapeHtml(s){
-      return String(s||'')
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
+    // Tabs
+    function setTab(tab){
+      $('tabUsers').classList.toggle('active', tab==='users');
+      $('tabYear').classList.toggle('active', tab==='year');
+
+      $('usersView').classList.toggle('hidden', tab!=='users');
+      $('yearView').classList.toggle('hidden', tab!=='year');
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
+    window.addEventListener('DOMContentLoaded', async ()=>{
       try{
         await ensureSupabase();
 
-        $('refreshBtn').addEventListener('click', refresh);
+        $('refreshBtn').addEventListener('click', async ()=>{
+          await refreshAll();
+          toast('Frissítve');
+        });
+
         $('logoutBtn').addEventListener('click', async ()=>{
           try{ await supabase.auth.signOut(); }catch(_){}
           location.replace('/index.html?v=' + Date.now());
         });
 
-        $('closeBtn').addEventListener('click', closeEdit);
-        $('backdrop').addEventListener('click', (e)=>{ if(e.target === $('backdrop')) closeEdit(); });
-        $('saveBtn').addEventListener('click', async ()=>{ try{ await saveEdit(); }catch(e){ toast(e.message||String(e)); } });
+        // Tabs
+        $('tabUsers').addEventListener('click', ()=>setTab('users'));
+        $('tabYear').addEventListener('click', async ()=>{
+          setTab('year');
+          await loadYear();
+        });
 
-        $('inviteBtn').addEventListener('click', async ()=>{ try{ await saveInvite(); await refresh(); }catch(e){ toast(e.message||String(e)); } });
+        // User actions
+        $('closeBtn').addEventListener('click', closeEditProfile);
+        $('backdrop').addEventListener('click', (e)=>{ if(e.target === $('backdrop')) closeEditProfile(); });
+        $('saveBtn').addEventListener('click', async ()=>{ try{ await saveEditProfile(); }catch(e){ toast(e.message||String(e)); } });
 
-        await refresh();
+        $('inviteBtn').addEventListener('click', async ()=>{ try{ await saveInvite(); await refreshAll(); }catch(e){ toast(e.message||String(e)); } });
+
+        // Year actions
+        $('reloadYearBtn').addEventListener('click', async ()=>{ try{ await loadYear(); toast('Naptár frissítve'); }catch(e){ toast(e.message||String(e)); } });
+
+        $('dCloseBtn').addEventListener('click', closeDayEditor);
+        $('dayBackdrop').addEventListener('click', (e)=>{ if(e.target === $('dayBackdrop')) closeDayEditor(); });
+
+        $('dHolidayChk').addEventListener('change', ()=>{
+          const on = $('dHolidayChk').checked;
+          $('holidayNameWrap').style.display = on ? 'block' : 'none';
+          if(on){
+            // ünnep esetén szombati munkanap legyen off
+            $('dWorkSatChk').checked = false;
+          }
+        });
+
+        $('dWorkSatChk').addEventListener('change', ()=>{
+          if($('dWorkSatChk').checked){
+            // szombati munkanap esetén ünnep legyen off
+            $('dHolidayChk').checked = false;
+            $('holidayNameWrap').style.display = 'none';
+            $('dHolidayName').value = '';
+          }
+        });
+
+        $('dSaveBtn').addEventListener('click', async ()=>{ try{ await saveDayEditor(); }catch(e){ toast(e.message||String(e)); } });
+        $('dResetBtn').addEventListener('click', async ()=>{ try{ await resetDayEditor(); }catch(e){ toast(e.message||String(e)); } });
+
+        // init
+        await refreshAll();
+        setTab('users');
       }catch(e){
         toast(e?.message || String(e));
       }
