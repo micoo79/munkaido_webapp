@@ -45,6 +45,7 @@
     .card{background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:12px;}
     .hidden{display:none !important;}
 
+    /* Calendar layout */
     .pager{height:10vh; min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
     .arrow{
       width:16%;
@@ -103,6 +104,7 @@
     .line.red{color:var(--piros);}
     .line.black{color:#111;}
 
+    /* Toast */
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
       background:var(--accent); color:#111;
@@ -111,6 +113,7 @@
       z-index:99;
     }
 
+    /* Edit modal */
     .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:18px; z-index:50;}
     .modal{width:min(900px,100%); background:#5b6068; border-radius:20px; padding:18px; border:1px solid rgba(255,255,255,.10);}
     .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
@@ -187,21 +190,21 @@
 
       <div class="row" style="margin-top:10px;">
         <label>Érkezés</label>
-        <div class="ctrl"><select id="inSel"></select></div>
+        <div class="ctrl"><select id="arrSel"></select></div>
       </div>
 
       <div class="gap75"></div>
 
       <div class="row">
         <label>Távozás</label>
-        <div class="ctrl"><select id="outSel"></select></div>
+        <div class="ctrl"><select id="depSel"></select></div>
       </div>
 
       <div class="gap75"></div>
 
       <div class="row">
         <label>Csúsztatás</label>
-        <div class="ctrl"><select id="slipSel"></select></div>
+        <div class="ctrl"><select id="flexSel"></select></div>
       </div>
 
       <div class="gap75"></div>
@@ -209,7 +212,7 @@
       <div class="row">
         <label>Szabi ezen a napon</label>
         <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
-          <input id="vacChk" type="checkbox" style="width:28px; height:28px;" />
+          <input id="vacChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
         </div>
       </div>
 
@@ -242,7 +245,8 @@
     setTimeout(()=>el.remove(), 2200);
   };
 
-  const DEV_TODAY = '2026-04-16'; // TESZT: élesben állítsd null-ra
+  // TESZT: élesben állítsd ''-re vagy null-ra, és akkor a valódi dátumot használja
+  const DEV_TODAY = '2026-04-16';
 
   let supabase = null;
   let profile = null;
@@ -288,6 +292,13 @@
     return h*60 + m;
   }
 
+  function minsToHHMM(mins){
+    const m = Math.max(0, Number(mins)||0);
+    const h = Math.floor(m/60);
+    const mm = m%60;
+    return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
+  }
+
   async function ensureSupabase(){
     if(supabase) return supabase;
 
@@ -317,6 +328,7 @@
     optBlank.value = '';
     optBlank.textContent = '';
     selectEl.appendChild(optBlank);
+
     for(let t=0; t<=max; t+=step){
       const h = Math.floor(t/60);
       const mm = t%60;
@@ -329,13 +341,37 @@
     selectEl.value = '';
   }
 
+  function buildFlexMinutesOptions(selectEl, step=15, max=8*60){
+    selectEl.innerHTML = '';
+    const optBlank = document.createElement('option');
+    optBlank.value = '';         // UI-ban üres = 0
+    optBlank.textContent = '';
+    selectEl.appendChild(optBlank);
+
+    for(let t=0; t<=max; t+=step){
+      const opt = document.createElement('option');
+      opt.value = String(t);     // percek
+      opt.textContent = minsToHHMM(t);
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = '';
+  }
+
+  // Színezés: ünnep > special_workday > hétvége > sima pihenő > munkanap
   function tileClass(row){
     const iso = row.date;
-    const wknd = isWeekendISO(iso);
-    if(wknd) return 'tile weekend';
-    if(!row.is_workday) return row.holiday_name ? 'tile holiday' : 'tile rest';
-    if(row.is_work_saturday) return 'tile workSaturday';
+    const isHol = (!row.is_workday && !!row.holiday_name);
+
+    if(isHol) return 'tile holiday';
+    if(!!row.special_workday) return 'tile workSaturday';
+    if(isWeekendISO(iso)) return 'tile weekend';
+    if(!row.is_workday) return 'tile rest';
     return 'tile';
+  }
+
+  function normalizeIsoDate(d){
+    // date oszlop DATE: általában "YYYY-MM-DD", de biztos ami biztos
+    return String(d).slice(0,10);
   }
 
   function renderGrid(){
@@ -358,6 +394,7 @@
         grid.appendChild(empty);
         continue;
       }
+
       const row = monthRows[i-offset];
       const iso = row.date;
 
@@ -382,21 +419,22 @@
 
       const entry = entriesByDate.get(iso);
 
-      const inV = entry?.in_time || '';
-      const outV = entry?.out_time || '';
-      const slipV = entry?.slip_time || '';
-      const isVac = entry?.is_vacation || false;
+      const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
+      const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
+      const flexMin = Number(entry?.flex_minutes || 0);
+      const isVac = !!entry?.is_vacation;
 
-      if(inV) l1.textContent = inV;
-      if(outV) l2.textContent = outV;
+      if(arr) l1.textContent = arr;
+      if(dep) l2.textContent = dep;
 
-      if(slipV){
-        l3.textContent = slipV;
+      if(flexMin > 0){
+        l3.textContent = minsToHHMM(flexMin);
         l3.classList.add('red');
       }else if(isVac){
         l3.textContent = 'Szabi';
         l3.classList.add('black');
       }else if(row.holiday_name && !entry){
+        // ha ünnepnap és NINCS rögzítés, akkor kiírjuk a nevét
         l3.textContent = row.holiday_name;
         l3.classList.add('black');
       }else{
@@ -413,11 +451,11 @@
   }
 
   function validateEditForm(){
-    const inV = $('inSel').value;
-    const outV = $('outSel').value;
+    const inV = $('arrSel').value;
+    const outV = $('depSel').value;
 
-    const inWrap = $('inSel').parentElement;
-    const outWrap = $('outSel').parentElement;
+    const inWrap = $('arrSel').parentElement;
+    const outWrap = $('depSel').parentElement;
 
     if(inV && outV){
       const inM = hhmmToMins(inV);
@@ -446,16 +484,22 @@
     $('editErr').classList.add('hidden');
 
     const entry = entriesByDate.get(iso) || {};
-    $('inSel').value = entry.in_time || '';
-    $('outSel').value = entry.out_time || '';
-    $('slipSel').value = entry.slip_time || '';
-    $('vacChk').checked = !!entry.is_vacation;
-    $('noteTxt').value = entry.note || '';
+    $('arrSel').value = entry.arrival ? String(entry.arrival).slice(0,5) : '';
+    $('depSel').value = entry.departure ? String(entry.departure).slice(0,5) : '';
 
-    const isHol = (!!calRow.holiday_name && !calRow.is_workday);
-    const dis = isWeekendISO(iso) || isHol;
+    const flexMin = Number(entry.flex_minutes || 0);
+    $('flexSel').value = flexMin > 0 ? String(flexMin) : '';
+
+    $('vacChk').checked = !!entry.is_vacation;
+    $('noteTxt').value = entry.note ? String(entry.note) : '';
+
+    // Szabály: hétvégén és ünnepnapon (nem munkanap) ne lehessen Szabi/Flex,
+    // kivéve ha special_workday=true (munkanap szombat)
+    const isSpecial = !!calRow.special_workday;
+    const dis = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
+
     $('vacChk').disabled = dis;
-    $('slipSel').disabled = dis;
+    $('flexSel').disabled = dis;
 
     $('modalBackdrop').classList.remove('hidden');
     validateEditForm();
@@ -468,9 +512,9 @@
   }
 
   function clearEditForm(){
-    $('inSel').value = '';
-    $('outSel').value = '';
-    $('slipSel').value = '';
+    $('arrSel').value = '';
+    $('depSel').value = '';
+    $('flexSel').value = '';
     $('vacChk').checked = false;
     $('noteTxt').value = '';
     validateEditForm();
@@ -486,6 +530,7 @@
       .select('display_name,email')
       .eq('user_id', uid)
       .maybeSingle();
+
     if(error) throw error;
 
     profile = data || { display_name: u.user.email, email: u.user.email };
@@ -498,22 +543,21 @@
 
     const { data: days, error: e1 } = await supabase
       .from('calendar_days')
-      .select('date,is_workday,holiday_name,is_work_saturday,year')
+      .select('date,is_workday,holiday_name,special_workday,year')
       .eq('year', curYear)
       .gte('date', start)
       .lt('date', end)
       .order('date', { ascending:true });
     if(e1) throw e1;
 
-    // Biztonság: ha timestamppel jönne, vágjuk YYYY-MM-DD-re
-    monthRows = (days || []).map(r => ({ ...r, date: String(r.date).slice(0,10) }));
+    monthRows = (days || []).map(r => ({ ...r, date: normalizeIsoDate(r.date) }));
 
     const { data: u } = await supabase.auth.getUser();
     const uid = u?.user?.id;
 
     const { data: ents, error: e2 } = await supabase
       .from('entries')
-      .select('user_id,date,in_time,out_time,slip_time,is_vacation,note')
+      .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
       .eq('user_id', uid)
       .gte('date', start)
       .lt('date', end)
@@ -522,7 +566,7 @@
 
     entriesByDate = new Map();
     (ents||[]).forEach(r=>{
-      const iso = String(r.date).slice(0,10);
+      const iso = normalizeIsoDate(r.date);
       entriesByDate.set(iso, { ...r, date: iso });
     });
 
@@ -536,11 +580,11 @@
 
     const payload = {
       date: iso,
-      in_time: $('inSel').value || null,
-      out_time: $('outSel').value || null,
-      slip_time: $('slipSel').value || null,
+      arrival: $('arrSel').value || null,
+      departure: $('depSel').value || null,
+      flex_minutes: $('flexSel').value ? Number($('flexSel').value) : 0,
       is_vacation: $('vacChk').checked,
-      note: ($('noteTxt').value || '').trim() || null
+      note: ($('noteTxt').value || '').trim()
     };
 
     const { data: u } = await supabase.auth.getUser();
@@ -552,7 +596,14 @@
       .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,date' });
     if(error) throw error;
 
-    if(!payload.in_time && !payload.out_time && !payload.slip_time && !payload.is_vacation && !payload.note){
+    const isEmpty =
+      !payload.arrival &&
+      !payload.departure &&
+      (payload.flex_minutes === 0) &&
+      !payload.is_vacation &&
+      (!payload.note || payload.note.length === 0);
+
+    if(isEmpty){
       entriesByDate.delete(iso);
     }else{
       entriesByDate.set(iso, { user_id: uid, ...payload });
@@ -570,9 +621,9 @@
 
     await loadProfile();
 
-    buildTimeOptions($('inSel'), 15, 24*60);
-    buildTimeOptions($('outSel'), 15, 24*60);
-    buildTimeOptions($('slipSel'), 15, 8*60);
+    buildTimeOptions($('arrSel'), 15, 24*60);
+    buildTimeOptions($('depSel'), 15, 24*60);
+    buildFlexMinutesOptions($('flexSel'), 15, 8*60);
 
     const today = getTodayISO();
     curYear = Number(today.slice(0,4));
@@ -608,8 +659,8 @@
       if(e.target === $('modalBackdrop')) closeEdit();
     });
 
-    $('inSel').addEventListener('change', validateEditForm);
-    $('outSel').addEventListener('change', validateEditForm);
+    $('arrSel').addEventListener('change', validateEditForm);
+    $('depSel').addEventListener('change', validateEditForm);
 
     $('delBtn').addEventListener('click', ()=>clearEditForm());
 
