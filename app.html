@@ -23,7 +23,7 @@
     }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    
+
     .topbar{
       max-width:900px; margin:0 auto; padding:14px 16px 0;
       display:flex; align-items:center; justify-content:flex-end; gap:12px;
@@ -57,7 +57,7 @@
 
     /* Calendar layout */
     .pager{
-      height:10vh; min-height:70px; 
+      height:10vh; min-height:70px;
       display:flex; align-items:center; justify-content:space-between; gap:10px;
       padding:0 4px;
     }
@@ -76,30 +76,30 @@
     .arrow:hover{background:#52525b;}
     .spacer{width:14%;}
     .title{width:42%; text-align:center; font-size:28px; font-weight:800;}
-    
+
     .dow{
-      height:5vh; min-height:40px; 
-      display:grid; grid-template-columns:repeat(7,1fr); gap:8px; 
+      height:5vh; min-height:40px;
+      display:grid; grid-template-columns:repeat(7,1fr); gap:8px;
       align-items:center; margin-top:4px;
     }
-    .dow div{ 
-      text-align:center; 
-      font-size:16px; 
+    .dow div{
+      text-align:center;
+      font-size:16px;
       font-weight:600;
     }
-    
+
     .gridWrap{height:60vh; min-height:360px; margin-top:8px;}
     .grid{
-      height:100%; 
-      display:grid; 
-      grid-template-columns:repeat(7,1fr); 
-      grid-template-rows:repeat(6,1fr); 
+      height:100%;
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      grid-template-rows:repeat(6,1fr);
       gap:8px;
     }
 
     .tile{
       background:var(--work);
-      border-radius:3.2px;  /* 0.2rem */
+      border-radius:3.2px;
       display:flex;
       flex-direction:column;
       overflow:hidden;
@@ -111,7 +111,7 @@
     }
     .tile:hover{transform:scale(1.05);}
     .tile:active{transform:scale(0.95);}
-    
+
     .tile.rest{background:var(--rest); opacity:1;}
     .tile.weekend{background:var(--weekend);}
     .tile.holiday{background:var(--holiday);}
@@ -120,17 +120,17 @@
     .tile.todayFill{background:var(--accent) !important; color:#111;}
 
     .tTop{
-      height:auto; 
-      display:flex; 
-      align-items:flex-start; 
-      justify-content:flex-start; 
+      height:auto;
+      display:flex;
+      align-items:flex-start;
+      justify-content:flex-start;
       padding:0;
       margin-bottom:0.25rem;
     }
     .tDay{
-      font-size:1.2rem;  /* 19.2px */
-      font-weight:900; 
-      line-height:1; 
+      font-size:1.2rem;
+      font-weight:900;
+      line-height:1;
       text-align:left;
     }
 
@@ -143,27 +143,27 @@
       justify-content:flex-start;
     }
     .line{
-      font-size:0.75rem;  /* 12px */
+      font-size:0.75rem;
       line-height:1.2;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
       font-weight:500;
     }
-    
+
     /* Szöveg színek a csempéken */
     .tile .tDay{color:#000;}
-    .tile .line{color:#374151;}  /* gray-700 */
-    
+    .tile .line{color:#374151;}
+
     .tile.weekend .tDay{color:#fff;}
-    .tile.weekend .line{color:#e5e7eb;}  /* gray-200 */
-    
-    .tile.rest .tDay{color:#9ca3af;}  /* gray-400 */
+    .tile.weekend .line{color:#e5e7eb;}
+
+    .tile.rest .tDay{color:#9ca3af;}
     .tile.rest .line{color:#9ca3af;}
-    
+
     .tile.todayFill .tDay{color:#111;}
     .tile.todayFill .line{color:#fff;}
-    
+
     .line.red{color:var(--piros) !important;}
     .line.black{color:#111 !important;}
 
@@ -174,20 +174,21 @@
       padding:14px; border-radius:14px;
       font-size:20px;
       z-index:99;
+      font-weight:900;
     }
 
     /* Edit modal */
     .modalBackdrop{
-      position:fixed; inset:0; 
-      background:rgba(0,0,0,.55); 
-      display:flex; align-items:center; justify-content:center; 
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:flex; align-items:center; justify-content:center;
       padding:18px; z-index:50;
     }
     .modal{
-      width:min(900px,100%); 
-      background:#52525b; 
-      border-radius:20px; 
-      padding:18px; 
+      width:min(900px,100%);
+      background:#52525b;
+      border-radius:20px;
+      padding:18px;
       border:1px solid rgba(255,255,255,.10);
     }
     .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
@@ -231,8 +232,8 @@
       .tDay{font-size:1rem;}
       .line{font-size:0.625rem;}
     }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -421,20 +422,20 @@
   function buildFlexMinutesOptions(selectEl, step=15, max=8*60){
     selectEl.innerHTML = '';
     const optBlank = document.createElement('option');
-    optBlank.value = '';         // UI-ban üres = 0
+    optBlank.value = '';
     optBlank.textContent = '';
     selectEl.appendChild(optBlank);
 
     for(let t=0; t<=max; t+=step){
       const opt = document.createElement('option');
-      opt.value = String(t);     // percek
+      opt.value = String(t);
       opt.textContent = minsToHHMM(t);
       selectEl.appendChild(opt);
     }
     selectEl.value = '';
   }
 
-  // Színezés: ünnep > special_workday > hétvége > sima pihenő > munkanap
+  // Színezés (calendar_days alapján)
   function tileClass(row){
     const iso = row.date;
     const isHol = (!row.is_workday && !!row.holiday_name);
@@ -446,8 +447,23 @@
     return 'tile';
   }
 
-  function normalizeIsoDate(d){
-    return String(d).slice(0,10);
+  function normalizeIsoDate(d){ return String(d).slice(0,10); }
+
+  function applyFlexRuleUI(){
+    // Szabi esetén: csúsztatás TILOS
+    const isVac = $('vacChk').checked;
+    if(isVac){
+      $('flexSel').value = '';
+      $('flexSel').disabled = true;
+    }else{
+      // egyéb tiltás: hétvége/ünnep (nem munkanap) - kivéve special_workday
+      const iso = editingDate;
+      const calRow = editingCalRow;
+      if(!iso || !calRow) return;
+      const isSpecial = !!calRow.special_workday;
+      const dis = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
+      $('flexSel').disabled = dis;
+    }
   }
 
   function renderGrid(){
@@ -479,6 +495,18 @@
 
       if(iso===getTodayISO()) tile.classList.add('todayFill');
 
+      const entry = entriesByDate.get(iso);
+
+      const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
+      const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
+      const flexMin = Number(entry?.flex_minutes || 0);
+      const isVac = !!entry?.is_vacation;
+
+      // Szabi kék háttér (entry alapján) – csak akkor, ha nem holiday/rest override
+      if(isVac){
+        tile.classList.add('vac');
+      }
+
       const top = document.createElement('div');
       top.className = 'tTop';
       const dn = document.createElement('div');
@@ -493,16 +521,10 @@
       const l2 = document.createElement('div'); l2.className='line';
       const l3 = document.createElement('div'); l3.className='line';
 
-      const entry = entriesByDate.get(iso);
-
-      const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
-      const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
-      const flexMin = Number(entry?.flex_minutes || 0);
-      const isVac = !!entry?.is_vacation;
-
       if(arr) l1.textContent = arr;
       if(dep) l2.textContent = dep;
 
+      // Flex piros, Szabi alul, ünnepnév csak ha nincs rögzítés
       if(flexMin > 0){
         l3.textContent = minsToHHMM(flexMin);
         l3.classList.add('red');
@@ -568,11 +590,14 @@
     $('vacChk').checked = !!entry.is_vacation;
     $('noteTxt').value = entry.note ? String(entry.note) : '';
 
+    // hétvége/ünnepnap (nem munkanap) => szabi és flex tiltva (kivéve special_workday)
     const isSpecial = !!calRow.special_workday;
-    const dis = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
+    const disVac = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
 
-    $('vacChk').disabled = dis;
-    $('flexSel').disabled = dis;
+    $('vacChk').disabled = disVac;
+
+    // Szabi esetén flex tiltva, illetve a fenti szabály is tiltja
+    applyFlexRuleUI();
 
     $('modalBackdrop').classList.remove('hidden');
     validateEditForm();
@@ -590,6 +615,7 @@
     $('flexSel').value = '';
     $('vacChk').checked = false;
     $('noteTxt').value = '';
+    applyFlexRuleUI();
     validateEditForm();
   }
 
@@ -659,12 +685,15 @@
     const iso = editingDate;
     if(!iso) return;
 
+    const isVac = $('vacChk').checked;
+
     const payload = {
       date: iso,
       arrival: $('arrSel').value || null,
       departure: $('depSel').value || null,
-      flex_minutes: $('flexSel').value ? Number($('flexSel').value) : 0,
-      is_vacation: $('vacChk').checked,
+      // Szabi esetén flex TILOS: kényszerítjük 0-ra
+      flex_minutes: isVac ? 0 : ($('flexSel').value ? Number($('flexSel').value) : 0),
+      is_vacation: isVac,
       note: ($('noteTxt').value || '').trim()
     };
 
@@ -746,6 +775,11 @@
 
     $('arrSel').addEventListener('change', validateEditForm);
     $('depSel').addEventListener('change', validateEditForm);
+
+    // Szabi kapcsoló: flex tiltás azonnal
+    $('vacChk').addEventListener('change', ()=>{
+      applyFlexRuleUI();
+    });
 
     $('delBtn').addEventListener('click', ()=>clearEditForm());
 
