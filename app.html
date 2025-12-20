@@ -1,3 +1,4 @@
+<!-- app.html -->
 <!doctype html>
 <html lang="hu">
 <head>
@@ -5,32 +6,242 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Munkaidő</title>
   <style>
-    :root{ --bg:#2f3237; --text:#f2f3f5; --accent:#ff8a00; --muted:#c9cbd1; }
+    :root{
+      --bg:#2f3237;
+      --panel:#3a3f45;
+      --text:#f2f3f5;
+      --muted:#c9cbd1;
+      --accent:#ff8a00;
+
+      --rest:#6d7078;
+      --holiday:#f6b2b2;
+      --vac:#b9d9ff;
+      --work:#5b6068;
+      --weekend:#777b81;
+      --zold:#1ecb5b;
+      --piros:#ff3b30;
+    }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    .top{max-width:900px; margin:0 auto; padding:18px 18px 0; display:flex; align-items:flex-start; justify-content:space-between;}
-    .logo{height:100px; width:auto; display:block; margin-top:40px;}
-    .right{display:flex; flex-direction:column; align-items:flex-end; gap:6px;}
-    .name{font-size:28px; font-weight:800; text-align:right;}
-    .logout{font-size:18px; text-decoration:underline; cursor:pointer; display:inline-block; padding:6px 0;}
-    .wrap{max-width:900px; margin:0 auto; padding:10px 18px 24px;}
-    .msg{color:var(--muted); margin-top:10px;}
-    .toast{position:fixed; left:12px; right:12px; bottom:12px; background:var(--accent); color:#111; padding:14px; border-radius:14px; font-size:18px; z-index:99;}
+    .topbar{
+      max-width:900px; margin:0 auto; padding:14px 16px 0;
+      display:flex; align-items:center; justify-content:flex-end; gap:12px;
+      background:transparent;
+    }
+    .userName{font-size:16px; font-weight:700; text-align:right; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw;}
+    .logoutBtn{
+      border:0; background:transparent; color:var(--text);
+      font-size:16px; font-weight:700;
+      cursor:pointer;
+      padding:10px 12px;
+      border-radius:12px;
+    }
+    .logoutBtn:active{background:rgba(255,255,255,.12);}
+
+    .wrap{max-width:900px; margin:0 auto; padding:10px 16px 18px;}
+    .card{background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:12px;}
+    .hidden{display:none !important;}
+
+    /* Calendar layout */
+    .pager{height:10vh; min-height:70px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+    .arrow{
+      width:16%;
+      min-width:64px;
+      height:100%;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.10);
+      border-radius:16px;
+      cursor:pointer;
+      user-select:none;
+      font-size:44px;
+    }
+    .spacer{width:14%;}
+    .title{width:42%; text-align:center; font-size:28px; font-weight:800;}
+    .dow{height:5vh; min-height:40px; display:grid; grid-template-columns:repeat(7,1fr); gap:10px; align-items:center; margin-top:4px;}
+    .dow div{ text-align:center; font-size:22px; font-weight:800; }
+    .gridWrap{height:60vh; min-height:360px; margin-top:8px;}
+    .grid{height:100%; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); gap:10px;}
+
+    .tile{
+      background:var(--work);
+      border-radius:7%;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      cursor:pointer;
+      position:relative;
+      border:0;
+    }
+    .tile.rest{background:var(--rest); opacity:.55;}
+    .tile.weekend{background:var(--weekend);}
+    .tile.holiday{background:var(--holiday);}
+    .tile.vac{background:var(--vac);}
+    .tile.workSaturday{background:var(--work); border:3px solid var(--zold);}
+    .tile.todayFill{background:var(--accent) !important; color:#111;}
+
+    .tTop{height:35%; display:flex; align-items:center; justify-content:flex-start; padding:0 8%;}
+    .tDay{font-size:calc(10px + 3.2vh); font-weight:900; line-height:1; text-align:left;}
+
+    .lines{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      padding:0 8% 8%;
+      gap:1%;
+      justify-content:space-evenly;
+    }
+    .line{
+      font-size:calc(9px + 1.3vh);
+      line-height:1;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:600;
+    }
+    .line.red{color:var(--piros);}
+    .line.black{color:#111;}
+
+    /* Summary */
+    .summary{margin-top:10px; display:flex; flex-direction:column; gap:10px;}
+    .summaryLine{font-size:20px; line-height:1.2; max-width:100%;}
+    .summaryLine .num{font-size:150%; font-weight:800;}
+    .summaryLine.green .num{color:var(--zold);}
+    .summaryLine.red .num{color:var(--piros);}
+
+    /* Toast */
+    .toast{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      background:var(--accent); color:#111;
+      padding:14px; border-radius:14px;
+      font-size:20px;
+      z-index:99;
+    }
+
+    /* Edit modal */
+    .modalBackdrop{position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:18px; z-index:50;}
+    .modal{width:min(900px,100%); background:#5b6068; border-radius:20px; padding:18px; border:1px solid rgba(255,255,255,.10);}
+    .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+    .row label{font-size:20px; font-weight:400; min-width:140px;}
+    .row .ctrl{flex:1; min-width:180px;}
+    select, textarea{
+      width:100%;
+      padding:14px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#ffffff;
+      color:#111;
+      font-size:18px;
+      outline:none;
+    }
+    textarea{min-height:90px; resize:none;}
+    .gap75{height:75px;}
+    .btnRow{display:flex; gap:12px; margin-top:12px;}
+    .btn{
+      border:0; border-radius:16px;
+      padding:14px 16px;
+      font-size:22px;
+      cursor:pointer;
+      flex:1;
+      height:64px;
+    }
+    .btn.primary{background:var(--accent); color:#111; font-weight:800;}
+    .btn.danger{background:#ff453a; color:#111; font-weight:900;}
+
+    .errBig{font-size:22px; color:#ff3b30; margin-top:10px; font-weight:900;}
+    .invalid select{background:#ffd1d1 !important; border:3px solid #ff3b30 !important;}
+
+    @media (max-width:520px){
+      .title{font-size:24px;}
+      .dow div{font-size:20px;}
+      .summaryLine{font-size:18px;}
+      .modalHeader{font-size:30px;}
+      .row label{font-size:18px;}
+      select, textarea{font-size:18px;}
+      .btn{font-size:20px;}
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="top">
-    <img src="kultora_logo.png" alt="Kultora" class="logo" />
-    <div class="right">
-      <div id="name" class="name"></div>
-      <a id="logout" class="logout" href="#">Kilépés</a>
-    </div>
-  </div>
+  <header class="topbar">
+    <div id="userName" class="userName"></div>
+    <button id="logoutBtn" class="logoutBtn" type="button">Kijelentkezés</button>
+  </header>
 
-  <div class="wrap">
-    <div class="msg" id="msg">Betöltés…</div>
-    <div class="msg">Itt jön majd a naptár. Ez az oldal szándékosan csak az app nézetet tartalmazza.</div>
+  <main class="wrap">
+    <section class="card">
+      <div class="pager">
+        <div id="prevBtn" class="arrow">‹</div>
+        <div class="spacer"></div>
+        <div id="monthTitle" class="title">2026 Április</div>
+        <div class="spacer"></div>
+        <div id="nextBtn" class="arrow">›</div>
+      </div>
+
+      <div class="dow">
+        <div>H</div><div>K</div><div>SZ</div><div>CS</div><div>P</div><div>SZO</div><div>V</div>
+      </div>
+
+      <div class="gridWrap">
+        <div id="grid" class="grid"></div>
+      </div>
+
+      <div class="summary">
+        <div id="summaryLine" class="summaryLine"></div>
+        <div id="vacLine" class="summaryLine"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalBackdrop" class="modalBackdrop hidden">
+    <div class="modal">
+      <div id="editDate" class="modalHeader">2026.04.16</div>
+
+      <div class="row" style="margin-top:10px;">
+        <label>Érkezés</label>
+        <div class="ctrl"><select id="inSel"></select></div>
+      </div>
+
+      <div class="gap75"></div>
+
+      <div class="row">
+        <label>Távozás</label>
+        <div class="ctrl"><select id="outSel"></select></div>
+      </div>
+
+      <div class="gap75"></div>
+
+      <div class="row">
+        <label>Csúsztatás</label>
+        <div class="ctrl"><select id="slipSel"></select></div>
+      </div>
+
+      <div class="gap75"></div>
+
+      <div class="row">
+        <label>Szabi ezen a napon</label>
+        <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-end; gap:12px;">
+          <input id="vacChk" type="checkbox" style="width:28px; height:28px;" />
+        </div>
+      </div>
+
+      <div class="gap75"></div>
+
+      <div class="row">
+        <label>Megjegyzés</label>
+        <div class="ctrl"><textarea id="noteTxt" placeholder="pl. csúsztatás oka, rendezvény neve, stb."></textarea></div>
+      </div>
+
+      <div id="editErr" class="errBig hidden"></div>
+
+      <div class="btnRow">
+        <button id="delBtn" class="btn danger" type="button">Törlés</button>
+        <button id="saveBtn" class="btn primary" type="button">Mentés</button>
+      </div>
+
+      <div style="height:50px;"></div>
+    </div>
   </div>
 
 <script>
@@ -44,7 +255,51 @@
     setTimeout(()=>el.remove(), 1800);
   };
 
-  let supabase=null;
+  const DEV_TODAY = '2026-04-16'; // TESZT: élesben állítsd null-ra
+
+  let supabase = null;
+  let profile = null;
+
+  let curYear = 2026;
+  let curMonth = 4;
+
+  let monthRows = [];
+  let entriesByDate = new Map();
+
+  let editingDate = null;
+  let editingCalRow = null;
+
+  function getTodayISO(){
+    if(DEV_TODAY) return DEV_TODAY;
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function huMonthName(m){
+    const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+    return names[m-1] || '';
+  }
+
+  function isWeekendISO(iso){
+    const d = new Date(iso+'T12:00:00');
+    const wd = d.getDay();
+    return wd===0 || wd===6;
+  }
+
+  function getMonthNav(y,m,dir){
+    const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
+    d.setMonth(d.getMonth()+dir);
+    return { y:d.getFullYear(), m:d.getMonth()+1 };
+  }
+
+  function hhmmToMins(hhmm){
+    if(!hhmm) return null;
+    const [h,m] = hhmm.split(':').map(Number);
+    return h*60 + m;
+  }
 
   async function ensureSupabase(){
     if(supabase) return supabase;
@@ -59,47 +314,283 @@
     if(!r.ok) throw new Error('Nem elérhető a /config.');
     const j = await r.json();
     const url = j.SUPABASE_URL || j.supabaseUrl;
-const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
+    const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
+    if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
 
-if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
-
-supabase = window.supabase.createClient(url, key, {
-  auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-  db: { schema:'app' }
-});
-
+    supabase = window.supabase.createClient(url, key, {
+      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+      db:{ schema:'app' }
+    });
     return supabase;
   }
 
-  async function boot(){
-    try{
-      await ensureSupabase();
-      const { data } = await supabase.auth.getSession();
-      if(!data.session){
-        location.replace('/index.html?v=' + Date.now());
-        return;
+  function buildTimeOptions(selectEl, step=15, max=24*60){
+    selectEl.innerHTML = '';
+    const optBlank = document.createElement('option');
+    optBlank.value = '';
+    optBlank.textContent = '';
+    selectEl.appendChild(optBlank);
+    for(let t=0; t<=max; t+=step){
+      const h = Math.floor(t/60);
+      const mm = t%60;
+      const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = val;
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = '';
+  }
+
+  function tileClass(row){
+    const wknd = isWeekendISO(row.day);
+    if(wknd) return 'tile weekend';
+    if(!row.is_workday) return row.holiday_name ? 'tile holiday' : 'tile rest';
+    if(row.is_work_saturday) return 'tile workSaturday';
+    return 'tile';
+  }
+
+  function renderGrid(){
+    const grid = $('grid');
+    grid.innerHTML = '';
+
+    const first = monthRows[0]?.day;
+    if(!first) return;
+
+    const firstDate = new Date(first+'T12:00:00');
+    let wd = firstDate.getDay();
+    wd = wd===0 ? 7 : wd;
+    const offset = wd-1;
+
+    for(let i=0;i<42;i++){
+      if(i<offset || (i-offset)>=monthRows.length){
+        const empty = document.createElement('div');
+        empty.className = 'tile rest';
+        empty.style.opacity = '.15';
+        grid.appendChild(empty);
+        continue;
+      }
+      const row = monthRows[i-offset];
+      const iso = row.day;
+
+      const tile = document.createElement('div');
+      tile.className = tileClass(row);
+
+      if(iso===getTodayISO()) tile.classList.add('todayFill');
+
+      const top = document.createElement('div');
+      top.className = 'tTop';
+      const dn = document.createElement('div');
+      dn.className = 'tDay';
+      dn.textContent = String(Number(iso.slice(8,10)));
+      top.appendChild(dn);
+
+      const lines = document.createElement('div');
+      lines.className = 'lines';
+
+      const l1 = document.createElement('div'); l1.className='line';
+      const l2 = document.createElement('div'); l2.className='line';
+      const l3 = document.createElement('div'); l3.className='line';
+
+      const entry = entriesByDate.get(iso);
+
+      const inV = entry?.in_time || '';
+      const outV = entry?.out_time || '';
+      const slipV = entry?.slip_time || '';
+      const isVac = entry?.is_vacation || false;
+
+      if(inV) l1.textContent = inV;
+      if(outV) l2.textContent = outV;
+
+      if(slipV){
+        l3.textContent = slipV;
+        l3.classList.add('red');
+      }else if(isVac){
+        l3.textContent = 'Szabi';
+        l3.classList.add('black');
+      }else if(row.holiday_name && !entry){
+        l3.textContent = row.holiday_name;
+        l3.classList.add('black');
+      }else{
+        l3.textContent = '';
       }
 
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
+      lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
+      tile.appendChild(top);
+      tile.appendChild(lines);
 
-      let display = u?.user?.email || '';
-      try{
-        const { data: p } = await supabase.from('profiles').select('display_name,email').eq('user_id', uid).maybeSingle();
-        display = p?.display_name || p?.email || display;
-      }catch(_){}
-
-      $('name').textContent = display;
-      $('msg').textContent = 'Bejelentkezve ✓';
-
-    }catch(e){
-      $('msg').textContent = 'Hiba: ' + (e?.message||String(e));
+      tile.addEventListener('click', ()=>openEdit(iso, row));
+      grid.appendChild(tile);
     }
   }
 
+  function validateEditForm(){
+    const inV = $('inSel').value;
+    const outV = $('outSel').value;
+
+    const inWrap = $('inSel').parentElement;
+    const outWrap = $('outSel').parentElement;
+
+    if(inV && outV){
+      const inM = hhmmToMins(inV);
+      const outM = hhmmToMins(outV);
+      if(outM < inM){
+        $('editErr').textContent = 'Hiba: Távozás nem lehet korábbi, mint Érkezés!';
+        $('editErr').classList.remove('hidden');
+        inWrap.classList.add('invalid');
+        outWrap.classList.add('invalid');
+        $('saveBtn').disabled = true;
+        return false;
+      }
+    }
+    $('editErr').classList.add('hidden');
+    inWrap.classList.remove('invalid');
+    outWrap.classList.remove('invalid');
+    $('saveBtn').disabled = false;
+    return true;
+  }
+
+  function openEdit(iso, calRow){
+    editingDate = iso;
+    editingCalRow = calRow;
+
+    $('editDate').textContent = iso.replaceAll('-', '.');
+    $('editErr').classList.add('hidden');
+
+    const entry = entriesByDate.get(iso) || {};
+    $('inSel').value = entry.in_time || '';
+    $('outSel').value = entry.out_time || '';
+    $('slipSel').value = entry.slip_time || '';
+    $('vacChk').checked = !!entry.is_vacation;
+    $('noteTxt').value = entry.note || '';
+
+    const isHol = (!!calRow.holiday_name && !calRow.is_workday);
+    const dis = isWeekendISO(iso) || isHol;
+    $('vacChk').disabled = dis;
+    $('slipSel').disabled = dis;
+
+    $('modalBackdrop').classList.remove('hidden');
+    validateEditForm();
+  }
+
+  function closeEdit(){
+    $('modalBackdrop').classList.add('hidden');
+    editingDate = null;
+    editingCalRow = null;
+  }
+
+  function clearEditForm(){
+    $('inSel').value = '';
+    $('outSel').value = '';
+    $('slipSel').value = '';
+    $('vacChk').checked = false;
+    $('noteTxt').value = '';
+    validateEditForm();
+  }
+
+  async function loadProfile(){
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+    if(!uid) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('display_name,email')
+      .eq('user_id', uid)
+      .maybeSingle();
+    if(error) throw error;
+
+    profile = data || { display_name: u.user.email, email: u.user.email };
+    $('userName').textContent = profile.display_name || profile.email || '';
+  }
+
+  async function loadMonth(){
+    const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
+    const end = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
+
+    const { data: days, error: e1 } = await supabase
+      .from('calendar_days')
+      .select('day,is_workday,holiday_name,is_work_saturday')
+      .eq('year', curYear)
+      .gte('day', start)
+      .lt('day', end)
+      .order('day', { ascending:true });
+    if(e1) throw e1;
+
+    monthRows = days || [];
+
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+
+    const { data: ents, error: e2 } = await supabase
+      .from('entries')
+      .select('user_id,day,in_time,out_time,slip_time,is_vacation,note')
+      .eq('user_id', uid)
+      .gte('day', start)
+      .lt('day', end)
+      .order('day', { ascending:true });
+    if(e2) throw e2;
+
+    entriesByDate = new Map();
+    (ents||[]).forEach(r=>entriesByDate.set(r.day, r));
+
+    $('monthTitle').textContent = `${curYear} ${huMonthName(curMonth)}`;
+    renderGrid();
+  }
+
+  async function saveCurrentEdit(){
+    const iso = editingDate;
+    if(!iso) return;
+
+    const payload = {
+      day: iso,
+      in_time: $('inSel').value || null,
+      out_time: $('outSel').value || null,
+      slip_time: $('slipSel').value || null,
+      is_vacation: $('vacChk').checked,
+      note: ($('noteTxt').value || '').trim() || null
+    };
+
+    const { data: u } = await supabase.auth.getUser();
+    const uid = u?.user?.id;
+    if(!uid) throw new Error('Nincs user session.');
+
+    const { error } = await supabase
+      .from('entries')
+      .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,day' });
+    if(error) throw error;
+
+    if(!payload.in_time && !payload.out_time && !payload.slip_time && !payload.is_vacation && !payload.note){
+      entriesByDate.delete(iso);
+    }else{
+      entriesByDate.set(iso, { user_id: uid, ...payload });
+    }
+  }
+
+  async function boot(){
+    await ensureSupabase();
+
+    const { data } = await supabase.auth.getSession();
+    if(!data.session){
+      location.replace('/index.html?v=' + Date.now());
+      return;
+    }
+
+    await loadProfile();
+
+    buildTimeOptions($('inSel'), 15, 24*60);
+    buildTimeOptions($('outSel'), 15, 24*60);
+    buildTimeOptions($('slipSel'), 15, 8*60);
+
+    const today = getTodayISO();
+    curYear = Number(today.slice(0,4));
+    curMonth = Number(today.slice(5,7));
+
+    await loadMonth();
+  }
+
   window.addEventListener('DOMContentLoaded', ()=>{
-    $('logout').addEventListener('click', async (e)=>{
-      e.preventDefault();
+    $('logoutBtn').addEventListener('click', async ()=>{
       try{
         await ensureSupabase();
         toast('Kilépés…');
@@ -108,7 +599,40 @@ supabase = window.supabase.createClient(url, key, {
       location.replace('/index.html?v=' + Date.now());
     });
 
-    boot();
+    $('prevBtn').addEventListener('click', async ()=>{
+      const nav = getMonthNav(curYear, curMonth, -1);
+      if(nav.y!==2026) return;
+      curYear = nav.y; curMonth = nav.m;
+      await loadMonth();
+    });
+    $('nextBtn').addEventListener('click', async ()=>{
+      const nav = getMonthNav(curYear, curMonth, +1);
+      if(nav.y!==2026) return;
+      curYear = nav.y; curMonth = nav.m;
+      await loadMonth();
+    });
+
+    $('modalBackdrop').addEventListener('click', (e)=>{
+      if(e.target === $('modalBackdrop')) closeEdit();
+    });
+
+    $('inSel').addEventListener('change', validateEditForm);
+    $('outSel').addEventListener('change', validateEditForm);
+
+    $('delBtn').addEventListener('click', ()=>clearEditForm());
+
+    $('saveBtn').addEventListener('click', async ()=>{
+      if(!validateEditForm()) return;
+      try{
+        await saveCurrentEdit();
+        closeEdit();
+        await loadMonth();
+      }catch(e){
+        toast('Mentés hiba: ' + (e?.message||String(e)));
+      }
+    });
+
+    boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
   });
 })();
 </script>
