@@ -75,7 +75,7 @@
       transition:opacity .2s ease, color .2s ease;
     }
 
-    /* Kilépés: ikon fehér, felirat fehér (kérés) */
+    /* Kilépés: ikon fehér, felirat fehér */
     .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
     .logout-item .menu-label{ color:var(--text); opacity:1; }
 
@@ -106,13 +106,11 @@
       margin-bottom:10px;
     }
 
-    /* A túlóra/hátralék sor: mindig tördelhető, mindig látszik */
     .summaryLine{
       font-size:14px; line-height:1.25; color:var(--text);
       white-space:normal; overflow:visible; text-overflow:clip;
       word-break:break-word;
     }
-    /* kiemelt számok: fehér (kérés) */
     .summaryLine .num{font-size:115%; font-weight:800; color:var(--text) !important;}
 
     .missingBox{
@@ -132,14 +130,8 @@
       line-height:1.2;
       color:var(--text);
       user-select:text;
+      white-space:normal;
     }
-    .missDate{
-      color:var(--text);
-      text-decoration:underline;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .missDate.old{ color:var(--piros); }
 
     .yearTitle{
       font-weight:800;
@@ -347,19 +339,17 @@
       return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
     }
 
-    function addDaysISO(iso, days){
-      const d = new Date(iso + 'T12:00:00');
-      d.setDate(d.getDate() + days);
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,'0');
-      const da = String(d.getDate()).padStart(2,'0');
-      return `${y}-${m}-${da}`;
-    }
-
     function daysBetween(aIso, bIso){
       const a = new Date(aIso + 'T12:00:00');
       const b = new Date(bIso + 'T12:00:00');
       return Math.round((b - a) / (24*60*60*1000));
+    }
+
+    // ---- NO-CACHE wrapper a Supabase fetch-hez (összesítő frissülés) ----
+    function noStoreFetch(input, init){
+      const o = init ? { ...init } : {};
+      o.cache = 'no-store';
+      return fetch(input, o);
     }
 
     async function ensureSupabase(){
@@ -380,7 +370,8 @@
 
       supabase = window.supabase.createClient(url, key, {
         auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-        db:{ schema:'app' }
+        db:{ schema:'app' },
+        global:{ fetch: noStoreFetch }
       });
       return supabase;
     }
@@ -504,6 +495,7 @@
 
         monthCard.appendChild(mg);
 
+        // (marad kattintható hónap -> app.html)
         monthCard.addEventListener('click', ()=>{
           location.href = `/app.html?y=${YEAR}&m=${month}&v=${Date.now()}`;
         });
@@ -528,38 +520,27 @@
       return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
     }
 
-    function renderMissingDates(missingIsoList, todayIso){
+    // --- ÚJ: hónaponként csoportosítva, hónapok között " | " ---
+    function renderMissingDatesGrouped(missingIsoList){
       const box = $('missingList');
-      box.innerHTML = '';
-
-      if(missingIsoList.length === 0){
+      if(!missingIsoList || missingIsoList.length === 0){
         box.textContent = 'Nincs hiányzó rögzítés.';
         return;
       }
 
-      // 2 hétnél régebbi => piros
-      // (ma - dátum > 14)
-      missingIsoList.forEach((iso, idx)=>{
-        const a = document.createElement('span');
-        a.className = 'missDate';
+      // csoport: YYYY-MM -> [YYYY.MM.DD,...]
+      const groups = new Map();
+      for(const iso of missingIsoList){
+        const ym = iso.slice(0,7);
+        const fmt = iso.replaceAll('-', '.');
+        if(!groups.has(ym)) groups.set(ym, []);
+        groups.get(ym).push(fmt);
+      }
 
-        const age = daysBetween(iso, todayIso);
-        if(age > 14) a.classList.add('old');
-
-        a.textContent = iso.replaceAll('-', '.');
-
-        a.addEventListener('click', ()=>{
-          const y = Number(iso.slice(0,4));
-          const m = Number(iso.slice(5,7));
-          location.href = `/app.html?y=${y}&m=${m}&v=${Date.now()}`;
-        });
-
-        box.appendChild(a);
-
-        if(idx < missingIsoList.length - 1){
-          box.appendChild(document.createTextNode(', '));
-        }
-      });
+      // stabil sorrend
+      const ymKeys = Array.from(groups.keys()).sort();
+      const parts = ymKeys.map(ym => groups.get(ym).join(', '));
+      box.textContent = parts.join(' | ');
     }
 
     async function loadYearDataAndCompute(){
@@ -609,7 +590,6 @@
 
       const missingIso = [];
 
-      // napok today-ig
       const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
       for(const cal of sortedDays){
         const iso = cal.date;
@@ -617,7 +597,6 @@
 
         const entry = entriesMap.get(iso);
 
-        // ma csak akkor számít, ha van "érdemi" rögzítés (arrival+departure vagy flex>0 vagy szabi)
         const isToday = (iso === today);
         const meaningfulToday =
           !!(entry && (
@@ -632,8 +611,7 @@
         const isWorkday = !!cal.is_workday;
         const isSpecial = !!cal.special_workday;
 
-        // hiányzó lista: munkanap vagy szombati munkanap,
-        // és semmilyen rögzítés nincs rá (szabi sem)
+        // hiányzó: munkanap vagy szombati munkanap, és nincs rá semmi entry
         if((isWorkday || isSpecial) && !entry){
           missingIso.push(iso);
         }
@@ -688,23 +666,29 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      renderMissingDates(missingIso, today);
+      renderMissingDatesGrouped(missingIso);
       renderYearCalendar(calendarMap, vacSet);
     }
 
-    async function boot(){
-      await ensureSupabase();
+    let refreshing = false;
+    async function refresh(){
+      if(refreshing) return;
+      refreshing = true;
+      try{
+        await ensureSupabase();
 
-      const { data } = await supabase.auth.getSession();
-      if(!data.session){
-        location.replace('/index.html?v=' + Date.now());
-        return;
+        const { data } = await supabase.auth.getSession();
+        if(!data.session){
+          location.replace('/index.html?v=' + Date.now());
+          return;
+        }
+
+        $('yearTitle').textContent = `${YEAR} – Éves naptár`;
+        await loadProfile();
+        await loadYearDataAndCompute();
+      }finally{
+        refreshing = false;
       }
-
-      $('yearTitle').textContent = `${YEAR} – Éves naptár`;
-
-      await loadProfile();
-      await loadYearDataAndCompute();
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -724,7 +708,15 @@
         location.href = '/manager.html?v=' + Date.now();
       });
 
-      boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
+      // első töltés
+      refresh().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
+
+      // ---- FRISSÍTÉS: visszagomb / bfcache / tab váltás ----
+      window.addEventListener('pageshow', ()=>{ refresh().catch(()=>{}); });
+      window.addEventListener('focus', ()=>{ refresh().catch(()=>{}); });
+      document.addEventListener('visibilitychange', ()=>{
+        if(!document.hidden) refresh().catch(()=>{});
+      });
     });
   })();
   </script>
