@@ -22,20 +22,24 @@
       --vac:#b9d9ff;
       --work:#ffffff;
       --weekend:#777b81;
-      --piros:#ff3b30;
 
       /* --- FIX méretek az éves naptárhoz --- */
-      --day:15px;          /* csempe 15x15 */
-      --dayGap:2px;        /* napok között 2px */
-      --monthGap:4px;      /* hónapok között 4px */
-      --dayFont:11px;      /* nap sorszám 11px */
-      --maxCols:4;         /* max 4 hónap / sor */
+      --day:20px;           /* csempe 20x20 */
+      --dayGap:2px;         /* napok között */
+      --monthGap:4px;       /* hónapok között */
+      --dayFont:11px;       /* nap sorszám */
+      --maxCols:6;          /* max 6 hónap / sor */
+      --monthPad:8px;       /* monthCard padding */
+
+      /* 7*20 + 6*2 = 140 + 12 = 152px */
+      --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
+      --monthCardW: calc(var(--monthGridW) + 2 * var(--monthPad));
     }
 
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
 
-    /* ----- HEADER (ugyanaz a stílus) ----- */
+    /* ----- HEADER ----- */
     .header{
       max-width:900px;
       margin:0 auto;
@@ -73,16 +77,13 @@
     .logout-item .material-symbols-outlined,
     .logout-item .menu-label{ color:var(--accent); opacity:1; }
 
-    /* Naptár gomb (vissza) - felirat alapból látszik */
     .cal-item .menu-label{opacity:1; color:var(--text);}
     .cal-item:hover .material-symbols-outlined,
     .cal-item:hover .menu-label{color:var(--accent);}
 
-    /* Adatlap (aktív) */
     .data-item .material-symbols-outlined,
     .data-item .menu-label{ color:var(--accent); opacity:1; }
 
-    /* Beállítások csak hoverre */
     .settings-item .menu-label{opacity:0;}
     .settings-item:hover .material-symbols-outlined,
     .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
@@ -93,35 +94,20 @@
     .wrap{max-width:900px; margin:0 auto; padding:0 12px 18px;}
     .card{background:var(--panel); border:0; border-radius:16px; padding:10px;}
 
-    /* Összesítések helye (placeholder, számítás később) */
     .summaryBox{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+      display:flex; flex-direction:column; gap:8px;
       padding:10px 10px 12px;
       border-radius:14px;
       background:rgba(255,255,255,.06);
       margin-bottom:10px;
     }
     .summaryLine{
-      font-size:14px;
-      line-height:1.2;
-      color:var(--text);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size:14px; line-height:1.2; color:var(--text);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    .summaryLine .num{
-      font-size:115%;
-      font-weight:700;
-    }
-    .hint{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:2px;
-    }
+    .summaryLine .num{font-size:115%; font-weight:700;}
+    .hint{font-size:12px; color:var(--muted); margin-top:2px;}
 
-    /* ----- ÉVES NAPTÁR ----- */
     .yearTitle{
       font-weight:800;
       font-size:1rem;
@@ -129,40 +115,24 @@
       text-align:center;
     }
 
-    /* FIX napcsempe méretekből számolt max szélesség (max 4 hónap/sor) */
-    /* 7 nap * 15px + 6 gap * 2px = 105 + 12 = 117px */
-    /* + padding (8+8) = 16px */
-    /* + címsor + dow kb ~ (nem számoljuk szigorúan), de a grid szélességhez elég: 133px */
-    :root{
-      --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
-      --monthCardPad: 8px;
-      --monthCardW: calc(var(--monthGridW) + 2 * var(--monthCardPad));
-    }
-
-    .yearGrid{
-      display:grid;
+    /* ---- HÓNAPOK KONTÉNERE: flex-wrap tördelés ---- */
+    .monthsWrap{
+      display:flex;
+      flex-wrap:wrap;
       gap:var(--monthGap);
-      /* annyi hónap fér, amennyi kifér, de max 4 */
-      grid-template-columns: repeat(var(--maxCols), var(--monthCardW));
       justify-content:center;
-    }
-    /* ha kisebb a hely, automatikusan essen vissza 3/2/1-re */
-    @media (max-width: calc(4 * (var(--monthCardW)) + 3 * var(--monthGap) + 24px)){
-      .yearGrid{ grid-template-columns: repeat(3, var(--monthCardW)); }
-    }
-    @media (max-width: calc(3 * (var(--monthCardW)) + 2 * var(--monthGap) + 24px)){
-      .yearGrid{ grid-template-columns: repeat(2, var(--monthCardW)); }
-    }
-    @media (max-width: calc(2 * (var(--monthCardW)) + 1 * var(--monthGap) + 24px)){
-      .yearGrid{ grid-template-columns: repeat(1, var(--monthCardW)); }
+      align-items:flex-start;
+      /* a wrap szélessége a kártyából jön (max-width:900px) */
     }
 
+    /* max 6 hónap / sor: fix szélesség + flex-basis ugyanaz */
     .monthCard{
+      width:var(--monthCardW);
+      flex: 0 0 var(--monthCardW);
       background:rgba(255,255,255,.06);
       border-radius:10px;
-      padding:var(--monthCardPad);
+      padding:var(--monthPad);
       overflow:hidden;
-      width:var(--monthCardW);
     }
 
     .monthName{
@@ -184,13 +154,8 @@
     .miniDow div{
       width:var(--day);
       height:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
-      font-size:9px;
-      font-weight:700;
-      color:var(--muted);
+      display:flex; align-items:center; justify-content:center;
+      font-size:9px; font-weight:700; color:var(--muted);
       line-height:1;
     }
 
@@ -227,12 +192,11 @@
     .dTile.weekend{background:var(--weekend);}
     .dTile.holiday{background:var(--holiday);}
     .dTile.vac{background:var(--vac);}
-    .dTile.workSaturday{background:var(--work);} /* nincs zöld keret */
+    .dTile.workSaturday{background:var(--work);}
 
     .dTile.empty{background:transparent; border:0;}
     .dTile.empty span{display:none;}
 
-    /* Today jelzés */
     .dTile.today{
       outline:2px solid var(--accent);
       outline-offset:-2px;
@@ -250,6 +214,11 @@
       padding:14px; border-radius:14px;
       font-size:18px;
       z-index:99;
+    }
+
+    /* opcionális: nagyon széles kijelzőn se legyen több 6-nál */
+    @media (min-width: 1200px){
+      .wrap{max-width:900px;}
     }
   </style>
 </head>
@@ -291,7 +260,7 @@
       </div>
 
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
-      <div id="yearGrid" class="yearGrid"></div>
+      <div id="monthsWrap" class="monthsWrap"></div>
     </section>
   </main>
 
@@ -306,7 +275,6 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // TESZT: ugyanazt használjuk, mint app.html-ben
     const DEV_TODAY = '2026-04-16';
     const YEAR = 2026;
 
@@ -396,8 +364,8 @@
     }
 
     function renderYearCalendar(calendarMap, vacSet){
-      const yearGrid = $('yearGrid');
-      yearGrid.innerHTML = '';
+      const wrap = $('monthsWrap');
+      wrap.innerHTML = '';
 
       const todayIso = getTodayISO();
 
@@ -470,7 +438,7 @@
         }
 
         monthCard.appendChild(mg);
-        yearGrid.appendChild(monthCard);
+        wrap.appendChild(monthCard);
       }
     }
 
