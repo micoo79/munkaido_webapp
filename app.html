@@ -5,7 +5,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Munkaidő</title>
-<style>
+
+  <!-- Material Symbols (ikonok a fejléchez) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+  <style>
     :root{
       --bg:#27272a;           /* zinc-800 */
       --panel:#27272a;        /* zinc-800 */
@@ -17,40 +21,103 @@
       --holiday:#f6b2b2;
       --vac:#b9d9ff;
       --work:#ffffff;         /* fehér - hétköznap */
-      --weekend:#52525b;      /* gray-600 - hétvége */
+      --weekend:#777b81;      /* kért hétvége szín */
       --zold:#1ecb5b;
       --piros:#ff3b30;
     }
+
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
 
-    .topbar{
-      max-width:900px; margin:0 auto; padding:14px 16px 0;
-      display:flex; align-items:center; justify-content:flex-end; gap:12px;
+    /* ---------- HEADER (új) ---------- */
+    .header{
+      max-width:900px;
+      margin:0 auto;
+      padding:0 12px;
+      height:52px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
       background:transparent;
     }
-    .userName{
-      font-size:16px; font-weight:700; text-align:right; color:var(--text);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw;
+
+    .user-block{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      min-width:0;
     }
-    .logoutBtn{
-      border:0; background:#3f3f46; color:var(--text);
-      font-size:16px; font-weight:700;
+
+    .user-name{
+      font-weight:700;
+      font-size:16px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:48vw;
+    }
+
+    .nav-container{
+      display:flex;
+      gap:0;
+      align-items:center;
+    }
+
+    .nav-item{
+      border:0;
+      background:transparent;
+      color:var(--text);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      width:44px;
+      height:52px;
+      position:relative;
       cursor:pointer;
-      padding:10px 12px;
-      border-radius:12px;
+      -webkit-tap-highlight-color:transparent;
+      padding:0;
     }
-    .logoutBtn:hover{background:#52525b;}
-    .logoutBtn:active{background:#52525b;}
 
-    /* Beállítások gomb (manager/admin) */
-    #settingsBtn{
-      background:transparent;
-      border:1px solid #3f3f46;
+    .material-symbols-outlined{
+      font-size:24px;
+      font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      transition:color 0.2s ease;
+      line-height:1;
     }
-    #settingsBtn:hover{background:rgba(255,255,255,.06);}
-    #settingsBtn:active{background:rgba(255,255,255,.10);}
 
+    .menu-label{
+      font-size:10px;
+      position:absolute;
+      bottom:4px;
+      left:50%;
+      transform:translateX(-50%);
+      white-space:nowrap;
+      pointer-events:none;
+      transition:opacity 0.2s ease, color 0.2s ease;
+    }
+
+    /* Kilépés: mindig narancs, felirat is látszik */
+    .logout-item .material-symbols-outlined,
+    .logout-item .menu-label{
+      color:var(--accent);
+      opacity:1;
+    }
+
+    /* Adatlap: felirat alapból látszik, hoverre narancs */
+    .data-item .menu-label{opacity:1; color:var(--text);}
+    .data-item:hover .material-symbols-outlined,
+    .data-item:hover .menu-label{color:var(--accent);}
+
+    /* Beállítások: felirat alapból rejtett, hoverre jelenik meg + narancs */
+    .settings-item .menu-label{opacity:0;}
+    .settings-item:hover .material-symbols-outlined,
+    .settings-item:hover .menu-label{
+      opacity:1;
+      color:var(--accent);
+    }
+
+    /* ---------- MAIN ---------- */
     .wrap{max-width:900px; margin:0 auto; padding:10px 16px 18px;}
     .card{background:var(--panel); border:0; border-radius:16px; padding:12px;}
     .hidden{display:none !important;}
@@ -99,7 +166,7 @@
 
     .tile{
       background:var(--work);
-      border-radius:3.2px;
+      border-radius:3.2px; /* marad */
       display:flex;
       flex-direction:column;
       overflow:hidden;
@@ -116,7 +183,9 @@
     .tile.weekend{background:var(--weekend);}
     .tile.holiday{background:var(--holiday);}
     .tile.vac{background:var(--vac);}
+    /* szombati munkanap: NINCS zöld keret */
     .tile.workSaturday{background:var(--work); border:0;}
+
     .tile.todayFill{background:var(--accent) !important; color:#111;}
 
     .tTop{
@@ -153,12 +222,12 @@
 
     /* Szöveg színek a csempéken */
     .tile .tDay{color:#000;}
-    .tile .line{color:#374151;}
+    .tile .line{color:#374151;}  /* gray-700 */
 
     .tile.weekend .tDay{color:#fff;}
-    .tile.weekend .line{color:#e5e7eb;}
+    .tile.weekend .line{color:#e5e7eb;}  /* gray-200 */
 
-    .tile.rest .tDay{color:#9ca3af;}
+    .tile.rest .tDay{color:#9ca3af;}  /* gray-400 */
     .tile.rest .line{color:#9ca3af;}
 
     .tile.todayFill .tDay{color:#111;}
@@ -174,7 +243,6 @@
       padding:14px; border-radius:14px;
       font-size:20px;
       z-index:99;
-      font-weight:900;
     }
 
     /* Edit modal */
@@ -231,15 +299,35 @@
       .btn{font-size:20px;}
       .tDay{font-size:1rem;}
       .line{font-size:0.625rem;}
+      .nav-item{width:42px;}
+      .user-name{max-width:52vw;}
     }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
-  <header class="topbar">
-    <div id="userName" class="userName"></div>
-    <button id="settingsBtn" class="logoutBtn hidden" type="button">Beállítások</button>
-    <button id="logoutBtn" class="logoutBtn" type="button">Kijelentkezés</button>
+  <header class="header">
+    <div class="user-block">
+      <div id="userName" class="user-name"></div>
+      <button id="logoutBtn" class="nav-item logout-item" type="button" aria-label="Kilépés">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="menu-label">Kilépés</span>
+      </button>
+    </div>
+
+    <nav class="nav-container">
+      <button id="dataBtn" class="nav-item data-item" type="button" aria-label="Adatlap">
+        <span class="material-symbols-outlined">clinical_notes</span>
+        <span class="menu-label">Adatlap</span>
+      </button>
+
+      <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="menu-label">Beállítások</span>
+      </button>
+    </nav>
   </header>
 
   <main class="wrap">
@@ -312,493 +400,471 @@
     </div>
   </div>
 
-<script>
-(() => {
-  const $ = (id)=>document.getElementById(id);
-  const toast = (t)=>{
-    const el = document.createElement('div');
-    el.className='toast';
-    el.textContent=t;
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(), 2200);
-  };
-
-  // TESZT: élesben állítsd ''-re vagy null-ra, és akkor a valódi dátumot használja
-  const DEV_TODAY = '2026-04-16';
-
-  let supabase = null;
-  let profile = null;
-
-  let curYear = 2026;
-  let curMonth = 4;
-
-  let monthRows = [];
-  let entriesByDate = new Map();
-
-  let editingDate = null;
-  let editingCalRow = null;
-
-  function getTodayISO(){
-    if(DEV_TODAY) return DEV_TODAY;
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
-  }
-
-  function huMonthName(m){
-    const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
-    return names[m-1] || '';
-  }
-
-  function isWeekendISO(iso){
-    const d = new Date(iso+'T12:00:00');
-    const wd = d.getDay();
-    return wd===0 || wd===6;
-  }
-
-  function getMonthNav(y,m,dir){
-    const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
-    d.setMonth(d.getMonth()+dir);
-    return { y:d.getFullYear(), m:d.getMonth()+1 };
-  }
-
-  function hhmmToMins(hhmm){
-    if(!hhmm) return null;
-    const [h,m] = hhmm.split(':').map(Number);
-    return h*60 + m;
-  }
-
-  function minsToHHMM(mins){
-    const m = Math.max(0, Number(mins)||0);
-    const h = Math.floor(m/60);
-    const mm = m%60;
-    return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
-  }
-
-  async function ensureSupabase(){
-    if(supabase) return supabase;
-
-    const t0=Date.now();
-    while(!(window.supabase && window.supabase.createClient)){
-      if(Date.now()-t0>6000) throw new Error('Supabase CDN nem töltődött be.');
-      await new Promise(r=>setTimeout(r,120));
-    }
-
-    const r = await fetch('/config', { cache:'no-store' });
-    if(!r.ok) throw new Error('Nem elérhető a /config.');
-    const j = await r.json();
-    const url = j.SUPABASE_URL || j.supabaseUrl;
-    const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
-    if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
-
-    supabase = window.supabase.createClient(url, key, {
-      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-      db:{ schema:'app' }
-    });
-    return supabase;
-  }
-
-  function buildTimeOptions(selectEl, step=15, max=24*60){
-    selectEl.innerHTML = '';
-    const optBlank = document.createElement('option');
-    optBlank.value = '';
-    optBlank.textContent = '';
-    selectEl.appendChild(optBlank);
-
-    for(let t=0; t<=max; t+=step){
-      const h = Math.floor(t/60);
-      const mm = t%60;
-      const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
-      const opt = document.createElement('option');
-      opt.value = val;
-      opt.textContent = val;
-      selectEl.appendChild(opt);
-    }
-    selectEl.value = '';
-  }
-
-  function buildFlexMinutesOptions(selectEl, step=15, max=8*60){
-    selectEl.innerHTML = '';
-    const optBlank = document.createElement('option');
-    optBlank.value = '';
-    optBlank.textContent = '';
-    selectEl.appendChild(optBlank);
-
-    for(let t=0; t<=max; t+=step){
-      const opt = document.createElement('option');
-      opt.value = String(t);
-      opt.textContent = minsToHHMM(t);
-      selectEl.appendChild(opt);
-    }
-    selectEl.value = '';
-  }
-
-  // Színezés (calendar_days alapján)
-  function tileClass(row){
-    const iso = row.date;
-    const isHol = (!row.is_workday && !!row.holiday_name);
-
-    if(isHol) return 'tile holiday';
-    if(!!row.special_workday) return 'tile workSaturday';
-    if(isWeekendISO(iso)) return 'tile weekend';
-    if(!row.is_workday) return 'tile rest';
-    return 'tile';
-  }
-
-  function normalizeIsoDate(d){ return String(d).slice(0,10); }
-
-  function applyFlexRuleUI(){
-    // Szabi esetén: csúsztatás TILOS
-    const isVac = $('vacChk').checked;
-    if(isVac){
-      $('flexSel').value = '';
-      $('flexSel').disabled = true;
-    }else{
-      // egyéb tiltás: hétvége/ünnep (nem munkanap) - kivéve special_workday
-      const iso = editingDate;
-      const calRow = editingCalRow;
-      if(!iso || !calRow) return;
-      const isSpecial = !!calRow.special_workday;
-      const dis = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
-      $('flexSel').disabled = dis;
-    }
-  }
-
-  function renderGrid(){
-    const grid = $('grid');
-    grid.innerHTML = '';
-
-    const firstIso = monthRows[0]?.date;
-    if(!firstIso) return;
-
-    const firstDate = new Date(firstIso+'T12:00:00');
-    let wd = firstDate.getDay();
-    wd = wd===0 ? 7 : wd;
-    const offset = wd-1;
-
-    for(let i=0;i<42;i++){
-      if(i<offset || (i-offset)>=monthRows.length){
-        const empty = document.createElement('div');
-        empty.className = 'tile rest';
-        empty.style.opacity = '.15';
-        grid.appendChild(empty);
-        continue;
-      }
-
-      const row = monthRows[i-offset];
-      const iso = row.date;
-
-      const tile = document.createElement('div');
-      tile.className = tileClass(row);
-
-      if(iso===getTodayISO()) tile.classList.add('todayFill');
-
-      const entry = entriesByDate.get(iso);
-
-      const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
-      const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
-      const flexMin = Number(entry?.flex_minutes || 0);
-      const isVac = !!entry?.is_vacation;
-
-      // Szabi mindig kék legyen (felülírja a nap típusát, pl. special_workday-t is)
-if(isVac){
-  tile.classList.remove('holiday','weekend','rest','workSaturday');
-  tile.classList.add('vac');
-}
-
-
-      const top = document.createElement('div');
-      top.className = 'tTop';
-      const dn = document.createElement('div');
-      dn.className = 'tDay';
-      dn.textContent = String(Number(iso.slice(8,10)));
-      top.appendChild(dn);
-
-      const lines = document.createElement('div');
-      lines.className = 'lines';
-
-      const l1 = document.createElement('div'); l1.className='line';
-      const l2 = document.createElement('div'); l2.className='line';
-      const l3 = document.createElement('div'); l3.className='line';
-
-      if(arr) l1.textContent = arr;
-      if(dep) l2.textContent = dep;
-
-      // Flex piros, Szabi alul, ünnepnév csak ha nincs rögzítés
-      if(flexMin > 0){
-        l3.textContent = minsToHHMM(flexMin);
-        l3.classList.add('red');
-      }else if(isVac){
-        l3.textContent = 'Szabi';
-        l3.classList.add('black');
-      }else if(row.holiday_name && !entry){
-        l3.textContent = row.holiday_name;
-        l3.classList.add('black');
-      }else{
-        l3.textContent = '';
-      }
-
-      lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
-      tile.appendChild(top);
-      tile.appendChild(lines);
-
-      tile.addEventListener('click', ()=>openEdit(iso, row));
-      grid.appendChild(tile);
-    }
-  }
-
-  function validateEditForm(){
-    const inV = $('arrSel').value;
-    const outV = $('depSel').value;
-
-    const inWrap = $('arrSel').parentElement;
-    const outWrap = $('depSel').parentElement;
-
-    if(inV && outV){
-      const inM = hhmmToMins(inV);
-      const outM = hhmmToMins(outV);
-      if(outM < inM){
-        $('editErr').textContent = 'Hiba: Távozás nem lehet korábbi, mint Érkezés!';
-        $('editErr').classList.remove('hidden');
-        inWrap.classList.add('invalid');
-        outWrap.classList.add('invalid');
-        $('saveBtn').disabled = true;
-        return false;
-      }
-    }
-    $('editErr').classList.add('hidden');
-    inWrap.classList.remove('invalid');
-    outWrap.classList.remove('invalid');
-    $('saveBtn').disabled = false;
-    return true;
-  }
-
-  function openEdit(iso, calRow){
-    editingDate = iso;
-    editingCalRow = calRow;
-
-    $('editDate').textContent = iso.replaceAll('-', '.');
-    $('editErr').classList.add('hidden');
-
-    const entry = entriesByDate.get(iso) || {};
-    $('arrSel').value = entry.arrival ? String(entry.arrival).slice(0,5) : '';
-    $('depSel').value = entry.departure ? String(entry.departure).slice(0,5) : '';
-
-    const flexMin = Number(entry.flex_minutes || 0);
-    $('flexSel').value = flexMin > 0 ? String(flexMin) : '';
-
-    $('vacChk').checked = !!entry.is_vacation;
-    $('noteTxt').value = entry.note ? String(entry.note) : '';
-
-    // hétvége/ünnepnap (nem munkanap) => szabi és flex tiltva (kivéve special_workday)
-    const isSpecial = !!calRow.special_workday;
-    const disVac = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
-
-    $('vacChk').disabled = disVac;
-
-    // Szabi esetén flex tiltva, illetve a fenti szabály is tiltja
-    applyFlexRuleUI();
-
-    $('modalBackdrop').classList.remove('hidden');
-    validateEditForm();
-  }
-
-  function closeEdit(){
-    $('modalBackdrop').classList.add('hidden');
-    editingDate = null;
-    editingCalRow = null;
-  }
-
-  function clearEditForm(){
-    $('arrSel').value = '';
-    $('depSel').value = '';
-    $('flexSel').value = '';
-    $('vacChk').checked = false;
-    $('noteTxt').value = '';
-    applyFlexRuleUI();
-    validateEditForm();
-  }
-
-  async function loadProfile(){
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-    if(!uid) return null;
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('display_name,email,role')
-      .eq('user_id', uid)
-      .maybeSingle();
-
-    if(error) throw error;
-
-    profile = data || { display_name: u.user.email, email: u.user.email, role:'user' };
-    $('userName').textContent = profile.display_name || profile.email || '';
-
-    const role = String(profile?.role || '').toLowerCase();
-    const canManage = (role === 'admin' || role === 'manager');
-    if(canManage){
-      $('settingsBtn').classList.remove('hidden');
-    }else{
-      $('settingsBtn').classList.add('hidden');
-    }
-  }
-
-  async function loadMonth(){
-    const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
-    const end = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
-
-    const { data: days, error: e1 } = await supabase
-      .from('calendar_days')
-      .select('date,is_workday,holiday_name,special_workday,year')
-      .eq('year', curYear)
-      .gte('date', start)
-      .lt('date', end)
-      .order('date', { ascending:true });
-    if(e1) throw e1;
-
-    monthRows = (days || []).map(r => ({ ...r, date: normalizeIsoDate(r.date) }));
-
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-
-    const { data: ents, error: e2 } = await supabase
-      .from('entries')
-      .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
-      .eq('user_id', uid)
-      .gte('date', start)
-      .lt('date', end)
-      .order('date', { ascending:true });
-    if(e2) throw e2;
-
-    entriesByDate = new Map();
-    (ents||[]).forEach(r=>{
-      const iso = normalizeIsoDate(r.date);
-      entriesByDate.set(iso, { ...r, date: iso });
-    });
-
-    $('monthTitle').textContent = `${curYear} ${huMonthName(curMonth)}`;
-    renderGrid();
-  }
-
-  async function saveCurrentEdit(){
-    const iso = editingDate;
-    if(!iso) return;
-
-    const isVac = $('vacChk').checked;
-
-    const payload = {
-      date: iso,
-      arrival: $('arrSel').value || null,
-      departure: $('depSel').value || null,
-      // Szabi esetén flex TILOS: kényszerítjük 0-ra
-      flex_minutes: isVac ? 0 : ($('flexSel').value ? Number($('flexSel').value) : 0),
-      is_vacation: isVac,
-      note: ($('noteTxt').value || '').trim()
+  <script>
+  (() => {
+    const $ = (id)=>document.getElementById(id);
+    const toast = (t)=>{
+      const el = document.createElement('div');
+      el.className='toast';
+      el.textContent=t;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(), 2200);
     };
 
-    const { data: u } = await supabase.auth.getUser();
-    const uid = u?.user?.id;
-    if(!uid) throw new Error('Nincs user session.');
+    // TESZT: élesben állítsd ''-re vagy null-ra, és akkor a valódi dátumot használja
+    const DEV_TODAY = '2026-04-16';
 
-    const { error } = await supabase
-      .from('entries')
-      .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,date' });
-    if(error) throw error;
+    let supabase = null;
+    let profile = null;
 
-    const isEmpty =
-      !payload.arrival &&
-      !payload.departure &&
-      (payload.flex_minutes === 0) &&
-      !payload.is_vacation &&
-      (!payload.note || payload.note.length === 0);
+    let curYear = 2026;
+    let curMonth = 4;
 
-    if(isEmpty){
-      entriesByDate.delete(iso);
-    }else{
-      entriesByDate.set(iso, { user_id: uid, ...payload });
-    }
-  }
+    let monthRows = [];
+    let entriesByDate = new Map();
 
-  async function boot(){
-    await ensureSupabase();
+    let editingDate = null;
+    let editingCalRow = null;
 
-    const { data } = await supabase.auth.getSession();
-    if(!data.session){
-      location.replace('/index.html?v=' + Date.now());
-      return;
+    function getTodayISO(){
+      if(DEV_TODAY) return DEV_TODAY;
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
     }
 
-    await loadProfile();
+    function huMonthName(m){
+      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+      return names[m-1] || '';
+    }
 
-    buildTimeOptions($('arrSel'), 15, 24*60);
-    buildTimeOptions($('depSel'), 15, 24*60);
-    buildFlexMinutesOptions($('flexSel'), 15, 8*60);
+    function isWeekendISO(iso){
+      const d = new Date(iso+'T12:00:00');
+      const wd = d.getDay();
+      return wd===0 || wd===6;
+    }
 
-    const today = getTodayISO();
-    curYear = Number(today.slice(0,4));
-    curMonth = Number(today.slice(5,7));
+    function getMonthNav(y,m,dir){
+      const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
+      d.setMonth(d.getMonth()+dir);
+      return { y:d.getFullYear(), m:d.getMonth()+1 };
+    }
 
-    await loadMonth();
-  }
+    function hhmmToMins(hhmm){
+      if(!hhmm) return null;
+      const [h,m] = hhmm.split(':').map(Number);
+      return h*60 + m;
+    }
 
-  window.addEventListener('DOMContentLoaded', ()=>{
-    $('settingsBtn').addEventListener('click', ()=>{
-      location.href = '/manager.html';
-    });
+    function minsToHHMM(mins){
+      const m = Math.max(0, Number(mins)||0);
+      const h = Math.floor(m/60);
+      const mm = m%60;
+      return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
+    }
 
-    $('logoutBtn').addEventListener('click', async ()=>{
-      try{
-        await ensureSupabase();
-        toast('Kilépés…');
-        await supabase.auth.signOut();
-      }catch(_){}
-      location.replace('/index.html?v=' + Date.now());
-    });
+    async function ensureSupabase(){
+      if(supabase) return supabase;
 
-    $('prevBtn').addEventListener('click', async ()=>{
-      const nav = getMonthNav(curYear, curMonth, -1);
-      if(nav.y!==2026) return;
-      curYear = nav.y; curMonth = nav.m;
-      await loadMonth();
-    });
-    $('nextBtn').addEventListener('click', async ()=>{
-      const nav = getMonthNav(curYear, curMonth, +1);
-      if(nav.y!==2026) return;
-      curYear = nav.y; curMonth = nav.m;
-      await loadMonth();
-    });
-
-    $('modalBackdrop').addEventListener('click', (e)=>{
-      if(e.target === $('modalBackdrop')) closeEdit();
-    });
-
-    $('arrSel').addEventListener('change', validateEditForm);
-    $('depSel').addEventListener('change', validateEditForm);
-
-    // Szabi kapcsoló: flex tiltás azonnal
-    $('vacChk').addEventListener('change', ()=>{
-      applyFlexRuleUI();
-    });
-
-    $('delBtn').addEventListener('click', ()=>clearEditForm());
-
-    $('saveBtn').addEventListener('click', async ()=>{
-      if(!validateEditForm()) return;
-      try{
-        await saveCurrentEdit();
-        closeEdit();
-        await loadMonth();
-      }catch(e){
-        toast('Mentés hiba: ' + (e?.message||String(e)));
+      const t0=Date.now();
+      while(!(window.supabase && window.supabase.createClient)){
+        if(Date.now()-t0>6000) throw new Error('Supabase CDN nem töltődött be.');
+        await new Promise(r=>setTimeout(r,120));
       }
-    });
 
-    boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
-  });
-})();
-</script>
+      const r = await fetch('/config', { cache:'no-store' });
+      if(!r.ok) throw new Error('Nem elérhető a /config.');
+      const j = await r.json();
+      const url = j.SUPABASE_URL || j.supabaseUrl;
+      const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
+      if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
+
+      supabase = window.supabase.createClient(url, key, {
+        auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+        db:{ schema:'app' }
+      });
+      return supabase;
+    }
+
+    function buildTimeOptions(selectEl, step=15, max=24*60){
+      selectEl.innerHTML = '';
+      const optBlank = document.createElement('option');
+      optBlank.value = '';
+      optBlank.textContent = '';
+      selectEl.appendChild(optBlank);
+
+      for(let t=0; t<=max; t+=step){
+        const h = Math.floor(t/60);
+        const mm = t%60;
+        const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        selectEl.appendChild(opt);
+      }
+      selectEl.value = '';
+    }
+
+    function buildFlexMinutesOptions(selectEl, step=15, max=8*60){
+      selectEl.innerHTML = '';
+      const optBlank = document.createElement('option');
+      optBlank.value = '';         // UI-ban üres = 0
+      optBlank.textContent = '';
+      selectEl.appendChild(optBlank);
+
+      for(let t=0; t<=max; t+=step){
+        const opt = document.createElement('option');
+        opt.value = String(t);     // percek
+        opt.textContent = minsToHHMM(t);
+        selectEl.appendChild(opt);
+      }
+      selectEl.value = '';
+    }
+
+    // Színezés: ünnep > special_workday > hétvége > sima pihenő > munkanap
+    function tileClass(row){
+      const iso = row.date;
+      const isHol = (!row.is_workday && !!row.holiday_name);
+
+      if(isHol) return 'tile holiday';
+      if(!!row.special_workday) return 'tile workSaturday';
+      if(isWeekendISO(iso)) return 'tile weekend';
+      if(!row.is_workday) return 'tile rest';
+      return 'tile';
+    }
+
+    function normalizeIsoDate(d){
+      return String(d).slice(0,10);
+    }
+
+    function renderGrid(){
+      const grid = $('grid');
+      grid.innerHTML = '';
+
+      const firstIso = monthRows[0]?.date;
+      if(!firstIso) return;
+
+      const firstDate = new Date(firstIso+'T12:00:00');
+      let wd = firstDate.getDay();
+      wd = wd===0 ? 7 : wd;
+      const offset = wd-1;
+
+      for(let i=0;i<42;i++){
+        if(i<offset || (i-offset)>=monthRows.length){
+          const empty = document.createElement('div');
+          empty.className = 'tile rest';
+          empty.style.opacity = '.15';
+          grid.appendChild(empty);
+          continue;
+        }
+
+        const row = monthRows[i-offset];
+        const iso = row.date;
+
+        const tile = document.createElement('div');
+        tile.className = tileClass(row);
+
+        if(iso===getTodayISO()) tile.classList.add('todayFill');
+
+        const top = document.createElement('div');
+        top.className = 'tTop';
+        const dn = document.createElement('div');
+        dn.className = 'tDay';
+        dn.textContent = String(Number(iso.slice(8,10)));
+        top.appendChild(dn);
+
+        const lines = document.createElement('div');
+        lines.className = 'lines';
+
+        const l1 = document.createElement('div'); l1.className='line';
+        const l2 = document.createElement('div'); l2.className='line';
+        const l3 = document.createElement('div'); l3.className='line';
+
+        const entry = entriesByDate.get(iso);
+
+        const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
+        const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
+        const flexMin = Number(entry?.flex_minutes || 0);
+        const isVac = !!entry?.is_vacation;
+
+        // Szabi mindig kék legyen (felülírja a nap típusát, pl. special_workday-t is)
+        if(isVac){
+          tile.classList.remove('holiday','weekend','rest','workSaturday');
+          tile.classList.add('vac');
+        }
+
+        if(arr) l1.textContent = arr;
+        if(dep) l2.textContent = dep;
+
+        if(flexMin > 0){
+          l3.textContent = minsToHHMM(flexMin);
+          l3.classList.add('red');
+        }else if(isVac){
+          l3.textContent = 'Szabi';
+          l3.classList.add('black');
+        }else if(row.holiday_name && !entry){
+          // ha ünnepnap és NINCS rögzítés, akkor kiírjuk a nevét
+          l3.textContent = row.holiday_name;
+          l3.classList.add('black');
+        }else{
+          l3.textContent = '';
+        }
+
+        lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
+        tile.appendChild(top);
+        tile.appendChild(lines);
+
+        tile.addEventListener('click', ()=>openEdit(iso, row));
+        grid.appendChild(tile);
+      }
+    }
+
+    function validateEditForm(){
+      const inV = $('arrSel').value;
+      const outV = $('depSel').value;
+
+      const inWrap = $('arrSel').parentElement;
+      const outWrap = $('depSel').parentElement;
+
+      if(inV && outV){
+        const inM = hhmmToMins(inV);
+        const outM = hhmmToMins(outV);
+        if(outM < inM){
+          $('editErr').textContent = 'Hiba: Távozás nem lehet korábbi, mint Érkezés!';
+          $('editErr').classList.remove('hidden');
+          inWrap.classList.add('invalid');
+          outWrap.classList.add('invalid');
+          $('saveBtn').disabled = true;
+          return false;
+        }
+      }
+      $('editErr').classList.add('hidden');
+      inWrap.classList.remove('invalid');
+      outWrap.classList.remove('invalid');
+      $('saveBtn').disabled = false;
+      return true;
+    }
+
+    function openEdit(iso, calRow){
+      editingDate = iso;
+      editingCalRow = calRow;
+
+      $('editDate').textContent = iso.replaceAll('-', '.');
+      $('editErr').classList.add('hidden');
+
+      const entry = entriesByDate.get(iso) || {};
+      $('arrSel').value = entry.arrival ? String(entry.arrival).slice(0,5) : '';
+      $('depSel').value = entry.departure ? String(entry.departure).slice(0,5) : '';
+
+      const flexMin = Number(entry.flex_minutes || 0);
+      $('flexSel').value = flexMin > 0 ? String(flexMin) : '';
+
+      $('vacChk').checked = !!entry.is_vacation;
+      $('noteTxt').value = entry.note ? String(entry.note) : '';
+
+      // Szabály: hétvégén és ünnepnapon (nem munkanap) ne lehessen Flex,
+      // kivéve ha special_workday=true (munkanap szombat)
+      // Szabi viszont legyen kezelve a DB oldalon is (entries_validate)
+      const isSpecial = !!calRow.special_workday;
+      const disFlex = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
+
+      $('flexSel').disabled = disFlex;
+
+      $('modalBackdrop').classList.remove('hidden');
+      validateEditForm();
+    }
+
+    function closeEdit(){
+      $('modalBackdrop').classList.add('hidden');
+      editingDate = null;
+      editingCalRow = null;
+    }
+
+    function clearEditForm(){
+      $('arrSel').value = '';
+      $('depSel').value = '';
+      $('flexSel').value = '';
+      $('vacChk').checked = false;
+      $('noteTxt').value = '';
+      validateEditForm();
+    }
+
+    async function loadProfile(){
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,email,role')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      if(error) throw error;
+
+      profile = data || { display_name: u.user.email, email: u.user.email, role: 'user' };
+      $('userName').textContent = profile.display_name || profile.email || '';
+
+      // Beállítások csak admin/manager
+      const role = String(profile.role || 'user');
+      if(role === 'admin' || role === 'manager'){
+        $('settingsBtn').classList.remove('hidden');
+      }else{
+        $('settingsBtn').classList.add('hidden');
+      }
+    }
+
+    async function loadMonth(){
+      const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
+      const end = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
+
+      const { data: days, error: e1 } = await supabase
+        .from('calendar_days')
+        .select('date,is_workday,holiday_name,special_workday,year')
+        .eq('year', curYear)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending:true });
+      if(e1) throw e1;
+
+      monthRows = (days || []).map(r => ({ ...r, date: normalizeIsoDate(r.date) }));
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+
+      const { data: ents, error: e2 } = await supabase
+        .from('entries')
+        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
+        .eq('user_id', uid)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending:true });
+      if(e2) throw e2;
+
+      entriesByDate = new Map();
+      (ents||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        entriesByDate.set(iso, { ...r, date: iso });
+      });
+
+      $('monthTitle').textContent = `${curYear} ${huMonthName(curMonth)}`;
+      renderGrid();
+    }
+
+    async function saveCurrentEdit(){
+      const iso = editingDate;
+      if(!iso) return;
+
+      const payload = {
+        date: iso,
+        arrival: $('arrSel').value || null,
+        departure: $('depSel').value || null,
+        flex_minutes: $('flexSel').value ? Number($('flexSel').value) : 0,
+        is_vacation: $('vacChk').checked,
+        note: ($('noteTxt').value || '').trim()
+      };
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) throw new Error('Nincs user session.');
+
+      const { error } = await supabase
+        .from('entries')
+        .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,date' });
+      if(error) throw error;
+
+      const isEmpty =
+        !payload.arrival &&
+        !payload.departure &&
+        (payload.flex_minutes === 0) &&
+        !payload.is_vacation &&
+        (!payload.note || payload.note.length === 0);
+
+      if(isEmpty){
+        entriesByDate.delete(iso);
+      }else{
+        entriesByDate.set(iso, { user_id: uid, ...payload });
+      }
+    }
+
+    async function boot(){
+      await ensureSupabase();
+
+      const { data } = await supabase.auth.getSession();
+      if(!data.session){
+        location.replace('/index.html?v=' + Date.now());
+        return;
+      }
+
+      await loadProfile();
+
+      buildTimeOptions($('arrSel'), 15, 24*60);
+      buildTimeOptions($('depSel'), 15, 24*60);
+      buildFlexMinutesOptions($('flexSel'), 15, 8*60);
+
+      const today = getTodayISO();
+      curYear = Number(today.slice(0,4));
+      curMonth = Number(today.slice(5,7));
+
+      await loadMonth();
+    }
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      $('logoutBtn').addEventListener('click', async ()=>{
+        try{
+          await ensureSupabase();
+          await supabase.auth.signOut();
+        }catch(_){}
+        location.replace('/index.html?v=' + Date.now());
+      });
+
+      $('dataBtn').addEventListener('click', ()=>{
+        toast('Adatlap: hamarosan');
+      });
+
+      $('settingsBtn').addEventListener('click', ()=>{
+        // manager/admin felület
+        location.href = '/manager.html?v=' + Date.now();
+      });
+
+      $('prevBtn').addEventListener('click', async ()=>{
+        const nav = getMonthNav(curYear, curMonth, -1);
+        if(nav.y!==2026) return;
+        curYear = nav.y; curMonth = nav.m;
+        await loadMonth();
+      });
+      $('nextBtn').addEventListener('click', async ()=>{
+        const nav = getMonthNav(curYear, curMonth, +1);
+        if(nav.y!==2026) return;
+        curYear = nav.y; curMonth = nav.m;
+        await loadMonth();
+      });
+
+      $('modalBackdrop').addEventListener('click', (e)=>{
+        if(e.target === $('modalBackdrop')) closeEdit();
+      });
+
+      $('arrSel').addEventListener('change', validateEditForm);
+      $('depSel').addEventListener('change', validateEditForm);
+
+      $('delBtn').addEventListener('click', ()=>clearEditForm());
+
+      $('saveBtn').addEventListener('click', async ()=>{
+        if(!validateEditForm()) return;
+        try{
+          await saveCurrentEdit();
+          closeEdit();
+          await loadMonth();
+        }catch(e){
+          toast('Mentés hiba: ' + (e?.message||String(e)));
+        }
+      });
+
+      boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
+    });
+  })();
+  </script>
 </body>
 </html>
