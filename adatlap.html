@@ -26,7 +26,6 @@
       --zold:#1ecb5b;
       --piros:#ff3b30;
 
-      /* FIX méretek az éves naptárhoz */
       --day:16px;
       --dayGap:1px;
       --monthGap:3px;
@@ -76,18 +75,17 @@
       transition:opacity .2s ease, color .2s ease;
     }
 
-    /* Kilépés: ikon fehér, felirat narancs */
+    /* Kilépés: ikon fehér, felirat fehér (kérés) */
     .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
-    .logout-item .menu-label{ color:var(--accent); opacity:1; }
+    .logout-item .menu-label{ color:var(--text); opacity:1; }
 
     /* Rögzítés: felirat alapból látszik, hoverre narancs */
     .rec-item .menu-label{opacity:1; color:var(--text);}
     .rec-item:hover .material-symbols-outlined,
     .rec-item:hover .menu-label{color:var(--accent);}
 
-    /* Összesítő: aktív */
-    .sum-item .material-symbols-outlined,
-    .sum-item .menu-label{ color:var(--accent); opacity:1; }
+    /* Összesítő ikon/szöveg ne látszódjon itt */
+    .sum-item{display:none !important;}
 
     /* Beállítások: hover label */
     .settings-item .menu-label{opacity:0;}
@@ -107,13 +105,41 @@
       background:rgba(255,255,255,.06);
       margin-bottom:10px;
     }
+
+    /* A túlóra/hátralék sor: mindig tördelhető, mindig látszik */
     .summaryLine{
-      font-size:14px; line-height:1.2; color:var(--text);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-size:14px; line-height:1.25; color:var(--text);
+      white-space:normal; overflow:visible; text-overflow:clip;
+      word-break:break-word;
     }
-    .summaryLine .num{font-size:115%; font-weight:700;}
-    .summaryLine .good{color:var(--zold); font-weight:800;}
-    .summaryLine .bad{color:var(--piros); font-weight:800;}
+    /* kiemelt számok: fehér (kérés) */
+    .summaryLine .num{font-size:115%; font-weight:800; color:var(--text) !important;}
+
+    .missingBox{
+      margin-top:6px;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+    }
+    .missingTitle{
+      font-size:12px;
+      font-weight:800;
+      margin-bottom:6px;
+      color:var(--text);
+    }
+    .missingList{
+      font-size:12px;
+      line-height:1.2;
+      color:var(--text);
+      user-select:text;
+    }
+    .missDate{
+      color:var(--text);
+      text-decoration:underline;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .missDate.old{ color:var(--piros); }
 
     .yearTitle{
       font-weight:800;
@@ -255,7 +281,11 @@
       <div class="summaryBox">
         <div id="sumFlex" class="summaryLine">Betöltés…</div>
         <div id="sumVac"  class="summaryLine">Betöltés…</div>
-        <div id="sumMissing" class="summaryLine">Betöltés…</div>
+      </div>
+
+      <div class="missingBox">
+        <div class="missingTitle">Az alábbi napokon nem rögzítettél munkaidőt:</div>
+        <div id="missingList" class="missingList">Betöltés…</div>
       </div>
 
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
@@ -274,7 +304,6 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // TESZT: élesben állítsd ''-re vagy null-ra
     const DEV_TODAY = '2026-04-16';
     const YEAR = 2026;
 
@@ -318,6 +347,21 @@
       return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
     }
 
+    function addDaysISO(iso, days){
+      const d = new Date(iso + 'T12:00:00');
+      d.setDate(d.getDate() + days);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
+    }
+
+    function daysBetween(aIso, bIso){
+      const a = new Date(aIso + 'T12:00:00');
+      const b = new Date(bIso + 'T12:00:00');
+      return Math.round((b - a) / (24*60*60*1000));
+    }
+
     async function ensureSupabase(){
       if(supabase) return supabase;
 
@@ -354,9 +398,17 @@
 
       if(error) throw error;
 
-      profile = data || { display_name: u.user.email, email: u.user.email, role:'user', daily_expected_minutes:480,
-        vacation_entitlement_days:0, vacation_carryover_days:0, flex_carryover_minutes:0, flex_bonus_minutes:0
+      profile = data || {
+        display_name: u.user.email,
+        email: u.user.email,
+        role:'user',
+        daily_expected_minutes:480,
+        vacation_entitlement_days:0,
+        vacation_carryover_days:0,
+        flex_carryover_minutes:0,
+        flex_bonus_minutes:0
       };
+
       $('userName').textContent = profile.display_name || profile.email || '';
 
       const role = String(profile.role || 'user');
@@ -452,7 +504,6 @@
 
         monthCard.appendChild(mg);
 
-        // kattintás: adott hónapra ugrás a havi nézetben
         monthCard.addEventListener('click', ()=>{
           location.href = `/app.html?y=${YEAR}&m=${month}&v=${Date.now()}`;
         });
@@ -469,13 +520,46 @@
       const days = Math.floor(abs / dayMins);
 
       const isPos = balanceMinutes >= 0;
-      const cls = isPos ? 'good' : 'bad';
       const label = isPos ? 'túlórád' : 'hátralékod';
 
       if(days >= 1){
-        return `A mai napig <span class="num ${cls}">${hhmm}</span> óra ${label} van, ez kb <span class="num ${cls}">${days}</span> napnak felel meg.`;
+        return `A mai napig <span class="num">${hhmm}</span> óra ${label} van,<br>ez kb <span class="num">${days}</span> napnak felel meg.`;
       }
-      return `A mai napig <span class="num ${cls}">${hhmm}</span> óra ${label} van.`;
+      return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
+    }
+
+    function renderMissingDates(missingIsoList, todayIso){
+      const box = $('missingList');
+      box.innerHTML = '';
+
+      if(missingIsoList.length === 0){
+        box.textContent = 'Nincs hiányzó rögzítés.';
+        return;
+      }
+
+      // 2 hétnél régebbi => piros
+      // (ma - dátum > 14)
+      missingIsoList.forEach((iso, idx)=>{
+        const a = document.createElement('span');
+        a.className = 'missDate';
+
+        const age = daysBetween(iso, todayIso);
+        if(age > 14) a.classList.add('old');
+
+        a.textContent = iso.replaceAll('-', '.');
+
+        a.addEventListener('click', ()=>{
+          const y = Number(iso.slice(0,4));
+          const m = Number(iso.slice(5,7));
+          location.href = `/app.html?y=${y}&m=${m}&v=${Date.now()}`;
+        });
+
+        box.appendChild(a);
+
+        if(idx < missingIsoList.length - 1){
+          box.appendChild(document.createTextNode(', '));
+        }
+      });
     }
 
     async function loadYearDataAndCompute(){
@@ -483,7 +567,6 @@
       const start = `${YEAR}-01-01`;
       const end = `${YEAR+1}-01-01`;
 
-      // 1) calendar_days évre
       const { data: days, error: e1 } = await supabase
         .from('calendar_days')
         .select('date,is_workday,holiday_name,special_workday,year')
@@ -497,7 +580,6 @@
         calendarMap.set(iso, { ...r, date: iso });
       });
 
-      // 2) entries évre (user)
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
 
@@ -515,7 +597,6 @@
         entriesMap.set(iso, { ...r, date: iso });
       });
 
-      // --- számítások ---
       const expPerDay = Number(profile?.daily_expected_minutes || 480);
       const carry = Number(profile?.flex_carryover_minutes || 0);
       const bonus = Number(profile?.flex_bonus_minutes || 0);
@@ -523,23 +604,20 @@
       let expectedTotal = 0;
       let fulfilledTotal = 0;
 
-      let totalWorkdaysCounted = 0;
-      let recordedWorkdays = 0;
-
       let takenVacationDays = 0;
       const vacSet = new Set();
 
-      // végigmegyünk az év napjain, de csak today-ig
-      for(const [iso, cal] of calendarMap.entries()){
-        if(iso > today) break;
+      const missingIso = [];
 
-        const isWorkday = !!cal.is_workday;              // ebben már benne van a special_workday is (is_workday=true)
-        const isSpecial = !!cal.special_workday;
-        const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial); // hétvége/ünnep (nem munkanap) => duplázás
+      // napok today-ig
+      const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
+      for(const cal of sortedDays){
+        const iso = cal.date;
+        if(iso > today) break;
 
         const entry = entriesMap.get(iso);
 
-        // "ma csak akkor számít, ha van rögzítés" (érkezés/távozás vagy szabi vagy flex>0)
+        // ma csak akkor számít, ha van "érdemi" rögzítés (arrival+departure vagy flex>0 vagy szabi)
         const isToday = (iso === today);
         const meaningfulToday =
           !!(entry && (
@@ -548,31 +626,31 @@
             !!entry.is_vacation
           ));
         if(isToday && !meaningfulToday){
-          // ma nem számít bele sem az elvártba, sem a teljesítettbe, sem a hiányzóba
           continue;
         }
 
-        // elvárt perc
+        const isWorkday = !!cal.is_workday;
+        const isSpecial = !!cal.special_workday;
+
+        // hiányzó lista: munkanap vagy szombati munkanap,
+        // és semmilyen rögzítés nincs rá (szabi sem)
+        if((isWorkday || isSpecial) && !entry){
+          missingIso.push(iso);
+        }
+
         const expected = isWorkday ? expPerDay : 0;
         expectedTotal += expected;
-        if(isWorkday) totalWorkdaysCounted++;
 
-        // rögzített nap (munknapokra): ha van entries sor
-        if(isWorkday && entry) recordedWorkdays++;
-
-        // teljesített
         let fulfilled = 0;
 
         if(entry){
           const vac = !!entry.is_vacation;
           if(vac && isWorkday){
-            // szabi: elvárt teljesítve (csak today-ig)
             fulfilled += expected;
             takenVacationDays++;
             vacSet.add(iso);
           }
 
-          // munka perc (arrival-departure - flex)
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
@@ -584,9 +662,8 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // duplázások:
-          // - hétvége / ünnepnap munkavégzés: dupláz
-          // - szabi alatti munkavégzés: dupláz
+          // dupláz: hétvége/ünnepnap (nem munkanap és nem special_workday) vagy szabi alatti munka
+          const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
           let mult = 1;
           if(isWeekendOrHolidayDouble) mult = 2;
           if(vac && worked > 0) mult = 2;
@@ -598,17 +675,12 @@
       }
 
       const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
+      $('sumFlex').innerHTML = formatBalanceLine(balance);
 
-      // Szabi keret
       const vacEnt = Number(profile?.vacation_entitlement_days || 0);
       const vacCarry = Number(profile?.vacation_carryover_days || 0);
       const vacTotal = vacEnt + vacCarry;
       const vacRemaining = vacTotal - takenVacationDays;
-
-      // hiányzó munkanapok (counted - recorded)
-      const missing = Math.max(0, totalWorkdaysCounted - recordedWorkdays);
-
-      $('sumFlex').innerHTML = formatBalanceLine(balance);
 
       if(vacRemaining <= 0){
         $('sumVac').innerHTML = `Nincs több szabid.`;
@@ -616,9 +688,7 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      $('sumMissing').innerHTML = `Hiányzó rögzített munkanap: <span class="num">${missing}</span> nap.`;
-
-      // éves naptár render (színezéshez: vacSet)
+      renderMissingDates(missingIso, today);
       renderYearCalendar(calendarMap, vacSet);
     }
 
@@ -647,12 +717,7 @@
       });
 
       $('calendarBtn').addEventListener('click', ()=>{
-        // vissza a havi rögzítésre (aktuális hónap)
         location.href = '/app.html?v=' + Date.now();
-      });
-
-      $('sumBtn').addEventListener('click', ()=>{
-        toast('Összesítő');
       });
 
       $('settingsBtn').addEventListener('click', ()=>{
