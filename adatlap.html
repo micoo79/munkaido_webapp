@@ -1,10 +1,10 @@
-<!-- adatlap.html -->
+<!-- adatlap.html (Összesítő) -->
 <!doctype html>
 <html lang="hu">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Adatlap</title>
+  <title>Összesítő</title>
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -23,15 +23,17 @@
       --work:#ffffff;
       --weekend:#777b81;
 
-      /* --- FIX méretek az éves naptárhoz --- */
-      --day:16px;           /* csempe 16x16 */
-      --dayGap:1px;         /* napok között 1px */
-      --monthGap:3px;       /* hónapok között 3px */
-      --dayFont:11px;       /* nap sorszám */
-      --maxCols:6;          /* max 6 hónap / sor */
-      --monthPad:8px;       /* monthCard padding */
+      --zold:#1ecb5b;
+      --piros:#ff3b30;
 
-      /* 7*16 + 6*1 = 112 + 6 = 118px */
+      /* FIX méretek az éves naptárhoz */
+      --day:16px;
+      --dayGap:1px;
+      --monthGap:3px;
+      --dayFont:11px;
+      --maxCols:6;
+      --monthPad:8px;
+
       --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
       --monthCardW: calc(var(--monthGridW) + 2 * var(--monthPad));
     }
@@ -74,16 +76,20 @@
       transition:opacity .2s ease, color .2s ease;
     }
 
-    .logout-item .material-symbols-outlined,
+    /* Kilépés: ikon fehér, felirat narancs */
+    .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
     .logout-item .menu-label{ color:var(--accent); opacity:1; }
 
-    .cal-item .menu-label{opacity:1; color:var(--text);}
-    .cal-item:hover .material-symbols-outlined,
-    .cal-item:hover .menu-label{color:var(--accent);}
+    /* Rögzítés: felirat alapból látszik, hoverre narancs */
+    .rec-item .menu-label{opacity:1; color:var(--text);}
+    .rec-item:hover .material-symbols-outlined,
+    .rec-item:hover .menu-label{color:var(--accent);}
 
-    .data-item .material-symbols-outlined,
-    .data-item .menu-label{ color:var(--accent); opacity:1; }
+    /* Összesítő: aktív */
+    .sum-item .material-symbols-outlined,
+    .sum-item .menu-label{ color:var(--accent); opacity:1; }
 
+    /* Beállítások: hover label */
     .settings-item .menu-label{opacity:0;}
     .settings-item:hover .material-symbols-outlined,
     .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
@@ -106,7 +112,8 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .summaryLine .num{font-size:115%; font-weight:700;}
-    .hint{font-size:12px; color:var(--muted); margin-top:2px;}
+    .summaryLine .good{color:var(--zold); font-weight:800;}
+    .summaryLine .bad{color:var(--piros); font-weight:800;}
 
     .yearTitle{
       font-weight:800;
@@ -115,7 +122,6 @@
       text-align:center;
     }
 
-    /* ---- HÓNAPOK KONTÉNERE: flex-wrap tördelés ---- */
     .monthsWrap{
       display:flex;
       flex-wrap:wrap;
@@ -131,6 +137,8 @@
       border-radius:10px;
       padding:var(--monthPad);
       overflow:hidden;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
 
     .monthName{
@@ -202,8 +210,6 @@
 
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
-    .dTile.holiday span{color:#111;}
-    .dTile.vac span{color:#111;}
 
     /* Toast */
     .toast{
@@ -212,10 +218,6 @@
       padding:14px; border-radius:14px;
       font-size:18px;
       z-index:99;
-    }
-
-    @media (min-width: 1200px){
-      .wrap{max-width:900px;}
     }
   </style>
 </head>
@@ -231,14 +233,14 @@
     </div>
 
     <nav class="nav-container">
-      <button id="calendarBtn" class="nav-item cal-item" type="button" aria-label="Naptár">
-        <span class="material-symbols-outlined">calendar_month</span>
-        <span class="menu-label">Naptár</span>
+      <button id="calendarBtn" class="nav-item rec-item" type="button" aria-label="Rögzítés">
+        <span class="material-symbols-outlined">edit_calendar</span>
+        <span class="menu-label">Rögzítés</span>
       </button>
 
-      <button id="dataBtn" class="nav-item data-item" type="button" aria-label="Adatlap">
-        <span class="material-symbols-outlined">clinical_notes</span>
-        <span class="menu-label">Adatlap</span>
+      <button id="sumBtn" class="nav-item sum-item" type="button" aria-label="Összesítő">
+        <span class="material-symbols-outlined">overview</span>
+        <span class="menu-label">Összesítő</span>
       </button>
 
       <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
@@ -251,9 +253,9 @@
   <main class="wrap">
     <section class="card">
       <div class="summaryBox">
-        <div id="sumFlex" class="summaryLine">A mai napig <span class="num">—</span> óra túlórád/hátralékod van, ez kb <span class="num">—</span> napnak felel meg.</div>
-        <div id="sumVac"  class="summaryLine">Szabadság: még <span class="num">—</span> nap, nincs berögzítve <span class="num">—</span> nap.</div>
-        <div class="hint">Számítások később kerülnek bekötésre (most csak a design + éves naptár).</div>
+        <div id="sumFlex" class="summaryLine">Betöltés…</div>
+        <div id="sumVac"  class="summaryLine">Betöltés…</div>
+        <div id="sumMissing" class="summaryLine">Betöltés…</div>
       </div>
 
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
@@ -272,6 +274,7 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
+    // TESZT: élesben állítsd ''-re vagy null-ra
     const DEV_TODAY = '2026-04-16';
     const YEAR = 2026;
 
@@ -300,6 +303,19 @@
       const d = new Date(iso+'T12:00:00');
       const wd = d.getDay();
       return wd===0 || wd===6;
+    }
+
+    function hhmmToMins(hhmm){
+      if(!hhmm) return null;
+      const [h,m] = String(hhmm).slice(0,5).split(':').map(Number);
+      return h*60 + m;
+    }
+
+    function minsToHHMM(mins){
+      const m = Math.abs(Math.trunc(Number(mins)||0));
+      const h = Math.floor(m/60);
+      const mm = m%60;
+      return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
     }
 
     async function ensureSupabase(){
@@ -332,13 +348,15 @@
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name,email,role')
+        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
         .eq('user_id', uid)
         .maybeSingle();
 
       if(error) throw error;
 
-      profile = data || { display_name: u.user.email, email: u.user.email, role:'user' };
+      profile = data || { display_name: u.user.email, email: u.user.email, role:'user', daily_expected_minutes:480,
+        vacation_entitlement_days:0, vacation_carryover_days:0, flex_carryover_minutes:0, flex_bonus_minutes:0
+      };
       $('userName').textContent = profile.display_name || profile.email || '';
 
       const role = String(profile.role || 'user');
@@ -352,7 +370,6 @@
     function dayClassFromCalendar(row){
       const iso = row.date;
       const isHoliday = (!row.is_workday && !!row.holiday_name);
-
       if(isHoliday) return 'holiday';
       if(!!row.special_workday) return 'workSaturday';
       if(isWeekendISO(iso)) return 'weekend';
@@ -434,11 +451,39 @@
         }
 
         monthCard.appendChild(mg);
+
+        // kattintás: adott hónapra ugrás a havi nézetben
+        monthCard.addEventListener('click', ()=>{
+          location.href = `/app.html?y=${YEAR}&m=${month}&v=${Date.now()}`;
+        });
+
         wrap.appendChild(monthCard);
       }
     }
 
-    async function loadYearData(){
+    function formatBalanceLine(balanceMinutes){
+      const dayMins = Math.max(1, Number(profile?.daily_expected_minutes || 480));
+      const abs = Math.abs(balanceMinutes);
+
+      const hhmm = minsToHHMM(abs);
+      const days = Math.floor(abs / dayMins);
+
+      const isPos = balanceMinutes >= 0;
+      const cls = isPos ? 'good' : 'bad';
+      const label = isPos ? 'túlórád' : 'hátralékod';
+
+      if(days >= 1){
+        return `A mai napig <span class="num ${cls}">${hhmm}</span> óra ${label} van, ez kb <span class="num ${cls}">${days}</span> napnak felel meg.`;
+      }
+      return `A mai napig <span class="num ${cls}">${hhmm}</span> óra ${label} van.`;
+    }
+
+    async function loadYearDataAndCompute(){
+      const today = getTodayISO();
+      const start = `${YEAR}-01-01`;
+      const end = `${YEAR+1}-01-01`;
+
+      // 1) calendar_days évre
       const { data: days, error: e1 } = await supabase
         .from('calendar_days')
         .select('date,is_workday,holiday_name,special_workday,year')
@@ -452,26 +497,128 @@
         calendarMap.set(iso, { ...r, date: iso });
       });
 
+      // 2) entries évre (user)
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
 
-      const start = `${YEAR}-01-01`;
-      const end = `${YEAR+1}-01-01`;
-
       const { data: ents, error: e2 } = await supabase
         .from('entries')
-        .select('date,is_vacation')
+        .select('date,arrival,departure,flex_minutes,is_vacation,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end);
       if(e2) throw e2;
 
-      const vacSet = new Set();
+      const entriesMap = new Map();
       (ents||[]).forEach(r=>{
         const iso = normalizeIsoDate(r.date);
-        if(r.is_vacation) vacSet.add(iso);
+        entriesMap.set(iso, { ...r, date: iso });
       });
 
+      // --- számítások ---
+      const expPerDay = Number(profile?.daily_expected_minutes || 480);
+      const carry = Number(profile?.flex_carryover_minutes || 0);
+      const bonus = Number(profile?.flex_bonus_minutes || 0);
+
+      let expectedTotal = 0;
+      let fulfilledTotal = 0;
+
+      let totalWorkdaysCounted = 0;
+      let recordedWorkdays = 0;
+
+      let takenVacationDays = 0;
+      const vacSet = new Set();
+
+      // végigmegyünk az év napjain, de csak today-ig
+      for(const [iso, cal] of calendarMap.entries()){
+        if(iso > today) break;
+
+        const isWorkday = !!cal.is_workday;              // ebben már benne van a special_workday is (is_workday=true)
+        const isSpecial = !!cal.special_workday;
+        const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial); // hétvége/ünnep (nem munkanap) => duplázás
+
+        const entry = entriesMap.get(iso);
+
+        // "ma csak akkor számít, ha van rögzítés" (érkezés/távozás vagy szabi vagy flex>0)
+        const isToday = (iso === today);
+        const meaningfulToday =
+          !!(entry && (
+            (entry.arrival && entry.departure) ||
+            (Number(entry.flex_minutes||0) > 0) ||
+            !!entry.is_vacation
+          ));
+        if(isToday && !meaningfulToday){
+          // ma nem számít bele sem az elvártba, sem a teljesítettbe, sem a hiányzóba
+          continue;
+        }
+
+        // elvárt perc
+        const expected = isWorkday ? expPerDay : 0;
+        expectedTotal += expected;
+        if(isWorkday) totalWorkdaysCounted++;
+
+        // rögzített nap (munknapokra): ha van entries sor
+        if(isWorkday && entry) recordedWorkdays++;
+
+        // teljesített
+        let fulfilled = 0;
+
+        if(entry){
+          const vac = !!entry.is_vacation;
+          if(vac && isWorkday){
+            // szabi: elvárt teljesítve (csak today-ig)
+            fulfilled += expected;
+            takenVacationDays++;
+            vacSet.add(iso);
+          }
+
+          // munka perc (arrival-departure - flex)
+          let worked = 0;
+          if(entry.arrival && entry.departure){
+            const inM = hhmmToMins(entry.arrival);
+            const outM = hhmmToMins(entry.departure);
+            if(inM != null && outM != null && outM >= inM){
+              worked = outM - inM;
+            }
+          }
+          const flexM = Math.max(0, Number(entry.flex_minutes || 0));
+          worked = Math.max(0, worked - flexM);
+
+          // duplázások:
+          // - hétvége / ünnepnap munkavégzés: dupláz
+          // - szabi alatti munkavégzés: dupláz
+          let mult = 1;
+          if(isWeekendOrHolidayDouble) mult = 2;
+          if(vac && worked > 0) mult = 2;
+
+          fulfilled += (worked * mult);
+        }
+
+        fulfilledTotal += fulfilled;
+      }
+
+      const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
+
+      // Szabi keret
+      const vacEnt = Number(profile?.vacation_entitlement_days || 0);
+      const vacCarry = Number(profile?.vacation_carryover_days || 0);
+      const vacTotal = vacEnt + vacCarry;
+      const vacRemaining = vacTotal - takenVacationDays;
+
+      // hiányzó munkanapok (counted - recorded)
+      const missing = Math.max(0, totalWorkdaysCounted - recordedWorkdays);
+
+      $('sumFlex').innerHTML = formatBalanceLine(balance);
+
+      if(vacRemaining <= 0){
+        $('sumVac').innerHTML = `Nincs több szabid.`;
+      }else{
+        $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
+      }
+
+      $('sumMissing').innerHTML = `Hiányzó rögzített munkanap: <span class="num">${missing}</span> nap.`;
+
+      // éves naptár render (színezéshez: vacSet)
       renderYearCalendar(calendarMap, vacSet);
     }
 
@@ -487,7 +634,7 @@
       $('yearTitle').textContent = `${YEAR} – Éves naptár`;
 
       await loadProfile();
-      await loadYearData();
+      await loadYearDataAndCompute();
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -500,11 +647,12 @@
       });
 
       $('calendarBtn').addEventListener('click', ()=>{
+        // vissza a havi rögzítésre (aktuális hónap)
         location.href = '/app.html?v=' + Date.now();
       });
 
-      $('dataBtn').addEventListener('click', ()=>{
-        toast('Adatlap');
+      $('sumBtn').addEventListener('click', ()=>{
+        toast('Összesítő');
       });
 
       $('settingsBtn').addEventListener('click', ()=>{
