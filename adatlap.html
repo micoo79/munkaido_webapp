@@ -24,14 +24,14 @@
       --weekend:#777b81;
 
       /* --- FIX méretek az éves naptárhoz --- */
-      --day:20px;           /* csempe 20x20 */
-      --dayGap:2px;         /* napok között */
-      --monthGap:4px;       /* hónapok között */
+      --day:16px;           /* csempe 16x16 */
+      --dayGap:1px;         /* napok között 1px */
+      --monthGap:3px;       /* hónapok között 3px */
       --dayFont:11px;       /* nap sorszám */
       --maxCols:6;          /* max 6 hónap / sor */
       --monthPad:8px;       /* monthCard padding */
 
-      /* 7*20 + 6*2 = 140 + 12 = 152px */
+      /* 7*16 + 6*1 = 112 + 6 = 118px */
       --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
       --monthCardW: calc(var(--monthGridW) + 2 * var(--monthPad));
     }
@@ -122,10 +122,8 @@
       gap:var(--monthGap);
       justify-content:center;
       align-items:flex-start;
-      /* a wrap szélessége a kártyából jön (max-width:900px) */
     }
 
-    /* max 6 hónap / sor: fix szélesség + flex-basis ugyanaz */
     .monthCard{
       width:var(--monthCardW);
       flex: 0 0 var(--monthCardW);
@@ -216,7 +214,6 @@
       z-index:99;
     }
 
-    /* opcionális: nagyon széles kijelzőn se legyen több 6-nál */
     @media (min-width: 1200px){
       .wrap{max-width:900px;}
     }
@@ -424,7 +421,6 @@
             tile.classList.add('rest');
           }
 
-          // Szabi felülír mindent (kék)
           if(vacSet.has(iso)){
             tile.classList.remove('holiday','weekend','rest','workSaturday');
             tile.classList.add('vac');
