@@ -116,7 +116,7 @@
     .tile.weekend{background:var(--weekend);}
     .tile.holiday{background:var(--holiday);}
     .tile.vac{background:var(--vac);}
-    .tile.workSaturday{background:var(--work); border:3px solid var(--zold);}
+    .tile.workSaturday{background:var(--work); border:0;}
     .tile.todayFill{background:var(--accent) !important; color:#111;}
 
     .tTop{
@@ -502,10 +502,12 @@
       const flexMin = Number(entry?.flex_minutes || 0);
       const isVac = !!entry?.is_vacation;
 
-      // Szabi kék háttér (entry alapján) – csak akkor, ha nem holiday/rest override
-      if(isVac){
-        tile.classList.add('vac');
-      }
+      // Szabi mindig kék legyen (felülírja a nap típusát, pl. special_workday-t is)
+if(isVac){
+  tile.classList.remove('holiday','weekend','rest','workSaturday');
+  tile.classList.add('vac');
+}
+
 
       const top = document.createElement('div');
       top.className = 'tTop';
