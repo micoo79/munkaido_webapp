@@ -1,0 +1,533 @@
+<!-- adatlap.html -->
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Adatlap</title>
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg:#27272a;
+      --panel:#27272a;
+      --text:#f2f3f5;
+      --muted:#c9cbd1;
+      --accent:#ff8a00;
+
+      --rest:#3f3f46;
+      --holiday:#f6b2b2;
+      --vac:#b9d9ff;
+      --work:#ffffff;
+      --weekend:#777b81;
+      --piros:#ff3b30;
+    }
+
+    *{box-sizing:border-box;}
+    html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+
+    /* ----- HEADER (ugyanaz a stílus) ----- */
+    .header{
+      max-width:900px;
+      margin:0 auto;
+      padding:0 12px;
+      height:52px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:transparent;
+    }
+    .user-block{display:flex; align-items:center; gap:6px; min-width:0;}
+    .user-name{
+      font-weight:700; font-size:16px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width:48vw;
+    }
+    .nav-container{display:flex; gap:0; align-items:center;}
+    .nav-item{
+      border:0; background:transparent; color:var(--text);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      width:44px; height:52px; position:relative; cursor:pointer;
+      -webkit-tap-highlight-color:transparent; padding:0;
+    }
+    .material-symbols-outlined{
+      font-size:24px;
+      font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      transition:color .2s ease; line-height:1;
+    }
+    .menu-label{
+      font-size:10px; position:absolute; bottom:4px; left:50%;
+      transform:translateX(-50%); white-space:nowrap; pointer-events:none;
+      transition:opacity .2s ease, color .2s ease;
+    }
+
+    .logout-item .material-symbols-outlined,
+    .logout-item .menu-label{ color:var(--accent); opacity:1; }
+
+    /* Naptár gomb (vissza) - felirat alapból látszik */
+    .cal-item .menu-label{opacity:1; color:var(--text);}
+    .cal-item:hover .material-symbols-outlined,
+    .cal-item:hover .menu-label{color:var(--accent);}
+
+    /* Adatlap (aktív) */
+    .data-item .material-symbols-outlined,
+    .data-item .menu-label{ color:var(--accent); opacity:1; }
+
+    /* Beállítások csak hoverre */
+    .settings-item .menu-label{opacity:0;}
+    .settings-item:hover .material-symbols-outlined,
+    .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
+
+    .hidden{display:none !important;}
+
+    /* ----- CONTENT ----- */
+    .wrap{max-width:900px; margin:0 auto; padding:0 12px 18px;}
+    .card{background:var(--panel); border:0; border-radius:16px; padding:10px;}
+
+    /* Összesítések helye (placeholder, számítás később) */
+    .summaryBox{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:10px 10px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      margin-bottom:10px;
+    }
+    .summaryLine{
+      font-size:14px;
+      line-height:1.2;
+      color:var(--text);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .summaryLine .num{
+      font-size:115%;
+      font-weight:700;
+    }
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:2px;
+    }
+
+    /* ----- ÉVES NAPTÁR ----- */
+    .yearTitle{
+      font-weight:800;
+      font-size:1rem;
+      margin:10px 0 8px;
+      text-align:center;
+    }
+
+    .yearGrid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:10px;
+    }
+
+    .monthCard{
+      background:rgba(255,255,255,.06);
+      border-radius:14px;
+      padding:8px;
+      overflow:hidden;
+    }
+
+    .monthName{
+      font-size:0.8rem;
+      font-weight:800;
+      text-align:center;
+      margin:0 0 6px 0;
+    }
+
+    .miniDow{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:2px;
+      margin-bottom:3px;
+      opacity:.9;
+    }
+    .miniDow div{
+      text-align:center;
+      font-size:10px;
+      font-weight:700;
+      color:var(--muted);
+    }
+
+    .miniGrid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      grid-template-rows:repeat(6,1fr);
+      gap:2px;
+    }
+
+    .dTile{
+      border:0;
+      border-radius:0;
+      background:var(--work);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      min-height:18px;
+      user-select:none;
+      overflow:hidden;
+    }
+    .dTile span{
+      font-size:10px;
+      font-weight:700;
+      line-height:1;
+      color:#111;
+    }
+
+    .dTile.rest{background:var(--rest); opacity:1;}
+    .dTile.weekend{background:var(--weekend);}
+    .dTile.holiday{background:var(--holiday);}
+    .dTile.vac{background:var(--vac);}
+    .dTile.workSaturday{background:var(--work);} /* nincs zöld keret */
+
+    /* üres cella */
+    .dTile.empty{background:transparent; border:0;}
+    .dTile.empty span{display:none;}
+
+    /* Today (itt csak finom jelzés) */
+    .dTile.today{
+      outline:2px solid var(--accent);
+      outline-offset:-2px;
+    }
+
+    /* weekend szöveg fehér */
+    .dTile.weekend span{color:#fff;}
+    .dTile.rest span{color:#9ca3af;}
+    .dTile.holiday span{color:#111;}
+    .dTile.vac span{color:#111;}
+
+    /* Toast */
+    .toast{
+      position:fixed; left:12px; right:12px; bottom:12px;
+      background:var(--accent); color:#111;
+      padding:14px; border-radius:14px;
+      font-size:18px;
+      z-index:99;
+    }
+
+    @media (max-width:760px){
+      .yearGrid{grid-template-columns:repeat(2,1fr);}
+    }
+    @media (max-width:520px){
+      .yearGrid{grid-template-columns:1fr;}
+      .user-name{max-width:52vw;}
+    }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <div class="user-block">
+      <div id="userName" class="user-name"></div>
+      <button id="logoutBtn" class="nav-item logout-item" type="button" aria-label="Kilépés">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="menu-label">Kilépés</span>
+      </button>
+    </div>
+
+    <nav class="nav-container">
+      <button id="calendarBtn" class="nav-item cal-item" type="button" aria-label="Naptár">
+        <span class="material-symbols-outlined">calendar_month</span>
+        <span class="menu-label">Naptár</span>
+      </button>
+
+      <button id="dataBtn" class="nav-item data-item" type="button" aria-label="Adatlap">
+        <span class="material-symbols-outlined">clinical_notes</span>
+        <span class="menu-label">Adatlap</span>
+      </button>
+
+      <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="menu-label">Beállítások</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+
+      <!-- ÖSSZESÍTÉSEK HELYE (számítás később) -->
+      <div class="summaryBox">
+        <div id="sumFlex" class="summaryLine">A mai napig <span class="num">—</span> óra túlórád/hátralékod van, ez kb <span class="num">—</span> napnak felel meg.</div>
+        <div id="sumVac"  class="summaryLine">Szabadság: még <span class="num">—</span> nap, nincs berögzítve <span class="num">—</span> nap.</div>
+        <div class="hint">Számítások később kerülnek bekötésre (most csak a design + éves naptár).</div>
+      </div>
+
+      <!-- ÉVES NAPTÁR -->
+      <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
+      <div id="yearGrid" class="yearGrid"></div>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    const $ = (id)=>document.getElementById(id);
+    const toast = (t)=>{
+      const el = document.createElement('div');
+      el.className='toast';
+      el.textContent=t;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(), 2200);
+    };
+
+    // TESZT: ugyanazt használjuk, mint app.html-ben
+    const DEV_TODAY = '2026-04-16';
+    const YEAR = 2026;
+
+    let supabase = null;
+    let profile = null;
+
+    function getTodayISO(){
+      if(DEV_TODAY) return DEV_TODAY;
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function huMonthName(m){
+      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+      return names[m-1] || '';
+    }
+
+    function normalizeIsoDate(d){
+      return String(d).slice(0,10);
+    }
+
+    function isWeekendISO(iso){
+      const d = new Date(iso+'T12:00:00');
+      const wd = d.getDay();
+      return wd===0 || wd===6;
+    }
+
+    async function ensureSupabase(){
+      if(supabase) return supabase;
+
+      const t0=Date.now();
+      while(!(window.supabase && window.supabase.createClient)){
+        if(Date.now()-t0>6000) throw new Error('Supabase CDN nem töltődött be.');
+        await new Promise(r=>setTimeout(r,120));
+      }
+
+      const r = await fetch('/config', { cache:'no-store' });
+      if(!r.ok) throw new Error('Nem elérhető a /config.');
+      const j = await r.json();
+      const url = j.SUPABASE_URL || j.supabaseUrl;
+      const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
+      if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
+
+      supabase = window.supabase.createClient(url, key, {
+        auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+        db:{ schema:'app' }
+      });
+      return supabase;
+    }
+
+    async function loadProfile(){
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,email,role')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      if(error) throw error;
+
+      profile = data || { display_name: u.user.email, email: u.user.email, role:'user' };
+      $('userName').textContent = profile.display_name || profile.email || '';
+
+      const role = String(profile.role || 'user');
+      if(role === 'admin' || role === 'manager'){
+        $('settingsBtn').classList.remove('hidden');
+      }else{
+        $('settingsBtn').classList.add('hidden');
+      }
+    }
+
+    // Nap alapszínezés (szokásos): ünnep > special_workday > hétvége > pihenő > munkanap
+    function dayClassFromCalendar(row){
+      const iso = row.date;
+      const isHoliday = (!row.is_workday && !!row.holiday_name);
+
+      if(isHoliday) return 'holiday';
+      if(!!row.special_workday) return 'workSaturday';
+      if(isWeekendISO(iso)) return 'weekend';
+      if(!row.is_workday) return 'rest';
+      return '';
+    }
+
+    function renderYearCalendar(calendarMap, vacSet){
+      const yearGrid = $('yearGrid');
+      yearGrid.innerHTML = '';
+
+      const todayIso = getTodayISO();
+
+      for(let month=1; month<=12; month++){
+        const monthCard = document.createElement('div');
+        monthCard.className = 'monthCard';
+
+        const mn = document.createElement('div');
+        mn.className = 'monthName';
+        mn.textContent = huMonthName(month);
+        monthCard.appendChild(mn);
+
+        const mdow = document.createElement('div');
+        mdow.className = 'miniDow';
+        ['H','K','SZ','CS','P','SZO','V'].forEach(x=>{
+          const d = document.createElement('div');
+          d.textContent = x;
+          mdow.appendChild(d);
+        });
+        monthCard.appendChild(mdow);
+
+        const mg = document.createElement('div');
+        mg.className = 'miniGrid';
+
+        const firstIso = `${YEAR}-${String(month).padStart(2,'0')}-01`;
+        const firstDate = new Date(firstIso+'T12:00:00');
+        let wd = firstDate.getDay();
+        wd = wd===0 ? 7 : wd;
+        const offset = wd-1;
+
+        // hónap napjainak száma
+        const nextMonth = new Date(YEAR, month, 0, 12, 0, 0); // month: 1..12 -> JS-ben month index 0..11, itt month=12 -> Jan next etc, ezért trükk: (YEAR, month, 0) = hónap utolsó napja
+        const daysInMonth = nextMonth.getDate();
+
+        for(let i=0;i<42;i++){
+          const tile = document.createElement('div');
+          tile.className = 'dTile';
+
+          const span = document.createElement('span');
+          tile.appendChild(span);
+
+          const dayNum = i - offset + 1;
+          if(dayNum < 1 || dayNum > daysInMonth){
+            tile.classList.add('empty');
+            mg.appendChild(tile);
+            continue;
+          }
+
+          const iso = `${YEAR}-${String(month).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+          span.textContent = String(dayNum);
+
+          const calRow = calendarMap.get(iso);
+          if(calRow){
+            const cls = dayClassFromCalendar(calRow);
+            if(cls) tile.classList.add(cls);
+          }else{
+            // ha nincs adat a calendar_days-ben, ne omoljon össze: kezeljük pihenőként
+            tile.classList.add('rest');
+          }
+
+          // Szabi felülír mindent (kék)
+          if(vacSet.has(iso)){
+            tile.classList.remove('holiday','weekend','rest','workSaturday');
+            tile.classList.add('vac');
+          }
+
+          if(iso === todayIso){
+            tile.classList.add('today');
+          }
+
+          mg.appendChild(tile);
+        }
+
+        monthCard.appendChild(mg);
+        yearGrid.appendChild(monthCard);
+      }
+    }
+
+    async function loadYearData(){
+      // calendar_days az évre
+      const { data: days, error: e1 } = await supabase
+        .from('calendar_days')
+        .select('date,is_workday,holiday_name,special_workday,year')
+        .eq('year', YEAR)
+        .order('date', { ascending:true });
+      if(e1) throw e1;
+
+      const calendarMap = new Map();
+      (days||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        calendarMap.set(iso, { ...r, date: iso });
+      });
+
+      // entries az évre (csak a saját)
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+
+      const start = `${YEAR}-01-01`;
+      const end = `${YEAR+1}-01-01`;
+
+      const { data: ents, error: e2 } = await supabase
+        .from('entries')
+        .select('date,is_vacation')
+        .eq('user_id', uid)
+        .gte('date', start)
+        .lt('date', end);
+      if(e2) throw e2;
+
+      const vacSet = new Set();
+      (ents||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        if(r.is_vacation) vacSet.add(iso);
+      });
+
+      renderYearCalendar(calendarMap, vacSet);
+    }
+
+    async function boot(){
+      await ensureSupabase();
+
+      const { data } = await supabase.auth.getSession();
+      if(!data.session){
+        location.replace('/index.html?v=' + Date.now());
+        return;
+      }
+
+      $('yearTitle').textContent = `${YEAR} – Éves naptár`;
+
+      await loadProfile();
+      await loadYearData();
+    }
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      $('logoutBtn').addEventListener('click', async ()=>{
+        try{
+          await ensureSupabase();
+          await supabase.auth.signOut();
+        }catch(_){}
+        location.replace('/index.html?v=' + Date.now());
+      });
+
+      $('calendarBtn').addEventListener('click', ()=>{
+        location.href = '/app.html?v=' + Date.now();
+      });
+
+      $('dataBtn').addEventListener('click', ()=>{
+        // itt vagyunk
+        toast('Adatlap');
+      });
+
+      $('settingsBtn').addEventListener('click', ()=>{
+        location.href = '/manager.html?v=' + Date.now();
+      });
+
+      boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
+    });
+  })();
+  </script>
+</body>
+</html>
