@@ -124,7 +124,6 @@
 
     /* Calendar layout */
     .pager{
-     
       display:flex; align-items:center; justify-content:space-between; gap:10px;
       padding:20px 0px 20px;
     }
@@ -288,7 +287,7 @@
     .btn.primary{background:var(--accent); color:#111; font-weight:800;}
     .btn.danger{background:#c9cbd1; color:#111; font-weight:900;}
     .btn.mentes{background:#1ecb5b; color:#111; font-weight:900;}
-    
+
     .errBig{font-size:22px; color:#ff3b30; margin-top:10px; font-weight:900;}
     .invalid select{background:#ffd1d1 !important; border:3px solid #ff3b30 !important;}
 
@@ -397,8 +396,6 @@
         <button id="delBtn" class="btn danger" type="button">Törlés</button>
         <button id="saveBtn" class="btn mentes" type="button">Mentés</button>
       </div>
-
-    <!--  <div style="height:50px;"></div> -->
     </div>
   </div>
 
@@ -668,7 +665,6 @@
 
       // Szabály: hétvégén és ünnepnapon (nem munkanap) ne lehessen Flex,
       // kivéve ha special_workday=true (munkanap szombat)
-      // Szabi viszont legyen kezelve a DB oldalon is (entries_validate)
       const isSpecial = !!calRow.special_workday;
       const disFlex = (!isSpecial) && (isWeekendISO(iso) || !calRow.is_workday);
 
@@ -823,11 +819,11 @@
       });
 
       $('dataBtn').addEventListener('click', ()=>{
-        toast('Adatlap: hamarosan');
+        // -> Adatlap oldal
+        location.href = '/adatlap.html?v=' + Date.now();
       });
 
       $('settingsBtn').addEventListener('click', ()=>{
-        // manager/admin felület
         location.href = '/manager.html?v=' + Date.now();
       });
 
