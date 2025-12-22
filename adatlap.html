@@ -23,6 +23,13 @@
       --work:#ffffff;
       --weekend:#777b81;
       --piros:#ff3b30;
+
+      /* --- FIX méretek az éves naptárhoz --- */
+      --day:15px;          /* csempe 15x15 */
+      --dayGap:2px;        /* napok között 2px */
+      --monthGap:4px;      /* hónapok között 4px */
+      --dayFont:11px;      /* nap sorszám 11px */
+      --maxCols:4;         /* max 4 hónap / sor */
     }
 
     *{box-sizing:border-box;}
@@ -122,48 +129,82 @@
       text-align:center;
     }
 
+    /* FIX napcsempe méretekből számolt max szélesség (max 4 hónap/sor) */
+    /* 7 nap * 15px + 6 gap * 2px = 105 + 12 = 117px */
+    /* + padding (8+8) = 16px */
+    /* + címsor + dow kb ~ (nem számoljuk szigorúan), de a grid szélességhez elég: 133px */
+    :root{
+      --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
+      --monthCardPad: 8px;
+      --monthCardW: calc(var(--monthGridW) + 2 * var(--monthCardPad));
+    }
+
     .yearGrid{
       display:grid;
-      grid-template-columns:repeat(3, 1fr);
-      gap:10px;
+      gap:var(--monthGap);
+      /* annyi hónap fér, amennyi kifér, de max 4 */
+      grid-template-columns: repeat(var(--maxCols), var(--monthCardW));
+      justify-content:center;
+    }
+    /* ha kisebb a hely, automatikusan essen vissza 3/2/1-re */
+    @media (max-width: calc(4 * (var(--monthCardW)) + 3 * var(--monthGap) + 24px)){
+      .yearGrid{ grid-template-columns: repeat(3, var(--monthCardW)); }
+    }
+    @media (max-width: calc(3 * (var(--monthCardW)) + 2 * var(--monthGap) + 24px)){
+      .yearGrid{ grid-template-columns: repeat(2, var(--monthCardW)); }
+    }
+    @media (max-width: calc(2 * (var(--monthCardW)) + 1 * var(--monthGap) + 24px)){
+      .yearGrid{ grid-template-columns: repeat(1, var(--monthCardW)); }
     }
 
     .monthCard{
       background:rgba(255,255,255,.06);
-      border-radius:14px;
-      padding:8px;
+      border-radius:10px;
+      padding:var(--monthCardPad);
       overflow:hidden;
+      width:var(--monthCardW);
     }
 
     .monthName{
       font-size:0.8rem;
       font-weight:800;
       text-align:center;
-      margin:0 0 6px 0;
+      margin:0 0 4px 0;
+      line-height:1.1;
     }
 
     .miniDow{
       display:grid;
-      grid-template-columns:repeat(7,1fr);
-      gap:2px;
-      margin-bottom:3px;
+      grid-template-columns:repeat(7,var(--day));
+      gap:var(--dayGap);
+      margin-bottom:var(--dayGap);
       opacity:.9;
+      justify-content:center;
     }
     .miniDow div{
+      width:var(--day);
+      height:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       text-align:center;
-      font-size:10px;
+      font-size:9px;
       font-weight:700;
       color:var(--muted);
+      line-height:1;
     }
 
     .miniGrid{
       display:grid;
-      grid-template-columns:repeat(7,1fr);
-      grid-template-rows:repeat(6,1fr);
-      gap:2px;
+      grid-template-columns:repeat(7,var(--day));
+      grid-template-rows:repeat(6,var(--day));
+      gap:var(--dayGap);
+      justify-content:center;
     }
 
     .dTile{
+      width:var(--day);
+      height:var(--day);
       border:0;
       border-radius:0;
       background:var(--work);
@@ -171,15 +212,15 @@
       align-items:center;
       justify-content:center;
       padding:0;
-      min-height:18px;
       user-select:none;
       overflow:hidden;
     }
     .dTile span{
-      font-size:10px;
+      font-size:var(--dayFont);
       font-weight:700;
       line-height:1;
       color:#111;
+      transform: translateY(0.5px);
     }
 
     .dTile.rest{background:var(--rest); opacity:1;}
@@ -188,17 +229,15 @@
     .dTile.vac{background:var(--vac);}
     .dTile.workSaturday{background:var(--work);} /* nincs zöld keret */
 
-    /* üres cella */
     .dTile.empty{background:transparent; border:0;}
     .dTile.empty span{display:none;}
 
-    /* Today (itt csak finom jelzés) */
+    /* Today jelzés */
     .dTile.today{
       outline:2px solid var(--accent);
       outline-offset:-2px;
     }
 
-    /* weekend szöveg fehér */
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
     .dTile.holiday span{color:#111;}
@@ -211,14 +250,6 @@
       padding:14px; border-radius:14px;
       font-size:18px;
       z-index:99;
-    }
-
-    @media (max-width:760px){
-      .yearGrid{grid-template-columns:repeat(2,1fr);}
-    }
-    @media (max-width:520px){
-      .yearGrid{grid-template-columns:1fr;}
-      .user-name{max-width:52vw;}
     }
   </style>
 </head>
@@ -253,15 +284,12 @@
 
   <main class="wrap">
     <section class="card">
-
-      <!-- ÖSSZESÍTÉSEK HELYE (számítás később) -->
       <div class="summaryBox">
         <div id="sumFlex" class="summaryLine">A mai napig <span class="num">—</span> óra túlórád/hátralékod van, ez kb <span class="num">—</span> napnak felel meg.</div>
         <div id="sumVac"  class="summaryLine">Szabadság: még <span class="num">—</span> nap, nincs berögzítve <span class="num">—</span> nap.</div>
         <div class="hint">Számítások később kerülnek bekötésre (most csak a design + éves naptár).</div>
       </div>
 
-      <!-- ÉVES NAPTÁR -->
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
       <div id="yearGrid" class="yearGrid"></div>
     </section>
@@ -356,7 +384,6 @@
       }
     }
 
-    // Nap alapszínezés (szokásos): ünnep > special_workday > hétvége > pihenő > munkanap
     function dayClassFromCalendar(row){
       const iso = row.date;
       const isHoliday = (!row.is_workday && !!row.holiday_name);
@@ -401,9 +428,8 @@
         wd = wd===0 ? 7 : wd;
         const offset = wd-1;
 
-        // hónap napjainak száma
-        const nextMonth = new Date(YEAR, month, 0, 12, 0, 0); // month: 1..12 -> JS-ben month index 0..11, itt month=12 -> Jan next etc, ezért trükk: (YEAR, month, 0) = hónap utolsó napja
-        const daysInMonth = nextMonth.getDate();
+        const lastDay = new Date(YEAR, month, 0, 12, 0, 0);
+        const daysInMonth = lastDay.getDate();
 
         for(let i=0;i<42;i++){
           const tile = document.createElement('div');
@@ -427,7 +453,6 @@
             const cls = dayClassFromCalendar(calRow);
             if(cls) tile.classList.add(cls);
           }else{
-            // ha nincs adat a calendar_days-ben, ne omoljon össze: kezeljük pihenőként
             tile.classList.add('rest');
           }
 
@@ -450,7 +475,6 @@
     }
 
     async function loadYearData(){
-      // calendar_days az évre
       const { data: days, error: e1 } = await supabase
         .from('calendar_days')
         .select('date,is_workday,holiday_name,special_workday,year')
@@ -464,7 +488,6 @@
         calendarMap.set(iso, { ...r, date: iso });
       });
 
-      // entries az évre (csak a saját)
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
 
@@ -517,7 +540,6 @@
       });
 
       $('dataBtn').addEventListener('click', ()=>{
-        // itt vagyunk
         toast('Adatlap');
       });
 
