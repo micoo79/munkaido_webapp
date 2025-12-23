@@ -30,9 +30,8 @@
       --dayGap:1px;
       --monthGap:3px;
       --dayFont:11px;
-      --maxCols:6;
-      --monthPad:8px;
 
+      --monthPad:8px;
       --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
       --monthCardW: calc(var(--monthGridW) + 2 * var(--monthPad));
     }
@@ -75,16 +74,16 @@
       transition:opacity .2s ease, color .2s ease;
     }
 
-    /* Kilépés: ikon fehér, felirat fehér */
+    /* Kilépés: fehér ikon + fehér felirat */
     .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
     .logout-item .menu-label{ color:var(--text); opacity:1; }
 
-    /* Rögzítés: felirat alapból látszik, hoverre narancs */
+    /* Rögzítés: felirat látszik, hover narancs */
     .rec-item .menu-label{opacity:1; color:var(--text);}
     .rec-item:hover .material-symbols-outlined,
     .rec-item:hover .menu-label{color:var(--accent);}
 
-    /* Összesítő ikon/szöveg ne látszódjon itt */
+    /* Összesítő: itt ne látszódjon */
     .sum-item{display:none !important;}
 
     /* Beállítások: hover label */
@@ -106,11 +105,13 @@
       margin-bottom:10px;
     }
 
+    /* ✅ nincs kényszer sortörés, csak ha nem fér ki */
     .summaryLine{
       font-size:14px; line-height:1.25; color:var(--text);
-      white-space:normal; overflow:visible; text-overflow:clip;
+      white-space:normal;
       word-break:break-word;
     }
+    /* ✅ kiemelt szám fehér + 115% */
     .summaryLine .num{font-size:115%; font-weight:800; color:var(--text) !important;}
 
     .missingBox{
@@ -276,7 +277,7 @@
       </div>
 
       <div class="missingBox">
-        <div class="missingTitle">Az alábbi napokon nem rögzítettél munkaidőt:</div>
+        <div id="missingTitle" class="missingTitle">Betöltés…</div>
         <div id="missingList" class="missingList">Betöltés…</div>
       </div>
 
@@ -345,7 +346,6 @@
       return Math.round((b - a) / (24*60*60*1000));
     }
 
-    // ---- NO-CACHE wrapper a Supabase fetch-hez (összesítő frissülés) ----
     function noStoreFetch(input, init){
       const o = init ? { ...init } : {};
       o.cache = 'no-store';
@@ -495,7 +495,6 @@
 
         monthCard.appendChild(mg);
 
-        // (marad kattintható hónap -> app.html)
         monthCard.addEventListener('click', ()=>{
           location.href = `/app.html?y=${YEAR}&m=${month}&v=${Date.now()}`;
         });
@@ -515,20 +514,27 @@
       const label = isPos ? 'túlórád' : 'hátralékod';
 
       if(days >= 1){
-        return `A mai napig <span class="num">${hhmm}</span> óra ${label} van,<br>ez kb <span class="num">${days}</span> napnak felel meg.`;
+        return `A mai napig <span class="num">${hhmm}</span> óra ${label} van, ez kb <span class="num">${days}</span> napnak felel meg.`;
       }
       return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
     }
 
-    // --- ÚJ: hónaponként csoportosítva, hónapok között " | " ---
     function renderMissingDatesGrouped(missingIsoList){
-      const box = $('missingList');
+      const listEl = $('missingList');
+      const titleEl = $('missingTitle');
+
       if(!missingIsoList || missingIsoList.length === 0){
-        box.textContent = 'Nincs hiányzó rögzítés.';
+        titleEl.textContent = 'Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen 0 db)';
+        listEl.textContent = 'Nincs hiányzó rögzítés.';
         return;
       }
 
-      // csoport: YYYY-MM -> [YYYY.MM.DD,...]
+      const today = getTodayISO();
+      const olderCount = missingIsoList.filter(iso => daysBetween(iso, today) >= 14).length;
+
+      titleEl.textContent =
+        `Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen ${missingIsoList.length} db, ebből ${olderCount} db két hétnél régebbi, ezeket pótold!)`;
+
       const groups = new Map();
       for(const iso of missingIsoList){
         const ym = iso.slice(0,7);
@@ -537,10 +543,9 @@
         groups.get(ym).push(fmt);
       }
 
-      // stabil sorrend
       const ymKeys = Array.from(groups.keys()).sort();
       const parts = ymKeys.map(ym => groups.get(ym).join(', '));
-      box.textContent = parts.join(' | ');
+      listEl.textContent = parts.join(' | ');
     }
 
     async function loadYearDataAndCompute(){
@@ -611,7 +616,6 @@
         const isWorkday = !!cal.is_workday;
         const isSpecial = !!cal.special_workday;
 
-        // hiányzó: munkanap vagy szombati munkanap, és nincs rá semmi entry
         if((isWorkday || isSpecial) && !entry){
           missingIso.push(iso);
         }
@@ -640,7 +644,6 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupláz: hétvége/ünnepnap (nem munkanap és nem special_workday) vagy szabi alatti munka
           const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
           let mult = 1;
           if(isWeekendOrHolidayDouble) mult = 2;
@@ -708,10 +711,8 @@
         location.href = '/manager.html?v=' + Date.now();
       });
 
-      // első töltés
       refresh().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
 
-      // ---- FRISSÍTÉS: visszagomb / bfcache / tab váltás ----
       window.addEventListener('pageshow', ()=>{ refresh().catch(()=>{}); });
       window.addEventListener('focus', ()=>{ refresh().catch(()=>{}); });
       document.addEventListener('visibilitychange', ()=>{
