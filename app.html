@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Munkaidő</title>
 
-  <!-- Material Symbols -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
   <style>
@@ -104,16 +103,18 @@
       opacity:1;
     }
 
-    /* Rögzítés/Összesítő/Beállítások: hover narancs */
+    /* Hover narancs (kivéve settings label, azt külön tiltjuk) */
     .nav-item:hover .material-symbols-outlined,
     .nav-item:hover .menu-label{color:var(--accent);}
+
+    /* ✅ Beállítások: a felirat SOHA ne látszódjon */
+    .settings-item .menu-label{display:none !important;}
 
     /* ---------- MAIN ---------- */
     .wrap{max-width:900px; margin:0 auto; padding:0px;}
     .card{background:var(--panel); border:0; border-radius:16px; padding:6px;}
     .hidden{display:none !important;}
 
-    /* Calendar layout */
     .pager{
       display:flex; align-items:center; justify-content:space-between; gap:10px;
       padding:20px 0px 20px;
@@ -205,10 +206,9 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      font-weight:600; /* kért: 600 */
+      font-weight:600;
     }
 
-    /* Szöveg színek a csempéken */
     .tile .tDay{color:#000;}
     .tile .line{color:#374151;}
 
@@ -224,7 +224,6 @@
     .line.red{color:var(--piros) !important;}
     .line.black{color:#111 !important;}
 
-    /* Jump to today button */
     .jumpWrap{padding:8px 0 0;}
     .jumpBtn{
       width:100%;
@@ -240,7 +239,6 @@
     }
     .jumpBtn:active{opacity:.9;}
 
-    /* Toast */
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
       background:var(--accent); color:#111;
@@ -249,7 +247,6 @@
       z-index:99;
     }
 
-    /* Edit modal */
     .modalBackdrop{
       position:fixed; inset:0;
       background:rgba(0,0,0,.55);
@@ -282,7 +279,6 @@
       background:#e5e7eb !important;
       color:#6b7280 !important;
     }
-
     .labelDisabled{ color:#9ca3af !important; }
 
     textarea{min-height:90px; resize:none;}
@@ -296,7 +292,6 @@
       flex:1;
       height:34px;
     }
-    .btn.primary{background:var(--accent); color:#111; font-weight:800;}
     .btn.danger{background:#c9cbd1; color:#111; font-weight:900;}
     .btn.mentes{background:#1ecb5b; color:#111; font-weight:900;}
 
@@ -336,7 +331,7 @@
         <span class="menu-label">Összesítő</span>
       </button>
 
-      <button id="settingsBtn" class="nav-item hidden" type="button" aria-label="Beállítások">
+      <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
         <span class="material-symbols-outlined">settings</span>
         <span class="menu-label">Beállítások</span>
       </button>
@@ -426,7 +421,6 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // TESZT: élesben állítsd ''-re vagy null-ra
     const DEV_TODAY = '2026-04-16';
 
     let supabase = null;
@@ -622,10 +616,8 @@
 
         if(flexMin > 0){
           l3.textContent = minsToHHMM(flexMin);
-
-          // ✅ mai napon legyen fekete (narancs csempén)
           if(iso === todayIso){
-            l3.classList.add('black');
+            l3.classList.add('black'); // ✅ ma fekete
           }else{
             l3.classList.add('red');
           }
@@ -698,15 +690,12 @@
       const isNonWork = (!calRow.is_workday && !isSpecial);
       const isWeekend = isWeekendISO(iso);
 
-      // Flex tiltás: hétvége/ünnep/ nem munkanap, kivéve special_workday
       const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
 
-      // ✅ jövőben csak Szabi + Megjegyzés (érkezés/távozás/flex tiltva)
       $('arrSel').disabled = isFuture;
       $('depSel').disabled = isFuture;
       $('flexSel').disabled = isFuture ? true : disFlexByDayType;
 
-      // Label szürkülés jövőben
       $('arrLbl').classList.toggle('labelDisabled', isFuture);
       $('depLbl').classList.toggle('labelDisabled', isFuture);
 
@@ -836,7 +825,6 @@
       const qy = Number(p.get('y'));
       const qm = Number(p.get('m'));
 
-      // ✅ ha éves nézetből jövünk, akkor ezt vegyük fel (és ne essen vissza 1-re)
       if(Number.isFinite(qy) && Number.isFinite(qm) && qy === 2026 && qm >= 1 && qm <= 12){
         curYear = qy;
         curMonth = qm;
