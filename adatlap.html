@@ -86,10 +86,9 @@
     /* Összesítő: itt ne látszódjon */
     .sum-item{display:none !important;}
 
-    /* Beállítások: hover label */
-    .settings-item .menu-label{opacity:0;}
-    .settings-item:hover .material-symbols-outlined,
-    .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
+    /* Beállítások: a felirat soha ne látszódjon */
+    .settings-item .menu-label{display:none !important;}
+    .settings-item:hover .material-symbols-outlined{ color:var(--accent); }
 
     .hidden{display:none !important;}
 
@@ -105,13 +104,13 @@
       margin-bottom:10px;
     }
 
-    /* ✅ nincs kényszer sortörés, csak ha nem fér ki */
+    /* nincs kényszer sortörés, csak ha nem fér ki */
     .summaryLine{
       font-size:14px; line-height:1.25; color:var(--text);
       white-space:normal;
       word-break:break-word;
     }
-    /* ✅ kiemelt szám fehér + 115% */
+    /* kiemelt szám fehér + 115% */
     .summaryLine .num{font-size:115%; font-weight:800; color:var(--text) !important;}
 
     .missingBox{
@@ -131,15 +130,57 @@
       line-height:1.2;
       color:var(--text);
       user-select:text;
-      white-space:normal;
+      white-space:pre-wrap;   /* tabulálás */
+      tab-size: 4;
     }
 
     .yearTitle{
       font-weight:800;
       font-size:1rem;
-      margin:10px 0 8px;
+      margin:10px 0 6px;
       text-align:center;
     }
+
+    /* ✅ Jelmagyarázat */
+    .legendRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:center;
+      margin:0 0 10px;
+      opacity:.95;
+    }
+    .legendItem{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:12px;
+      font-weight:800;
+      color:var(--text);
+    }
+    .legendTile{
+      width:var(--day);
+      height:var(--day);
+      border:0;
+      border-radius:0;
+      background:var(--work);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .legendTile span{
+      font-size:var(--dayFont);
+      font-weight:700;
+      line-height:1;
+      color:#111;
+      transform: translateY(0.5px);
+    }
+    .legendTile.holiday{background:var(--holiday);}
+    .legendTile.vac{background:var(--vac);}
+    .legendTile.missing{background:var(--work);}
+    .legendTile.missing span{color:var(--piros);}
 
     .monthsWrap{
       display:flex;
@@ -230,6 +271,9 @@
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
 
+    /* ✅ hiányzó rögzítés: piros szám */
+    .dTile.missing span{ color:var(--piros) !important; }
+
     /* Toast */
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
@@ -264,7 +308,7 @@
 
       <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
         <span class="material-symbols-outlined">settings</span>
-        <span class="menu-label">Beállítások</span>
+        <span class="menu-label"></span>
       </button>
     </nav>
   </header>
@@ -282,6 +326,27 @@
       </div>
 
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
+
+      <!-- ✅ Jelmagyarázat -->
+      <div class="legendRow" aria-label="Jelmagyarázat">
+        <div class="legendItem">
+          <div class="legendTile missing"><span>1</span></div>
+          <div>nincs rögzítés</div>
+        </div>
+        <div class="legendItem">
+          <div class="legendTile"><span>1</span></div>
+          <div>munkanap</div>
+        </div>
+        <div class="legendItem">
+          <div class="legendTile holiday"><span>1</span></div>
+          <div>ünnepnap</div>
+        </div>
+        <div class="legendItem">
+          <div class="legendTile vac"><span>1</span></div>
+          <div>szabadság</div>
+        </div>
+      </div>
+
       <div id="monthsWrap" class="monthsWrap"></div>
     </section>
   </main>
@@ -420,7 +485,7 @@
       return '';
     }
 
-    function renderYearCalendar(calendarMap, vacSet){
+    function renderYearCalendar(calendarMap, vacSet, missingSet){
       const wrap = $('monthsWrap');
       wrap.innerHTML = '';
 
@@ -486,6 +551,10 @@
             tile.classList.add('vac');
           }
 
+          if(missingSet && missingSet.has(iso)){
+            tile.classList.add('missing');
+          }
+
           if(iso === todayIso){
             tile.classList.add('today');
           }
@@ -519,9 +588,11 @@
       return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
     }
 
-    function renderMissingDatesGrouped(missingIsoList){
+    function renderMissingDatesTabulated(missingIsoList){
       const listEl = $('missingList');
       const titleEl = $('missingTitle');
+
+      const today = getTodayISO();
 
       if(!missingIsoList || missingIsoList.length === 0){
         titleEl.textContent = 'Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen 0 db)';
@@ -529,23 +600,18 @@
         return;
       }
 
-      const today = getTodayISO();
       const olderCount = missingIsoList.filter(iso => daysBetween(iso, today) >= 14).length;
 
       titleEl.textContent =
         `Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen ${missingIsoList.length} db, ebből ${olderCount} db két hétnél régebbi, ezeket pótold!)`;
 
-      const groups = new Map();
-      for(const iso of missingIsoList){
-        const ym = iso.slice(0,7);
-        const fmt = iso.replaceAll('-', '.');
-        if(!groups.has(ym)) groups.set(ym, []);
-        groups.get(ym).push(fmt);
-      }
+      const fmt = missingIsoList
+        .slice()
+        .sort()
+        .map(iso => iso.replaceAll('-','.'))
+        .join('\t');
 
-      const ymKeys = Array.from(groups.keys()).sort();
-      const parts = ymKeys.map(ym => groups.get(ym).join(', '));
-      listEl.textContent = parts.join(' | ');
+      listEl.textContent = fmt;
     }
 
     async function loadYearDataAndCompute(){
@@ -602,6 +668,7 @@
 
         const entry = entriesMap.get(iso);
 
+        // ma csak akkor számít, ha van értelmes rögzítés
         const isToday = (iso === today);
         const meaningfulToday =
           !!(entry && (
@@ -613,26 +680,29 @@
           continue;
         }
 
-        const isWorkday = !!cal.is_workday;
-        const isSpecial = !!cal.special_workday;
+        const isExpectedDay = !!cal.is_workday || !!cal.special_workday;
 
-        if((isWorkday || isSpecial) && !entry){
+        // hiányzó rögzítés: csak mai napnál korábbi, elvárt nap (munkanap vagy szombati munkanap) és nincs entry
+        if(isExpectedDay && !entry && iso < today){
           missingIso.push(iso);
         }
 
-        const expected = isWorkday ? expPerDay : 0;
+        const expected = isExpectedDay ? expPerDay : 0;
         expectedTotal += expected;
 
         let fulfilled = 0;
 
         if(entry){
           const vac = !!entry.is_vacation;
-          if(vac && isWorkday){
+
+          // szabi: elvárt napokon teljesítettnek vesszük az elvárt percet
+          if(vac && isExpectedDay){
             fulfilled += expected;
             takenVacationDays++;
             vacSet.add(iso);
           }
 
+          // munka perc (érkezés-távozás - csúsztatás)
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
@@ -644,10 +714,9 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
-          let mult = 1;
-          if(isWeekendOrHolidayDouble) mult = 2;
-          if(vac && worked > 0) mult = 2;
+          // dupla: nem elvárt napokon (hétvége/ünnep/pihenő), vagy szabadság alatt rögzített munka
+          const isDouble = (!isExpectedDay) || (vac && worked > 0);
+          const mult = isDouble ? 2 : 1;
 
           fulfilled += (worked * mult);
         }
@@ -669,8 +738,10 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      renderMissingDatesGrouped(missingIso);
-      renderYearCalendar(calendarMap, vacSet);
+      renderMissingDatesTabulated(missingIso);
+
+      const missingSet = new Set(missingIso);
+      renderYearCalendar(calendarMap, vacSet, missingSet);
     }
 
     let refreshing = false;
