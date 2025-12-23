@@ -81,7 +81,7 @@
     }
     .hidden{display:none !important;}
 
-    /* --- TEAM SUMMARY (új) --- */
+    /* --- TEAM SUMMARY --- */
     .summaryCard{
       background:var(--panel);
       border:1px solid var(--border);
@@ -98,7 +98,7 @@
     table.summaryTable{
       width:100%;
       border-collapse:collapse;
-      min-width:720px;
+      min-width:780px;
     }
     .summaryTable th, .summaryTable td{
       padding:8px 10px;
@@ -350,7 +350,7 @@
     <!-- USERS VIEW -->
     <section id="usersView" class="panel">
 
-      <!-- ✅ ÚJ: csapat összesítő táblázat (a mostani tartalom fölött) -->
+      <!-- csapat összesítő -->
       <section class="summaryCard">
         <div class="summaryHead">
           <h2>Összesítő (csapat)</h2>
@@ -583,12 +583,12 @@
     let daysByIso = new Map(); // iso -> row
     let editingIso = null;
 
-    // ✅ Team summary cache
+    // Team summary cache
     let yearCalendarRows = null; // [{date,is_workday,holiday_name,special_workday,year}]
-    let yearEntriesRows = null;  // all entries for year (manager)
+    let yearEntriesRows = null;  // all entries for year
     let yearEntriesByUser = null;
 
-    // TESZT: élesben állítsd ''-re vagy null-ra
+    // TESZT: élesben legyen '' vagy null
     const DEV_TODAY = ''; // pl. '2026-04-16'
 
     function getTodayISO(){
@@ -606,6 +606,13 @@
       if(!hhmm) return null;
       const [h,m] = String(hhmm).slice(0,5).split(':').map(Number);
       return h*60 + m;
+    }
+
+    function minsToHHMM(mins){
+      const m = Math.abs(Math.trunc(Number(mins)||0));
+      const h = Math.floor(m/60);
+      const mm = m%60;
+      return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
     }
 
     function daysBetween(aIso, bIso){
@@ -668,55 +675,70 @@
       }
     }
 
-    function calcUserMetrics(user, calendarRows, entriesRows){
+    /**
+     * ✅ 1:1 az adatlap.html logikájával:
+     * - csak today-ig
+     * - today csak akkor számít, ha van értelmes rögzítés (arrival+departure VAGY flex>0 VAGY szabi)
+     * - elvárt perc: csak cal.is_workday alapján (special_workday amúgy is is_workday=true)
+     * - szabadság csak munkanapon számít kivettnek
+     * - dupla: (!is_workday && !special_workday) VAGY (szabi és dolgozott)
+     * - balance = carry + bonus + (fulfilled - expected)
+     * - 2+ hetes hiány: elvárt nap (is_workday || special_workday), és nincs entry, és iso < today
+     */
+    function calcUserMetricsLikeAdatlap(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
-      const expPerDay = Number(user.daily_expected_minutes ?? 480);
-      const carry = Number(user.flex_carryover_minutes || 0);
-      const bonus = Number(user.flex_bonus_minutes || 0);
+      const expPerDay = Number(user?.daily_expected_minutes ?? 480);
+      const carry = Number(user?.flex_carryover_minutes || 0);
+      const bonus = Number(user?.flex_bonus_minutes || 0);
 
       const vacTotal =
-        Number(user.vacation_entitlement_days || 0) +
-        Number(user.vacation_carryover_days || 0);
+        Number(user?.vacation_entitlement_days || 0) +
+        Number(user?.vacation_carryover_days || 0);
 
       // entries map (iso -> entry)
-      const eMap = new Map();
+      const entriesMap = new Map();
       for(const e of (entriesRows||[])){
-        eMap.set(normalizeIsoDate(e.date), e);
+        entriesMap.set(normalizeIsoDate(e.date), e);
       }
 
       let expectedTotal = 0;
       let fulfilledTotal = 0;
-      let takenVacDays = 0;
 
-      let missingCount = 0;
+      let takenVacationDays = 0;
+
+      let missingTotal = 0;
       let oldMissingCount = 0;
 
-      for(const cal of (calendarRows||[])){
+      const sortedDays = (calendarRows||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+      for(const cal of sortedDays){
         const iso = cal.date;
         if(iso > today) break;
 
-        const isSpecial = !!cal.special_workday;
-        const isExpectedDay = !!cal.is_workday || isSpecial; // munkanap vagy szombati munkanap
-        const entry = eMap.get(iso);
+        const entry = entriesMap.get(iso);
 
-        // ma csak akkor számít, ha van "értelmes" rögzítés (munka/flex/szabi)
-        if(iso === today){
-          const meaningful = !!(entry && (
+        const isToday = (iso === today);
+        const meaningfulToday =
+          !!(entry && (
             (entry.arrival && entry.departure) ||
             (Number(entry.flex_minutes||0) > 0) ||
             !!entry.is_vacation
           ));
-          if(!meaningful) continue;
+        if(isToday && !meaningfulToday){
+          continue;
         }
 
-        // hiányzó rögzítés: elvárt nap, és nincs entry (szabi sem)
-        if(isExpectedDay && !entry && iso < today){
-          missingCount++;
+        const isWorkday = !!cal.is_workday;
+        const isSpecial = !!cal.special_workday;
+
+        // hiányzó rögzítés: elvárt nap (munkanap vagy szombati munkanap), és nincs entry, és múltbeli
+        if((isWorkday || isSpecial) && !entry && iso < today){
+          missingTotal++;
           if(daysBetween(iso, today) >= 14) oldMissingCount++;
         }
 
-        const expected = isExpectedDay ? expPerDay : 0;
+        // elvárt: adatlap szerint csak is_workday alapján
+        const expected = isWorkday ? expPerDay : 0;
         expectedTotal += expected;
 
         let fulfilled = 0;
@@ -724,10 +746,10 @@
         if(entry){
           const vac = !!entry.is_vacation;
 
-          // szabi nap: teljesítettnek vesszük az aznapi elvártat (ha elvárt nap)
-          if(vac && isExpectedDay){
+          // szabi: munkanapon teljesített = elvárt
+          if(vac && isWorkday){
             fulfilled += expected;
-            takenVacDays++;
+            takenVacationDays++;
           }
 
           // munka perc (érkezés-távozás - csúsztatás)
@@ -742,9 +764,11 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupla: hétvége/ünnep/pihenő (nem elvárt nap), vagy szabadság alatt dolgozott
-          const isDouble = (!isExpectedDay) || (vac && worked > 0);
-          const mult = isDouble ? 2 : 1;
+          // dupla: hétvége/ünnepnap/pihenőnap (nem munkanap és nem szombati munkanap), vagy szabi alatt dolgozott
+          const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
+          let mult = 1;
+          if(isWeekendOrHolidayDouble) mult = 2;
+          if(vac && worked > 0) mult = 2;
 
           fulfilled += worked * mult;
         }
@@ -754,23 +778,27 @@
 
       const balanceMin = (carry + bonus) + (fulfilledTotal - expectedTotal);
 
-      const dayBase = expPerDay > 0 ? expPerDay : 480;
-      const approxDays = Math.round(Math.abs(balanceMin) / dayBase);
+      // nap számítás: adatlapban floor (nem round)
+      const dayMins = Math.max(1, Number(user?.daily_expected_minutes || 480));
+      const approxDays = Math.floor(Math.abs(balanceMin) / dayMins);
 
-      const vacRemain = vacTotal - takenVacDays;
+      const vacRemainRaw = vacTotal - takenVacationDays;
+      const vacRemain = Math.max(0, vacRemainRaw);
 
       return {
         balanceMin,
         approxDays,
         vacRemain,
-        oldMissingCount
+        oldMissingCount,
+        missingTotal
       };
     }
 
     function fmtBalance(mins){
-      const sign = mins >= 0 ? '+' : '−';
-      const abs = Math.abs(Math.round(mins));
-      return `${sign}${abs} perc`;
+      const n = Math.round(Number(mins)||0);
+      const sign = n >= 0 ? '+' : '−';
+      const abs = Math.abs(n);
+      return `${sign}${abs} perc (${minsToHHMM(abs)})`;
     }
 
     async function renderTeamSummary(){
@@ -797,7 +825,7 @@
         for(const u of sorted){
           const uid = u.user_id;
           const myEntries = yearEntriesByUser?.get(uid) || [];
-          const m = calcUserMetrics(u, yearCalendarRows, myEntries);
+          const m = calcUserMetricsLikeAdatlap(u, yearCalendarRows, myEntries);
 
           const tr = document.createElement('tr');
 
@@ -812,7 +840,10 @@
               ${escapeHtml(u.display_name || u.email || '(névtelen)')}
               ${roleLabel}
             </td>
-            <td>${fmtBalance(m.balanceMin)} <span class="muted">(~${m.approxDays} nap)</span></td>
+            <td>
+              ${fmtBalance(m.balanceMin)}
+              <span class="muted">(~${m.approxDays} nap)</span>
+            </td>
             <td>${Math.round(m.vacRemain)} <span class="muted">nap</span></td>
             <td>${m.oldMissingCount} <span class="muted">db</span></td>
           `;
@@ -894,7 +925,7 @@
       const payload = {
         email,
         display_name: name || null,
-        role: 'user', // minden felvett user
+        role: 'user',
 
         daily_expected_minutes: getDailyMinutesFromRadio(),
         vacation_entitlement_days: Number($('invVacEnt').value || 0),
@@ -1056,7 +1087,7 @@
         let wd = first.getDay(); wd = wd===0 ? 7 : wd;
         const offset = wd-1;
 
-        const last = new Date(YEAR, m, 0, 12,0,0); // last day of month
+        const last = new Date(YEAR, m, 0, 12,0,0);
         const daysInMonth = last.getDate();
 
         for(let i=0;i<42;i++){
@@ -1262,13 +1293,12 @@
 
         const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
         const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
-
         return an.localeCompare(bn, 'hu');
       });
 
       renderUsers();
 
-      // ✅ Team summary frissítés (nagy lekérés cache-elve)
+      // ✅ csapat összesítő újraszámolás (cache nullázás + újraépítés)
       yearCalendarRows = null;
       yearEntriesRows = null;
       yearEntriesByUser = null;
