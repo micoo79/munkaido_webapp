@@ -81,6 +81,55 @@
     }
     .hidden{display:none !important;}
 
+    /* --- TEAM SUMMARY (új) --- */
+    .summaryCard{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      margin:0 0 12px 0;
+    }
+    .summaryHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:6px 4px 10px;
+    }
+    .summaryHead h2{margin:0; font-size:16px; font-weight:900;}
+    .summaryWrap{overflow:auto;}
+    table.summaryTable{
+      width:100%;
+      border-collapse:collapse;
+      min-width:720px;
+    }
+    .summaryTable th, .summaryTable td{
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      text-align:left;
+      vertical-align:middle;
+      white-space:nowrap;
+    }
+    .summaryTable th{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:900;
+      letter-spacing:.02em;
+    }
+    .summaryTable td{
+      font-size:13px;
+      font-weight:800;
+    }
+    .summaryTable td.muted{color:var(--muted); font-weight:800;}
+    .summaryTag{
+      display:inline-flex; align-items:center;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      margin-left:8px;
+    }
+
     /* --- USERS --- */
     .gridUsers{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
     @media (max-width:900px){ .gridUsers{grid-template-columns:1fr;} }
@@ -300,6 +349,31 @@
 
     <!-- USERS VIEW -->
     <section id="usersView" class="panel">
+
+      <!-- ✅ ÚJ: csapat összesítő táblázat (a mostani tartalom fölött) -->
+      <section class="summaryCard">
+        <div class="summaryHead">
+          <h2>Összesítő (csapat)</h2>
+          <div class="who" id="sumMeta">—</div>
+        </div>
+
+        <div class="summaryWrap">
+          <table class="summaryTable">
+            <thead>
+              <tr>
+                <th>Név</th>
+                <th>Túlóra / hátralék</th>
+                <th>Szabi hátra</th>
+                <th>2+ hetes hiány</th>
+              </tr>
+            </thead>
+            <tbody id="teamTbody">
+              <tr><td colspan="4" class="muted">Betöltés…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <div class="gridUsers">
         <section class="panel" style="margin-top:0;">
           <div class="panelHead">
@@ -508,6 +582,250 @@
     const YEAR = 2026;
     let daysByIso = new Map(); // iso -> row
     let editingIso = null;
+
+    // ✅ Team summary cache
+    let yearCalendarRows = null; // [{date,is_workday,holiday_name,special_workday,year}]
+    let yearEntriesRows = null;  // all entries for year (manager)
+    let yearEntriesByUser = null;
+
+    // TESZT: élesben állítsd ''-re vagy null-ra
+    const DEV_TODAY = ''; // pl. '2026-04-16'
+
+    function getTodayISO(){
+      if(DEV_TODAY) return DEV_TODAY;
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function normalizeIsoDate(d){ return String(d).slice(0,10); }
+
+    function hhmmToMins(hhmm){
+      if(!hhmm) return null;
+      const [h,m] = String(hhmm).slice(0,5).split(':').map(Number);
+      return h*60 + m;
+    }
+
+    function daysBetween(aIso, bIso){
+      const a = new Date(aIso + 'T12:00:00');
+      const b = new Date(bIso + 'T12:00:00');
+      return Math.round((b - a) / (24*60*60*1000));
+    }
+
+    async function fetchAll(makeQuery, pageSize=1000){
+      let out = [];
+      let from = 0;
+      while(true){
+        const { data, error } = await makeQuery(from, from+pageSize-1);
+        if(error) throw error;
+        out = out.concat(data || []);
+        if(!data || data.length < pageSize) break;
+        from += pageSize;
+      }
+      return out;
+    }
+
+    async function ensureYearCache(){
+      const start = `${YEAR}-01-01`;
+      const end = `${YEAR+1}-01-01`;
+
+      if(!yearCalendarRows){
+        const cal = await fetchAll((from,to)=>
+          supabase
+            .from('calendar_days')
+            .select('date,is_workday,holiday_name,special_workday,year')
+            .eq('year', YEAR)
+            .order('date', { ascending:true })
+            .range(from,to)
+        );
+
+        yearCalendarRows = (cal||[])
+          .map(r=>({ ...r, date: normalizeIsoDate(r.date) }))
+          .sort((a,b)=>a.date.localeCompare(b.date));
+      }
+
+      if(!yearEntriesRows){
+        const ents = await fetchAll((from,to)=>
+          supabase
+            .from('entries')
+            .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
+            .gte('date', start)
+            .lt('date', end)
+            .order('date', { ascending:true })
+            .range(from,to)
+        );
+
+        yearEntriesRows = (ents||[]).map(e=>({ ...e, date: normalizeIsoDate(e.date) }));
+
+        yearEntriesByUser = new Map();
+        for(const e of yearEntriesRows){
+          const uid = e.user_id;
+          if(!yearEntriesByUser.has(uid)) yearEntriesByUser.set(uid, []);
+          yearEntriesByUser.get(uid).push(e);
+        }
+      }
+    }
+
+    function calcUserMetrics(user, calendarRows, entriesRows){
+      const today = getTodayISO();
+
+      const expPerDay = Number(user.daily_expected_minutes ?? 480);
+      const carry = Number(user.flex_carryover_minutes || 0);
+      const bonus = Number(user.flex_bonus_minutes || 0);
+
+      const vacTotal =
+        Number(user.vacation_entitlement_days || 0) +
+        Number(user.vacation_carryover_days || 0);
+
+      // entries map (iso -> entry)
+      const eMap = new Map();
+      for(const e of (entriesRows||[])){
+        eMap.set(normalizeIsoDate(e.date), e);
+      }
+
+      let expectedTotal = 0;
+      let fulfilledTotal = 0;
+      let takenVacDays = 0;
+
+      let missingCount = 0;
+      let oldMissingCount = 0;
+
+      for(const cal of (calendarRows||[])){
+        const iso = cal.date;
+        if(iso > today) break;
+
+        const isSpecial = !!cal.special_workday;
+        const isExpectedDay = !!cal.is_workday || isSpecial; // munkanap vagy szombati munkanap
+        const entry = eMap.get(iso);
+
+        // ma csak akkor számít, ha van "értelmes" rögzítés (munka/flex/szabi)
+        if(iso === today){
+          const meaningful = !!(entry && (
+            (entry.arrival && entry.departure) ||
+            (Number(entry.flex_minutes||0) > 0) ||
+            !!entry.is_vacation
+          ));
+          if(!meaningful) continue;
+        }
+
+        // hiányzó rögzítés: elvárt nap, és nincs entry (szabi sem)
+        if(isExpectedDay && !entry && iso < today){
+          missingCount++;
+          if(daysBetween(iso, today) >= 14) oldMissingCount++;
+        }
+
+        const expected = isExpectedDay ? expPerDay : 0;
+        expectedTotal += expected;
+
+        let fulfilled = 0;
+
+        if(entry){
+          const vac = !!entry.is_vacation;
+
+          // szabi nap: teljesítettnek vesszük az aznapi elvártat (ha elvárt nap)
+          if(vac && isExpectedDay){
+            fulfilled += expected;
+            takenVacDays++;
+          }
+
+          // munka perc (érkezés-távozás - csúsztatás)
+          let worked = 0;
+          if(entry.arrival && entry.departure){
+            const inM = hhmmToMins(entry.arrival);
+            const outM = hhmmToMins(entry.departure);
+            if(inM != null && outM != null && outM >= inM){
+              worked = outM - inM;
+            }
+          }
+          const flexM = Math.max(0, Number(entry.flex_minutes || 0));
+          worked = Math.max(0, worked - flexM);
+
+          // dupla: hétvége/ünnep/pihenő (nem elvárt nap), vagy szabadság alatt dolgozott
+          const isDouble = (!isExpectedDay) || (vac && worked > 0);
+          const mult = isDouble ? 2 : 1;
+
+          fulfilled += worked * mult;
+        }
+
+        fulfilledTotal += fulfilled;
+      }
+
+      const balanceMin = (carry + bonus) + (fulfilledTotal - expectedTotal);
+
+      const dayBase = expPerDay > 0 ? expPerDay : 480;
+      const approxDays = Math.round(Math.abs(balanceMin) / dayBase);
+
+      const vacRemain = vacTotal - takenVacDays;
+
+      return {
+        balanceMin,
+        approxDays,
+        vacRemain,
+        oldMissingCount
+      };
+    }
+
+    function fmtBalance(mins){
+      const sign = mins >= 0 ? '+' : '−';
+      const abs = Math.abs(Math.round(mins));
+      return `${sign}${abs} perc`;
+    }
+
+    async function renderTeamSummary(){
+      const tbody = $('teamTbody');
+      if(!tbody) return;
+
+      try{
+        await ensureYearCache();
+
+        const today = getTodayISO();
+        $('sumMeta').textContent = `Számolva eddig: ${today.replaceAll('-','.')}`;
+
+        tbody.innerHTML = '';
+
+        const sorted = (profiles||[]).slice().sort((a,b)=>{
+          const wa = roleWeight(a.role);
+          const wb = roleWeight(b.role);
+          if(wa !== wb) return wa - wb;
+          const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
+          const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
+          return an.localeCompare(bn, 'hu');
+        });
+
+        for(const u of sorted){
+          const uid = u.user_id;
+          const myEntries = yearEntriesByUser?.get(uid) || [];
+          const m = calcUserMetrics(u, yearCalendarRows, myEntries);
+
+          const tr = document.createElement('tr');
+
+          const roleLabel = (u.role === 'admin')
+            ? `<span class="summaryTag" style="border-color:rgba(124,58,237,.45); background:rgba(124,58,237,.10);">admin</span>`
+            : (u.role === 'manager')
+              ? `<span class="summaryTag" style="border-color:rgba(37,99,235,.45); background:rgba(37,99,235,.10);">manager</span>`
+              : '';
+
+          tr.innerHTML = `
+            <td>
+              ${escapeHtml(u.display_name || u.email || '(névtelen)')}
+              ${roleLabel}
+            </td>
+            <td>${fmtBalance(m.balanceMin)} <span class="muted">(~${m.approxDays} nap)</span></td>
+            <td>${Math.round(m.vacRemain)} <span class="muted">nap</span></td>
+            <td>${m.oldMissingCount} <span class="muted">db</span></td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        if(sorted.length === 0){
+          tbody.innerHTML = `<tr><td colspan="4" class="muted">Nincs felhasználó.</td></tr>`;
+        }
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="4" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
+      }
+    }
 
     async function ensureSupabase(){
       if(supabase) return supabase;
@@ -755,7 +1073,6 @@
           const dIso = iso(YEAR, m, dayNum);
 
           const row = daysByIso.get(dIso);
-          // ha valamiért nincs sor, akkor fallback
           const r = row || { date:dIso, year:YEAR, is_workday: !isWeekendISO(dIso), holiday_name:null, special_workday:false };
 
           cell.className = tileClass(r);
@@ -765,7 +1082,6 @@
           dn.textContent = String(dayNum);
           cell.appendChild(dn);
 
-          // ünnepnév mini jelzés (csak ha van)
           if(r.holiday_name){
             const hint = document.createElement('div');
             hint.className = 'miniHint';
@@ -799,7 +1115,6 @@
 
       $('dWorkSatChk').checked = !!row.special_workday;
 
-      // ha ünnep -> workSat off, név mező látszik
       $('holidayNameWrap').style.display = $('dHolidayChk').checked ? 'block' : 'none';
 
       $('dayBackdrop').classList.remove('hidden');
@@ -816,7 +1131,6 @@
     }
 
     function computeDefaultForIso(isoStr){
-      // alap: hétvége -> pihenő; hétköznap -> munkanap
       const weekend = isWeekendISO(isoStr);
       return {
         date: isoStr,
@@ -839,11 +1153,6 @@
 
       const workSatOn = sat ? $('dWorkSatChk').checked : false;
 
-      // szabályok:
-      // - ha ünnep: is_workday=false, holiday_name kell, special_workday=false
-      // - ha szombati munkanap: is_workday=true, special_workday=true, holiday_name=null
-      // - egyéb: marad alap/korábbi is_workday, holiday_name null, special_workday false
-
       let patch = {};
 
       if(holidayOn){
@@ -855,8 +1164,6 @@
       }else if(workSatOn){
         patch = { is_workday:true, holiday_name:null, special_workday:true };
       }else{
-        // nem ünnep, nem szombati munkanap -> legyen holiday_name null, special_workday false
-        // is_workday-t itt nem “találgatjuk”, hanem visszaállítható az "Alapértelmezett" gombbal.
         patch = { holiday_name:null, special_workday:false };
       }
 
@@ -867,7 +1174,6 @@
 
       if(error) throw error;
 
-      // local cache frissítése
       const newRow = { ...row, ...patch };
       daysByIso.set(isoStr, newRow);
 
@@ -957,11 +1263,16 @@
         const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
         const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
 
-        // admin, manager után a userek név szerint
         return an.localeCompare(bn, 'hu');
       });
 
       renderUsers();
+
+      // ✅ Team summary frissítés (nagy lekérés cache-elve)
+      yearCalendarRows = null;
+      yearEntriesRows = null;
+      yearEntriesByUser = null;
+      await renderTeamSummary();
     }
 
     // Tabs
@@ -1011,14 +1322,12 @@
           const on = $('dHolidayChk').checked;
           $('holidayNameWrap').style.display = on ? 'block' : 'none';
           if(on){
-            // ünnep esetén szombati munkanap legyen off
             $('dWorkSatChk').checked = false;
           }
         });
 
         $('dWorkSatChk').addEventListener('change', ()=>{
           if($('dWorkSatChk').checked){
-            // szombati munkanap esetén ünnep legyen off
             $('dHolidayChk').checked = false;
             $('holidayNameWrap').style.display = 'none';
             $('dHolidayName').value = '';
