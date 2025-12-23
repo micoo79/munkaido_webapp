@@ -588,8 +588,12 @@
     let yearEntriesRows = null;  // all entries for year
     let yearEntriesByUser = null;
 
-    // TESZT: élesben legyen '' vagy null
-    const DEV_TODAY = ''; // pl. '2026-04-16'
+    /**
+     * ✅ TESZT MAI NAP:
+     * - teszt környezetben legyen fix dátum (most: 2026-04-16)
+     * - élesítéshez: állítsd ''-re (vagy null-ra), és automatikusan a valós mai napot fogja használni
+     */
+    const DEV_TODAY = '2026-04-16'; // éles: '' vagy null
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -675,16 +679,6 @@
       }
     }
 
-    /**
-     * ✅ 1:1 az adatlap.html logikájával:
-     * - csak today-ig
-     * - today csak akkor számít, ha van értelmes rögzítés (arrival+departure VAGY flex>0 VAGY szabi)
-     * - elvárt perc: csak cal.is_workday alapján (special_workday amúgy is is_workday=true)
-     * - szabadság csak munkanapon számít kivettnek
-     * - dupla: (!is_workday && !special_workday) VAGY (szabi és dolgozott)
-     * - balance = carry + bonus + (fulfilled - expected)
-     * - 2+ hetes hiány: elvárt nap (is_workday || special_workday), és nincs entry, és iso < today
-     */
     function calcUserMetricsLikeAdatlap(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
@@ -707,7 +701,6 @@
 
       let takenVacationDays = 0;
 
-      let missingTotal = 0;
       let oldMissingCount = 0;
 
       const sortedDays = (calendarRows||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
@@ -733,7 +726,6 @@
 
         // hiányzó rögzítés: elvárt nap (munkanap vagy szombati munkanap), és nincs entry, és múltbeli
         if((isWorkday || isSpecial) && !entry && iso < today){
-          missingTotal++;
           if(daysBetween(iso, today) >= 14) oldMissingCount++;
         }
 
@@ -746,7 +738,7 @@
         if(entry){
           const vac = !!entry.is_vacation;
 
-          // szabi: munkanapon teljesített = elvárt
+          // szabi: munkanapon teljesítettnek vesszük az aznapi elvártat
           if(vac && isWorkday){
             fulfilled += expected;
             takenVacationDays++;
@@ -764,7 +756,7 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupla: hétvége/ünnepnap/pihenőnap (nem munkanap és nem szombati munkanap), vagy szabi alatt dolgozott
+          // dupla: hétvége/ünnep/pihenő (nem munkanap és nem szombati munkanap), vagy szabadság alatt dolgozott
           const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
           let mult = 1;
           if(isWeekendOrHolidayDouble) mult = 2;
@@ -778,19 +770,16 @@
 
       const balanceMin = (carry + bonus) + (fulfilledTotal - expectedTotal);
 
-      // nap számítás: adatlapban floor (nem round)
       const dayMins = Math.max(1, Number(user?.daily_expected_minutes || 480));
       const approxDays = Math.floor(Math.abs(balanceMin) / dayMins);
 
-      const vacRemainRaw = vacTotal - takenVacationDays;
-      const vacRemain = Math.max(0, vacRemainRaw);
+      const vacRemain = Math.max(0, (vacTotal - takenVacationDays));
 
       return {
         balanceMin,
         approxDays,
         vacRemain,
-        oldMissingCount,
-        missingTotal
+        oldMissingCount
       };
     }
 
@@ -1298,7 +1287,7 @@
 
       renderUsers();
 
-      // ✅ csapat összesítő újraszámolás (cache nullázás + újraépítés)
+      // csapat összesítő újraszámolás (cache nullázás + újraépítés)
       yearCalendarRows = null;
       yearEntriesRows = null;
       yearEntriesByUser = null;
