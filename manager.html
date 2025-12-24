@@ -17,7 +17,7 @@
 
       --rest:#3f3f46;
       --holiday:#f6b2b2;
-      --vac:#b9d9ff;          /* itt csak vizuál, naptárban nem használjuk */
+      --vac:#b9d9ff;
       --work:#ffffff;
       --weekend:#52525b;
       --zold:#1ecb5b;
@@ -93,12 +93,12 @@
       display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
       padding:6px 4px 10px;
     }
-    .summaryHead h2{margin:0; font-size:16px; font-weight:900;}
+
     .summaryWrap{overflow:auto;}
     table.summaryTable{
       width:100%;
       border-collapse:collapse;
-      min-width:780px;
+      min-width:860px;
     }
     .summaryTable th, .summaryTable td{
       padding:8px 10px;
@@ -118,6 +118,8 @@
       font-weight:800;
     }
     .summaryTable td.muted{color:var(--muted); font-weight:800;}
+    .muted{color:var(--muted); font-weight:800;}
+
     .summaryTag{
       display:inline-flex; align-items:center;
       padding:2px 8px;
@@ -129,6 +131,9 @@
       color:var(--text);
       margin-left:8px;
     }
+
+    .pos{color:var(--zold) !important;}
+    .neg{color:var(--piros) !important;}
 
     /* --- USERS --- */
     .gridUsers{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
@@ -344,16 +349,17 @@
 
     <div class="tabs">
       <button id="tabUsers" class="tab active" type="button">Felhasználók</button>
-      <button id="tabYear" class="tab" type="button">Naptár (2026)</button>
+      <button id="tabYear" class="tab" type="button">Éves munkarend</button>
+      <button id="tabExport" class="tab" type="button">Export</button>
     </div>
 
     <!-- USERS VIEW -->
     <section id="usersView" class="panel">
 
-      <!-- csapat összesítő -->
+      <!-- csapat összesítő (cím nélkül) -->
       <section class="summaryCard">
         <div class="summaryHead">
-          <h2>Összesítő (csapat)</h2>
+          <div></div>
           <div class="who" id="sumMeta">—</div>
         </div>
 
@@ -363,8 +369,8 @@
               <tr>
                 <th>Név</th>
                 <th>Túlóra / hátralék</th>
-                <th>Szabi hátra</th>
-                <th>2+ hetes hiány</th>
+                <th>Hátralévő szabadságok száma</th>
+                <th>2 hétnél régebbi hiányzó rögzítések</th>
               </tr>
             </thead>
             <tbody id="teamTbody">
@@ -442,6 +448,16 @@
       <div class="note">
         Színek: munkanap (fehér), pihenőnap (sötétszürke), hétvége (szürkés), ünnepnap (pasztell piros),
         szombati munkanap (fehér + zöld border).
+      </div>
+    </section>
+
+    <!-- EXPORT VIEW -->
+    <section id="exportView" class="panel hidden">
+      <div class="panelHead" style="padding-bottom:6px;">
+        <h2>Export</h2>
+      </div>
+      <div class="note" style="margin-top:0;">
+        Később töltjük fel tartalommal.
       </div>
     </section>
   </div>
@@ -589,9 +605,9 @@
     let yearEntriesByUser = null;
 
     /**
-     * ✅ TESZT MAI NAP:
-     * - teszt környezetben legyen fix dátum (most: 2026-04-16)
-     * - élesítéshez: állítsd ''-re (vagy null-ra), és automatikusan a valós mai napot fogja használni
+     * TESZT MAI NAP:
+     * - teszt környezetben fix dátum (most: 2026-04-16)
+     * - élesítéshez: állítsd ''-re (vagy null-ra), és automatikusan a valós mai napot használja
      */
     const DEV_TODAY = '2026-04-16'; // éles: '' vagy null
 
@@ -679,6 +695,7 @@
       }
     }
 
+    // ugyanaz a logika mint az adatlapban
     function calcUserMetricsLikeAdatlap(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
@@ -690,7 +707,6 @@
         Number(user?.vacation_entitlement_days || 0) +
         Number(user?.vacation_carryover_days || 0);
 
-      // entries map (iso -> entry)
       const entriesMap = new Map();
       for(const e of (entriesRows||[])){
         entriesMap.set(normalizeIsoDate(e.date), e);
@@ -700,7 +716,6 @@
       let fulfilledTotal = 0;
 
       let takenVacationDays = 0;
-
       let oldMissingCount = 0;
 
       const sortedDays = (calendarRows||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
@@ -724,12 +739,10 @@
         const isWorkday = !!cal.is_workday;
         const isSpecial = !!cal.special_workday;
 
-        // hiányzó rögzítés: elvárt nap (munkanap vagy szombati munkanap), és nincs entry, és múltbeli
         if((isWorkday || isSpecial) && !entry && iso < today){
           if(daysBetween(iso, today) >= 14) oldMissingCount++;
         }
 
-        // elvárt: adatlap szerint csak is_workday alapján
         const expected = isWorkday ? expPerDay : 0;
         expectedTotal += expected;
 
@@ -738,13 +751,11 @@
         if(entry){
           const vac = !!entry.is_vacation;
 
-          // szabi: munkanapon teljesítettnek vesszük az aznapi elvártat
           if(vac && isWorkday){
             fulfilled += expected;
             takenVacationDays++;
           }
 
-          // munka perc (érkezés-távozás - csúsztatás)
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
@@ -756,7 +767,6 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupla: hétvége/ünnep/pihenő (nem munkanap és nem szombati munkanap), vagy szabadság alatt dolgozott
           const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
           let mult = 1;
           if(isWeekendOrHolidayDouble) mult = 2;
@@ -775,19 +785,18 @@
 
       const vacRemain = Math.max(0, (vacTotal - takenVacationDays));
 
-      return {
-        balanceMin,
-        approxDays,
-        vacRemain,
-        oldMissingCount
-      };
+      return { balanceMin, approxDays, vacRemain, oldMissingCount };
     }
 
-    function fmtBalance(mins){
-      const n = Math.round(Number(mins)||0);
-      const sign = n >= 0 ? '+' : '−';
-      const abs = Math.abs(n);
-      return `${sign}${abs} perc (${minsToHHMM(abs)})`;
+    function balanceHtml(balanceMin, approxDays){
+      const n = Math.round(Number(balanceMin)||0);
+      const isPos = n >= 0;
+      const cls = isPos ? 'pos' : 'neg';
+      const label = isPos ? 'túlóra' : 'hátralék';
+      const hhmm = minsToHHMM(Math.abs(n));
+      const days = Math.abs(Number(approxDays)||0);
+
+      return `<span class="${cls}">${hhmm}</span> óra, <span class="${cls}">${days}</span> ${label}`;
     }
 
     async function renderTeamSummary(){
@@ -802,7 +811,9 @@
 
         tbody.innerHTML = '';
 
-        const sorted = (profiles||[]).slice().sort((a,b)=>{
+        const team = (profiles||[]).filter(p => String(p.role || 'user') !== 'admin');
+
+        const sorted = team.slice().sort((a,b)=>{
           const wa = roleWeight(a.role);
           const wb = roleWeight(b.role);
           if(wa !== wb) return wa - wb;
@@ -818,21 +829,16 @@
 
           const tr = document.createElement('tr');
 
-          const roleLabel = (u.role === 'admin')
-            ? `<span class="summaryTag" style="border-color:rgba(124,58,237,.45); background:rgba(124,58,237,.10);">admin</span>`
-            : (u.role === 'manager')
-              ? `<span class="summaryTag" style="border-color:rgba(37,99,235,.45); background:rgba(37,99,235,.10);">manager</span>`
-              : '';
+          const roleLabel = (u.role === 'manager')
+            ? `<span class="summaryTag" style="border-color:rgba(37,99,235,.45); background:rgba(37,99,235,.10);">manager</span>`
+            : '';
 
           tr.innerHTML = `
             <td>
               ${escapeHtml(u.display_name || u.email || '(névtelen)')}
               ${roleLabel}
             </td>
-            <td>
-              ${fmtBalance(m.balanceMin)}
-              <span class="muted">(~${m.approxDays} nap)</span>
-            </td>
+            <td>${balanceHtml(m.balanceMin, m.approxDays)}</td>
             <td>${Math.round(m.vacRemain)} <span class="muted">nap</span></td>
             <td>${m.oldMissingCount} <span class="muted">db</span></td>
           `;
@@ -1269,7 +1275,6 @@
         return;
       }
 
-      // profiles list
       const { data: all, error: e2 } = await supabase
         .from('profiles')
         .select('user_id,email,display_name,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes');
@@ -1287,7 +1292,6 @@
 
       renderUsers();
 
-      // csapat összesítő újraszámolás (cache nullázás + újraépítés)
       yearCalendarRows = null;
       yearEntriesRows = null;
       yearEntriesByUser = null;
@@ -1298,9 +1302,11 @@
     function setTab(tab){
       $('tabUsers').classList.toggle('active', tab==='users');
       $('tabYear').classList.toggle('active', tab==='year');
+      $('tabExport').classList.toggle('active', tab==='export');
 
       $('usersView').classList.toggle('hidden', tab!=='users');
       $('yearView').classList.toggle('hidden', tab!=='year');
+      $('exportView').classList.toggle('hidden', tab!=='export');
     }
 
     window.addEventListener('DOMContentLoaded', async ()=>{
@@ -1323,6 +1329,7 @@
           setTab('year');
           await loadYear();
         });
+        $('tabExport').addEventListener('click', ()=>setTab('export'));
 
         // User actions
         $('closeBtn').addEventListener('click', closeEditProfile);
