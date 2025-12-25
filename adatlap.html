@@ -74,21 +74,23 @@
       transition:opacity .2s ease, color .2s ease;
     }
 
-    /* Kilépés: fehér ikon + fehér felirat */
     .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
     .logout-item .menu-label{ color:var(--text); opacity:1; }
 
-    /* Rögzítés: felirat látszik, hover narancs */
     .rec-item .menu-label{opacity:1; color:var(--text);}
     .rec-item:hover .material-symbols-outlined,
     .rec-item:hover .menu-label{color:var(--accent);}
 
-    /* Összesítő: itt ne látszódjon */
     .sum-item{display:none !important;}
 
-    /* Beállítások: a felirat soha ne látszódjon */
-    .settings-item .menu-label{display:none !important;}
-    .settings-item:hover .material-symbols-outlined{ color:var(--accent); }
+    .settings-item .menu-label{opacity:0;}
+    .settings-item:hover .material-symbols-outlined,
+    .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
+
+    /* ✅ mobilon ne látszódjon a fogaskerék */
+    @media (max-width:520px){
+      #settingsBtn{display:none !important;}
+    }
 
     .hidden{display:none !important;}
 
@@ -104,13 +106,11 @@
       margin-bottom:10px;
     }
 
-    /* nincs kényszer sortörés, csak ha nem fér ki */
     .summaryLine{
       font-size:14px; line-height:1.25; color:var(--text);
       white-space:normal;
       word-break:break-word;
     }
-    /* kiemelt szám fehér + 115% */
     .summaryLine .num{font-size:115%; font-weight:800; color:var(--text) !important;}
 
     .missingBox{
@@ -130,57 +130,15 @@
       line-height:1.2;
       color:var(--text);
       user-select:text;
-      white-space:pre-wrap;   /* tabulálás */
-      tab-size: 4;
+      white-space:normal;
     }
 
     .yearTitle{
       font-weight:800;
       font-size:1rem;
-      margin:10px 0 6px;
+      margin:10px 0 8px;
       text-align:center;
     }
-
-    /* ✅ Jelmagyarázat */
-    .legendRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:center;
-      margin:0 0 10px;
-      opacity:.95;
-    }
-    .legendItem{
-      display:flex;
-      align-items:center;
-      gap:6px;
-      font-size:12px;
-      font-weight:800;
-      color:var(--text);
-    }
-    .legendTile{
-      width:var(--day);
-      height:var(--day);
-      border:0;
-      border-radius:0;
-      background:var(--work);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
-    .legendTile span{
-      font-size:var(--dayFont);
-      font-weight:700;
-      line-height:1;
-      color:#111;
-      transform: translateY(0.5px);
-    }
-    .legendTile.holiday{background:var(--holiday);}
-    .legendTile.vac{background:var(--vac);}
-    .legendTile.missing{background:var(--work);}
-    .legendTile.missing span{color:var(--piros);}
 
     .monthsWrap{
       display:flex;
@@ -271,10 +229,6 @@
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
 
-    /* ✅ hiányzó rögzítés: piros szám */
-    .dTile.missing span{ color:var(--piros) !important; }
-
-    /* Toast */
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
       background:var(--accent); color:#111;
@@ -308,7 +262,7 @@
 
       <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
         <span class="material-symbols-outlined">settings</span>
-        <span class="menu-label"></span>
+        <span class="menu-label">Beállítások</span>
       </button>
     </nav>
   </header>
@@ -326,27 +280,6 @@
       </div>
 
       <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
-
-      <!-- ✅ Jelmagyarázat -->
-      <div class="legendRow" aria-label="Jelmagyarázat">
-        <div class="legendItem">
-          <div class="legendTile missing"><span>1</span></div>
-          <div>nincs rögzítés</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile"><span>1</span></div>
-          <div>munkanap</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile holiday"><span>1</span></div>
-          <div>ünnepnap</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile vac"><span>1</span></div>
-          <div>szabadság</div>
-        </div>
-      </div>
-
       <div id="monthsWrap" class="monthsWrap"></div>
     </section>
   </main>
@@ -485,7 +418,7 @@
       return '';
     }
 
-    function renderYearCalendar(calendarMap, vacSet, missingSet){
+    function renderYearCalendar(calendarMap, vacSet){
       const wrap = $('monthsWrap');
       wrap.innerHTML = '';
 
@@ -546,13 +479,10 @@
             tile.classList.add('rest');
           }
 
+          // ✅ szabi jelölés: teljes év (jövőbeli is)
           if(vacSet.has(iso)){
             tile.classList.remove('holiday','weekend','rest','workSaturday');
             tile.classList.add('vac');
-          }
-
-          if(missingSet && missingSet.has(iso)){
-            tile.classList.add('missing');
           }
 
           if(iso === todayIso){
@@ -588,11 +518,9 @@
       return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
     }
 
-    function renderMissingDatesTabulated(missingIsoList){
+    function renderMissingDatesGrouped(missingIsoList){
       const listEl = $('missingList');
       const titleEl = $('missingTitle');
-
-      const today = getTodayISO();
 
       if(!missingIsoList || missingIsoList.length === 0){
         titleEl.textContent = 'Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen 0 db)';
@@ -600,18 +528,23 @@
         return;
       }
 
+      const today = getTodayISO();
       const olderCount = missingIsoList.filter(iso => daysBetween(iso, today) >= 14).length;
 
       titleEl.textContent =
         `Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen ${missingIsoList.length} db, ebből ${olderCount} db két hétnél régebbi, ezeket pótold!)`;
 
-      const fmt = missingIsoList
-        .slice()
-        .sort()
-        .map(iso => iso.replaceAll('-','.'))
-        .join('\t');
+      const groups = new Map();
+      for(const iso of missingIsoList){
+        const ym = iso.slice(0,7);
+        const fmt = iso.replaceAll('-', '.');
+        if(!groups.has(ym)) groups.set(ym, []);
+        groups.get(ym).push(fmt);
+      }
 
-      listEl.textContent = fmt;
+      const ymKeys = Array.from(groups.keys()).sort();
+      const parts = ymKeys.map(ym => groups.get(ym).join(', '));
+      listEl.textContent = parts.join(' | ');
     }
 
     async function loadYearDataAndCompute(){
@@ -656,11 +589,13 @@
       let expectedTotal = 0;
       let fulfilledTotal = 0;
 
-      let takenVacationDays = 0;
-      const vacSet = new Set();
-
       const missingIso = [];
 
+      // ✅ szabi: teljes év
+      let takenVacationDaysFullYear = 0;
+      const vacSet = new Set();
+
+      // 1) hiány + túlóra: today-ig
       const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
       for(const cal of sortedDays){
         const iso = cal.date;
@@ -668,7 +603,6 @@
 
         const entry = entriesMap.get(iso);
 
-        // ma csak akkor számít, ha van értelmes rögzítés
         const isToday = (iso === today);
         const meaningfulToday =
           !!(entry && (
@@ -680,29 +614,24 @@
           continue;
         }
 
-        const isExpectedDay = !!cal.is_workday || !!cal.special_workday;
+        const isWorkday = !!cal.is_workday;
+        const isSpecial = !!cal.special_workday;
 
-        // hiányzó rögzítés: csak mai napnál korábbi, elvárt nap (munkanap vagy szombati munkanap) és nincs entry
-        if(isExpectedDay && !entry && iso < today){
+        if((isWorkday || isSpecial) && !entry){
           missingIso.push(iso);
         }
 
-        const expected = isExpectedDay ? expPerDay : 0;
+        const expected = isWorkday ? expPerDay : 0;
         expectedTotal += expected;
 
         let fulfilled = 0;
 
         if(entry){
           const vac = !!entry.is_vacation;
-
-          // szabi: elvárt napokon teljesítettnek vesszük az elvárt percet
-          if(vac && isExpectedDay){
+          if(vac && isWorkday){
             fulfilled += expected;
-            takenVacationDays++;
-            vacSet.add(iso);
           }
 
-          // munka perc (érkezés-távozás - csúsztatás)
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
@@ -714,9 +643,10 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupla: nem elvárt napokon (hétvége/ünnep/pihenő), vagy szabadság alatt rögzített munka
-          const isDouble = (!isExpectedDay) || (vac && worked > 0);
-          const mult = isDouble ? 2 : 1;
+          const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
+          let mult = 1;
+          if(isWeekendOrHolidayDouble) mult = 2;
+          if(vac && worked > 0) mult = 2;
 
           fulfilled += (worked * mult);
         }
@@ -727,10 +657,20 @@
       const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
       $('sumFlex').innerHTML = formatBalanceLine(balance);
 
+      // 2) szabi: teljes év (jövőbeli is) + vacSet a mini naptárhoz
+      for(const [iso, entry] of entriesMap.entries()){
+        if(!entry?.is_vacation) continue;
+        const cal = calendarMap.get(iso);
+        if(cal && !!cal.is_workday){
+          takenVacationDaysFullYear++;
+          vacSet.add(iso);
+        }
+      }
+
       const vacEnt = Number(profile?.vacation_entitlement_days || 0);
       const vacCarry = Number(profile?.vacation_carryover_days || 0);
       const vacTotal = vacEnt + vacCarry;
-      const vacRemaining = vacTotal - takenVacationDays;
+      const vacRemaining = vacTotal - takenVacationDaysFullYear;
 
       if(vacRemaining <= 0){
         $('sumVac').innerHTML = `Nincs több szabid.`;
@@ -738,10 +678,8 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      renderMissingDatesTabulated(missingIso);
-
-      const missingSet = new Set(missingIso);
-      renderYearCalendar(calendarMap, vacSet, missingSet);
+      renderMissingDatesGrouped(missingIso);
+      renderYearCalendar(calendarMap, vacSet);
     }
 
     let refreshing = false;
