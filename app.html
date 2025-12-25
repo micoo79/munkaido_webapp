@@ -23,6 +23,9 @@
       --weekend:#777b81;
       --zold:#1ecb5b;
       --piros:#ff3b30;
+
+      --inactive:#52525b;   /* ✅ kért inaktív háttér */
+      --inactiveLbl:#9ca3af;/* ✅ kért inaktív felirat */
     }
 
     *{box-sizing:border-box;}
@@ -275,13 +278,23 @@
       font-size:0.7rem;
       outline:none;
     }
-    select:disabled, textarea:disabled{
-      background:#e5e7eb !important;
-      color:#6b7280 !important;
-    }
-    .labelDisabled{ color:#9ca3af !important; }
 
-    textarea{min-height:90px; resize:none;}
+    /* ✅ inaktív mezők szürkébbek */
+    select:disabled, textarea:disabled{
+      background:var(--inactive) !important;
+      color:#e5e7eb !important;
+      border-color:rgba(255,255,255,.14) !important;
+    }
+    .labelDisabled{ color:var(--inactiveLbl) !important; }
+
+    /* ✅ megjegyzés max-height */
+    textarea{
+      min-height:50px;
+      max-height:50px;
+      resize:none;
+      overflow:auto;
+    }
+
     .gap30{height:30px;}
     .btnRow{display:flex; gap:12px; margin-top:12px;}
     .btn{
@@ -294,9 +307,17 @@
     }
     .btn.danger{background:#c9cbd1; color:#111; font-weight:900;}
     .btn.mentes{background:#1ecb5b; color:#111; font-weight:900;}
+    .btn:disabled{opacity:.55; cursor:not-allowed;}
 
     .errBig{font-size:22px; color:#ff3b30; margin-top:10px; font-weight:900;}
     .invalid select{background:#ffd1d1 !important; border:3px solid #ff3b30 !important;}
+
+    /* ✅ "Nincs már szabid." */
+    .noVac{
+      font-size:12px;
+      color:var(--piros);
+      font-weight:800;
+    }
 
     @media (max-width:520px){
       .title{font-size:1rem;}
@@ -391,6 +412,7 @@
         <label id="vacLbl">Szabi ezen a napon</label>
         <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
           <input id="vacChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
+          <span id="noVacMsg" class="noVac hidden">Nincs már szabid.</span>
         </div>
       </div>
 
@@ -405,7 +427,7 @@
 
       <div class="btnRow">
         <button id="delBtn" class="btn danger" type="button">Törlés</button>
-        <button id="saveBtn" class="btn mentes" type="button">Mentés</button>
+        <button id="saveBtn" class="btn mentes" type="button">Vissza</button>
       </div>
     </div>
   </div>
@@ -421,6 +443,8 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
+    // ✅ TESZT "mai nap"
+    // ÉLESÍTÉSHEZ: állítsd ''-re.
     const DEV_TODAY = '2026-04-16';
 
     let supabase = null;
@@ -434,6 +458,17 @@
 
     let editingDate = null;
     let editingCalRow = null;
+
+    // --- szabi cache (teljes év) ---
+    let yearCalMap = new Map();        // iso -> { is_workday, special_workday, ... }
+    let yearVacSet = new Set();        // iso ahol is_vacation && munkanap
+    let yearVacUsed = 0;              // munkanapi szabi db
+    let vacTotalEntitlement = 0;       // entitlement + carryover
+
+    // --- edit state / dirty tracking ---
+    let initialEditState = null;
+    let formDirty = false;
+    let formInvalid = false;
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -497,39 +532,86 @@
       return supabase;
     }
 
-    function buildTimeOptions(selectEl, step=15, max=24*60){
+    function normalizeIsoDate(d){
+      return String(d).slice(0,10);
+    }
+
+    // ✅ build options gap-es üres sorral
+    function buildTimeOptionsWithGap(selectEl, step=15, max=24*60, blankAfterHHMM=null){
       selectEl.innerHTML = '';
-      const optBlank = document.createElement('option');
-      optBlank.value = '';
-      optBlank.textContent = '';
-      selectEl.appendChild(optBlank);
+
+      // ha nincs gap, tegyünk egy sima üres opciót felül
+      if(!blankAfterHHMM){
+        const optBlank = document.createElement('option');
+        optBlank.value = '';
+        optBlank.textContent = '';
+        selectEl.appendChild(optBlank);
+      }
+
+      let gapIndex = -1;
 
       for(let t=0; t<=max; t+=step){
         const h = Math.floor(t/60);
         const mm = t%60;
         const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+
         const opt = document.createElement('option');
         opt.value = val;
         opt.textContent = val;
         selectEl.appendChild(opt);
+
+        if(blankAfterHHMM && val === blankAfterHHMM){
+          const optGapBlank = document.createElement('option');
+          optGapBlank.value = '';
+          optGapBlank.textContent = '';
+          selectEl.appendChild(optGapBlank);
+          gapIndex = selectEl.options.length - 1;
+        }
       }
-      selectEl.value = '';
+
+      if(gapIndex < 0){
+        // fallback: legyen legalább egy üres
+        const optBlank = document.createElement('option');
+        optBlank.value = '';
+        optBlank.textContent = '';
+        selectEl.insertBefore(optBlank, selectEl.firstChild);
+        gapIndex = 0;
+      }
+
+      selectEl.dataset.gapBlankIndex = String(gapIndex);
+      selectEl.selectedIndex = gapIndex; // ✅ alapból a gap üresre áll
     }
 
-    function buildFlexMinutesOptions(selectEl, step=15, max=8*60){
+    function buildFlexMinutesOptionsWithGap(selectEl, step=15, max=8*60, blankAfterMinutes=null){
       selectEl.innerHTML = '';
-      const optBlank = document.createElement('option');
-      optBlank.value = '';
-      optBlank.textContent = '';
-      selectEl.appendChild(optBlank);
+
+      let gapIndex = -1;
 
       for(let t=0; t<=max; t+=step){
         const opt = document.createElement('option');
         opt.value = String(t);
         opt.textContent = minsToHHMM(t);
         selectEl.appendChild(opt);
+
+        if(blankAfterMinutes != null && t === blankAfterMinutes){
+          const optGapBlank = document.createElement('option');
+          optGapBlank.value = '';
+          optGapBlank.textContent = '';
+          selectEl.appendChild(optGapBlank);
+          gapIndex = selectEl.options.length - 1;
+        }
       }
-      selectEl.value = '';
+
+      if(gapIndex < 0){
+        const optBlank = document.createElement('option');
+        optBlank.value = '';
+        optBlank.textContent = '';
+        selectEl.insertBefore(optBlank, selectEl.firstChild);
+        gapIndex = 0;
+      }
+
+      selectEl.dataset.gapBlankIndex = String(gapIndex);
+      selectEl.selectedIndex = gapIndex;
     }
 
     function tileClass(row){
@@ -540,10 +622,6 @@
       if(isWeekendISO(iso)) return 'tile weekend';
       if(!row.is_workday) return 'tile rest';
       return 'tile';
-    }
-
-    function normalizeIsoDate(d){
-      return String(d).slice(0,10);
     }
 
     function updateJumpButton(){
@@ -640,6 +718,39 @@
       }
     }
 
+    function getCurrentFormState(){
+      return {
+        arrival: $('arrSel').value || '',
+        departure: $('depSel').value || '',
+        flex: $('flexSel').value || '',
+        vac: !!$('vacChk').checked,
+        note: ($('noteTxt').value || '')
+      };
+    }
+
+    function statesEqual(a,b){
+      return (
+        (a.arrival||'') === (b.arrival||'') &&
+        (a.departure||'') === (b.departure||'') &&
+        (a.flex||'') === (b.flex||'') &&
+        (!!a.vac) === (!!b.vac) &&
+        (a.note||'') === (b.note||'')
+      );
+    }
+
+    function updateSaveButton(){
+      if(!initialEditState){
+        formDirty = false;
+      }else{
+        formDirty = !statesEqual(initialEditState, getCurrentFormState());
+      }
+
+      $('saveBtn').textContent = formDirty ? 'Mentés' : 'Vissza';
+
+      // csak akkor tiltjuk, ha Mentés módban invalid
+      $('saveBtn').disabled = (formDirty && formInvalid);
+    }
+
     function validateEditForm(){
       const inV = $('arrSel').value;
       const outV = $('depSel').value;
@@ -655,15 +766,59 @@
           $('editErr').classList.remove('hidden');
           inWrap.classList.add('invalid');
           outWrap.classList.add('invalid');
-          $('saveBtn').disabled = true;
+          formInvalid = true;
+          updateSaveButton();
           return false;
         }
       }
+
       $('editErr').classList.add('hidden');
       inWrap.classList.remove('invalid');
       outWrap.classList.remove('invalid');
-      $('saveBtn').disabled = false;
+      formInvalid = false;
+      updateSaveButton();
       return true;
+    }
+
+    function setSelectToGapBlank(selectEl){
+      const idx = Number(selectEl.dataset.gapBlankIndex || 0);
+      if(Number.isFinite(idx) && selectEl.options && selectEl.options[idx]){
+        selectEl.selectedIndex = idx;
+      }else{
+        selectEl.value = '';
+      }
+    }
+
+    function isWorkdayForVacation(iso){
+      const cal = yearCalMap.get(iso);
+      if(!cal) return false;
+      const isSpecial = !!cal.special_workday;
+      const isNonWork = (!cal.is_workday && !isSpecial);
+      const isWEnd = isWeekendISO(iso);
+      // a korábbi logika szerint: szabi csak is_workday=true napokon számítson
+      // special_workday (szombati munkanap) esetén is_workday várhatóan true.
+      if(isNonWork) return false;
+      if(!cal.is_workday) return false;
+      return true;
+    }
+
+    function calcVacationRemaining(){
+      const remain = (vacTotalEntitlement || 0) - (yearVacUsed || 0);
+      return remain;
+    }
+
+    function applyVacationAvailability(entry){
+      const remaining = calcVacationRemaining();
+      const alreadyVac = !!entry?.is_vacation;
+
+      // ha már be van pipálva, hagyjuk aktívnak, hogy ki lehessen venni
+      const shouldDisable = (!alreadyVac && remaining <= 0);
+
+      $('vacChk').disabled = shouldDisable;
+      $('noVacMsg').classList.toggle('hidden', !shouldDisable);
+
+      // checkbox cursor
+      $('vacChk').style.cursor = shouldDisable ? 'not-allowed' : 'pointer';
     }
 
     function openEdit(iso, calRow){
@@ -675,17 +830,39 @@
 
       $('editDate').textContent = iso.replaceAll('-', '.');
       $('editErr').classList.add('hidden');
+      formInvalid = false;
 
       const entry = entriesByDate.get(iso) || {};
-      $('arrSel').value = entry.arrival ? String(entry.arrival).slice(0,5) : '';
-      $('depSel').value = entry.departure ? String(entry.departure).slice(0,5) : '';
 
+      // --- értékek feltöltése ---
+      const arr = entry.arrival ? String(entry.arrival).slice(0,5) : '';
+      const dep = entry.departure ? String(entry.departure).slice(0,5) : '';
       const flexMin = Number(entry.flex_minutes || 0);
-      $('flexSel').value = flexMin > 0 ? String(flexMin) : '';
+      const flexVal = flexMin > 0 ? String(flexMin) : '';
+
+      // ✅ ha nincs adat, a "gap üres" legyen a kiválasztott
+      if(arr){
+        $('arrSel').value = arr;
+      }else{
+        setSelectToGapBlank($('arrSel'));
+      }
+
+      if(dep){
+        $('depSel').value = dep;
+      }else{
+        setSelectToGapBlank($('depSel'));
+      }
+
+      if(flexVal){
+        $('flexSel').value = flexVal;
+      }else{
+        setSelectToGapBlank($('flexSel'));
+      }
 
       $('vacChk').checked = !!entry.is_vacation;
       $('noteTxt').value = entry.note ? String(entry.note) : '';
 
+      // --- disable szabályok ---
       const isSpecial = !!calRow.special_workday;
       const isNonWork = (!calRow.is_workday && !isSpecial);
       const isWeekend = isWeekendISO(iso);
@@ -696,8 +873,17 @@
       $('depSel').disabled = isFuture;
       $('flexSel').disabled = isFuture ? true : disFlexByDayType;
 
-      $('arrLbl').classList.toggle('labelDisabled', isFuture);
-      $('depLbl').classList.toggle('labelDisabled', isFuture);
+      // ✅ inaktív feliratok: érkezés/távozás/csúsztatás
+      $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+      $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+
+      // ✅ szabi elfogyott esetén ne lehessen újra bepipálni (teljes évre számolva)
+      applyVacationAvailability(entry);
+
+      // --- initial state / gomb felirat ---
+      initialEditState = getCurrentFormState();
+      updateSaveButton();
 
       $('modalBackdrop').classList.remove('hidden');
       validateEditForm();
@@ -707,15 +893,24 @@
       $('modalBackdrop').classList.add('hidden');
       editingDate = null;
       editingCalRow = null;
+      initialEditState = null;
+      formDirty = false;
+      formInvalid = false;
+      $('noVacMsg').classList.add('hidden');
     }
 
     function clearEditForm(){
-      $('arrSel').value = '';
-      $('depSel').value = '';
-      $('flexSel').value = '';
+      setSelectToGapBlank($('arrSel'));
+      setSelectToGapBlank($('depSel'));
+      setSelectToGapBlank($('flexSel'));
       $('vacChk').checked = false;
       $('noteTxt').value = '';
+
+      // clear után újraszámoljuk a "nincs szabi" tiltást (üresből szabi nem lehet)
+      applyVacationAvailability({ is_vacation:false });
+
       validateEditForm();
+      updateSaveButton();
     }
 
     async function loadProfile(){
@@ -725,14 +920,18 @@
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name,email,role')
+        .select('display_name,email,role,vacation_entitlement_days,vacation_carryover_days')
         .eq('user_id', uid)
         .maybeSingle();
 
       if(error) throw error;
 
-      profile = data || { display_name: u.user.email, email: u.user.email, role: 'user' };
+      profile = data || { display_name: u.user.email, email: u.user.email, role: 'user', vacation_entitlement_days:0, vacation_carryover_days:0 };
       $('userName').textContent = profile.display_name || profile.email || '';
+
+      vacTotalEntitlement =
+        Number(profile.vacation_entitlement_days || 0) +
+        Number(profile.vacation_carryover_days || 0);
 
       const role = String(profile.role || 'user');
       if(role === 'admin' || role === 'manager'){
@@ -740,6 +939,51 @@
       }else{
         $('settingsBtn').classList.add('hidden');
       }
+    }
+
+    async function loadYearCalendar(){
+      const { data: days, error } = await supabase
+        .from('calendar_days')
+        .select('date,is_workday,holiday_name,special_workday,year')
+        .eq('year', curYear)
+        .order('date', { ascending:true });
+      if(error) throw error;
+
+      yearCalMap = new Map();
+      (days||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        yearCalMap.set(iso, { ...r, date: iso });
+      });
+    }
+
+    async function refreshYearVacationCache(){
+      const start = `${curYear}-01-01`;
+      const end = `${curYear+1}-01-01`;
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) throw new Error('Nincs user session.');
+
+      const { data: ents, error } = await supabase
+        .from('entries')
+        .select('date,is_vacation')
+        .eq('user_id', uid)
+        .gte('date', start)
+        .lt('date', end)
+        .eq('is_vacation', true);
+
+      if(error) throw error;
+
+      yearVacSet = new Set();
+      yearVacUsed = 0;
+
+      (ents||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        if(isWorkdayForVacation(iso)){
+          yearVacSet.add(iso);
+          yearVacUsed++;
+        }
+      });
     }
 
     async function loadMonth(){
@@ -780,9 +1024,22 @@
       updateJumpButton();
     }
 
+    function isPayloadEmpty(payload){
+      return (
+        !payload.arrival &&
+        !payload.departure &&
+        (payload.flex_minutes === 0) &&
+        !payload.is_vacation &&
+        (!payload.note || payload.note.length === 0)
+      );
+    }
+
     async function saveCurrentEdit(){
       const iso = editingDate;
       if(!iso) return;
+
+      const before = entriesByDate.get(iso) || null;
+      const beforeVac = !!before?.is_vacation;
 
       const payload = {
         date: iso,
@@ -793,6 +1050,16 @@
         note: ($('noteTxt').value || '').trim()
       };
 
+      // ✅ gap-üres (value="") esetén: null/0 maradjon (fent így van)
+
+      // ✅ szabi tiltás: ha nincs szabi, ne engedje bepipálni (kivéve ha már korábban is szabi volt)
+      if(payload.is_vacation && !beforeVac){
+        const remaining = calcVacationRemaining();
+        if(remaining <= 0){
+          throw new Error('Nincs több szabi.');
+        }
+      }
+
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
       if(!uid) throw new Error('Nincs user session.');
@@ -802,18 +1069,16 @@
         .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,date' });
       if(error) throw error;
 
-      const isEmpty =
-        !payload.arrival &&
-        !payload.departure &&
-        (payload.flex_minutes === 0) &&
-        !payload.is_vacation &&
-        (!payload.note || payload.note.length === 0);
+      const empty = isPayloadEmpty(payload);
 
-      if(isEmpty){
+      if(empty){
         entriesByDate.delete(iso);
       }else{
         entriesByDate.set(iso, { user_id: uid, ...payload });
       }
+
+      // ✅ teljes éves szabi cache frissítés
+      await refreshYearVacationCache();
     }
 
     function applyInitialMonthFromQueryOrToday(){
@@ -845,12 +1110,42 @@
 
       await loadProfile();
 
-      buildTimeOptions($('arrSel'), 15, 24*60);
-      buildTimeOptions($('depSel'), 15, 24*60);
-      buildFlexMinutesOptions($('flexSel'), 15, 8*60);
+      // ✅ év naptár + szabi cache (teljes év!)
+      await loadYearCalendar();
+      await refreshYearVacationCache();
+
+      // ✅ wheel-gap üresek
+      // Érkezés: 08:00 és 08:15 közé
+      buildTimeOptionsWithGap($('arrSel'), 15, 24*60, '08:00');
+      // Távozás: 16:00 és 16:15 közé
+      buildTimeOptionsWithGap($('depSel'), 15, 24*60, '16:00');
+      // Csúsztatás: 4:00 és 4:15 közé (240 perc és 255 perc közé)
+      buildFlexMinutesOptionsWithGap($('flexSel'), 15, 8*60, 240);
 
       applyInitialMonthFromQueryOrToday();
       await loadMonth();
+    }
+
+    function onFormChanged(){
+      // ha nincs szabi és most próbálná bepipálni, azonnal visszarántjuk
+      const iso = editingDate;
+      if(iso){
+        const entry = entriesByDate.get(iso) || {};
+        const alreadyVac = !!entry.is_vacation;
+
+        if($('vacChk').checked && !alreadyVac){
+          const remaining = calcVacationRemaining();
+          if(remaining <= 0){
+            $('vacChk').checked = false;
+            $('vacChk').disabled = true;
+            $('noVacMsg').classList.remove('hidden');
+            toast('Nincs már szabid.');
+          }
+        }
+      }
+
+      validateEditForm();
+      updateSaveButton();
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -894,13 +1189,24 @@
         if(e.target === $('modalBackdrop')) closeEdit();
       });
 
-      $('arrSel').addEventListener('change', validateEditForm);
-      $('depSel').addEventListener('change', validateEditForm);
+      // ✅ bármilyen módosítás -> Mentés / Vissza váltás
+      $('arrSel').addEventListener('change', onFormChanged);
+      $('depSel').addEventListener('change', onFormChanged);
+      $('flexSel').addEventListener('change', onFormChanged);
+      $('vacChk').addEventListener('change', onFormChanged);
+      $('noteTxt').addEventListener('input', onFormChanged);
 
       $('delBtn').addEventListener('click', ()=>clearEditForm());
 
       $('saveBtn').addEventListener('click', async ()=>{
+        // ✅ ha nincs változás: Vissza = csak bezárás
+        if(!formDirty){
+          closeEdit();
+          return;
+        }
+
         if(!validateEditForm()) return;
+
         try{
           await saveCurrentEdit();
           closeEdit();
