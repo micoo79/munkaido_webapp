@@ -94,15 +94,13 @@
       display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap;
       padding:6px 4px 10px;
     }
-
-    /* nincs vízszintes görgetés: mindig befér */
     .summaryWrap{overflow:visible;}
 
     table.summaryTable{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      table-layout:fixed; /* ✅ befér, nem tol ki */
+      table-layout:fixed;
     }
 
     .summaryTable th, .summaryTable td{
@@ -113,11 +111,10 @@
 
       border-right:1px solid var(--cellVBorder);
 
-      /* ✅ ne legyen vízszintes csúszka */
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
-      max-width:0; /* ellipsis fixhez */
+      max-width:0;
     }
     .summaryTable th:last-child, .summaryTable td:last-child{ border-right:0; }
     .summaryTable th{
@@ -308,15 +305,13 @@
     }
     .entriesTitle{font-size:16px; font-weight:900; margin:0;}
     .entriesMeta{font-size:13px; color:var(--muted); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80vw;}
-
-    /* ✅ nincs horizontal overflow */
     .entriesWrap{overflow:visible;}
 
     table.entriesTable{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      table-layout:fixed; /* ✅ befér a konténerbe */
+      table-layout:fixed;
     }
 
     .entriesTable th, .entriesTable td{
@@ -327,7 +322,6 @@
 
       border-right:1px solid var(--cellVBorder);
 
-      /* ✅ befér: ellipsis */
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
@@ -335,7 +329,6 @@
     }
     .entriesTable th:last-child, .entriesTable td:last-child{ border-right:0; }
 
-    /* ✅ Excel-szerű fejléc rögzítés: a LAP tetején */
     .entriesTable th{
       font-size:12px;
       color:var(--muted);
@@ -346,7 +339,6 @@
       top:0;
       z-index:50;
       background:var(--panel);
-      /* opcionális: aláhúzás, hogy jobban "külön álljon" */
       box-shadow: 0 2px 0 rgba(255,255,255,.06);
     }
     .entriesTable td{
@@ -354,8 +346,6 @@
       font-weight:800;
     }
     .entriesTable td.muted{color:var(--muted); font-weight:800;}
-
-    /* megjegyzés oszlop: engedjünk több helyet, de marad ellipsis */
     .entriesTable td.noteCell{white-space:nowrap;}
 
     .vacPill{
@@ -441,17 +431,17 @@
         <div class="summaryWrap">
           <table class="summaryTable">
             <colgroup>
-              <col style="width:22%">
-              <col style="width:24%">
-              <col style="width:24%">
-              <col style="width:20%">
-              <col style="width:10%">
+              <col style="width:240px">
+              <col style="width:260px">
+              <col style="width:220px"><!-- ✅ max 220px -->
+              <col>
+              <col style="width:120px">
             </colgroup>
             <thead>
               <tr>
                 <th>Név</th>
                 <th>Túlóra / hátralék</th>
-                <th>Hátralévő szabadságok száma</th>
+                <th>Hátralévő szabadságok</th>
                 <th>2 hétnél régebbi hiányzó rögzítések</th>
                 <th></th>
               </tr>
@@ -711,7 +701,7 @@
 
     // YEAR state
     const YEAR = 2026;
-    let daysByIso = new Map(); // iso -> row
+    let daysByIso = new Map();
     let editingIso = null;
 
     // Team summary cache
@@ -725,7 +715,7 @@
 
     // Entries view state
     let entriesUser = null;
-    let entriesRowsRendered = []; // CSV-hez
+    let entriesRowsRendered = [];
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -843,8 +833,8 @@
       }
     }
 
-    // --- számítás: egyezzen az adatlap.html logikával ---
-    function calcUserMetricsLikeAdatlap(user, calendarRows, entriesRows){
+    // --- számítás: egyezzen az adatlap logikával, DE szabi: teljes év ---
+    function calcUserMetrics(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
       const expPerDay = Number(user.daily_expected_minutes ?? 480);
@@ -860,10 +850,15 @@
         eMap.set(normalizeIsoDate(e.date), e);
       }
 
+      // cal map a teljes éves szabi-számításhoz
+      const calMap = new Map();
+      for(const c of (calendarRows||[])){
+        calMap.set(c.date, c);
+      }
+
+      // 1) túlóra/hátralék + hiány: today-ig
       let expectedTotal = 0;
       let fulfilledTotal = 0;
-      let takenVacDays = 0;
-
       let oldMissingCount = 0;
 
       for(const cal of (calendarRows||[])){
@@ -900,7 +895,6 @@
 
           if(vac && isWorkday){
             fulfilled += expected;
-            takenVacDays++;
           }
 
           let worked = 0;
@@ -931,6 +925,15 @@
       const dayMins = Math.max(1, expPerDay || 480);
       const approxDays = Math.floor(abs / dayMins);
 
+      // 2) szabi: teljes év (jövőbeli is)
+      let takenVacDays = 0;
+      for(const [iso, e] of eMap.entries()){
+        if(!e?.is_vacation) continue;
+        const cal = calMap.get(iso);
+        if(cal && !!cal.is_workday){
+          takenVacDays++;
+        }
+      }
       const vacRemain = vacTotal - takenVacDays;
 
       return {
@@ -951,11 +954,10 @@
 
       return `
         <span class="${cls}">${hhmm}</span> óra,
-        <span class="${cls}">${approxDays}</span> ${label}
+        <span class="${cls}">${approxDays}</span> nap ${label}
       `;
     }
 
-    // --- ENTRIES VIEW ---
     function timeToHHMM(t){
       if(!t) return '';
       const s = String(t);
@@ -977,11 +979,17 @@
       return '"' + s.replace(/"/g,'""') + '"';
     }
 
-    function downloadCsv(rows, filename){
+    function downloadCsv(rows, filename, userDisplayName){
       const delim = ';';
       const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Megjegyzés'];
       const lines = [];
+
+      // ✅ első sor: felhasználó név
+      lines.push(['Felhasználó', userDisplayName || ''].map(x=>csvEscape(x,delim)).join(delim));
+
+      // fejléc
       lines.push(header.map(h=>csvEscape(h,delim)).join(delim));
+
       for(const r of rows){
         lines.push([
           r.date,
@@ -1109,7 +1117,6 @@
       setTab('users');
     }
 
-    // Tabs
     function setTab(tab){
       $('tabUsers').classList.toggle('active', tab==='users');
       $('tabYear').classList.toggle('active', tab==='year');
@@ -1295,7 +1302,6 @@
       await refreshAll();
     }
 
-    // --- YEAR CALENDAR ---
     function huMonthName(m){
       const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
       return names[m-1] || '';
@@ -1513,18 +1519,14 @@
       renderYear();
     }
 
-    async function ensureSupabaseAndSession(){
+    async function refreshAll(){
       await ensureSupabase();
+
       const { data: sess } = await supabase.auth.getSession();
       if(!sess.session){
         location.replace('/index.html?v=' + Date.now());
-        return false;
+        return;
       }
-      return true;
-    }
-
-    async function refreshAll(){
-      if(!(await ensureSupabaseAndSession())) return;
 
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
@@ -1595,7 +1597,7 @@
         for(const u of sorted){
           const uid = u.user_id;
           const myEntries = yearEntriesByUser?.get(uid) || [];
-          const m = calcUserMetricsLikeAdatlap(u, yearCalendarRows, myEntries);
+          const m = calcUserMetrics(u, yearCalendarRows, myEntries);
 
           const tr = document.createElement('tr');
 
@@ -1680,7 +1682,7 @@
           const today = getTodayISO();
           const userPart = safeFilePart(entriesUser.display_name || entriesUser.email || 'user');
           const filename = `${userPart}_export_${today}.csv`;
-          downloadCsv(entriesRowsRendered, filename);
+          downloadCsv(entriesRowsRendered, filename, entriesUser.display_name || entriesUser.email || '');
         });
 
         $('closeBtn').addEventListener('click', closeEditProfile);
