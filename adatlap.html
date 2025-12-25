@@ -226,6 +226,12 @@
       outline-offset:-2px;
     }
 
+    /* ✅ HIÁNYZÓ RÖGZÍTÉS jelölés */
+    .dTile.missing{
+      outline:2px solid var(--piros);
+      outline-offset:-2px;
+    }
+
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
 
@@ -418,7 +424,8 @@
       return '';
     }
 
-    function renderYearCalendar(calendarMap, vacSet){
+    /* ✅ kap missingSet-et is */
+    function renderYearCalendar(calendarMap, vacSet, missingSet){
       const wrap = $('monthsWrap');
       wrap.innerHTML = '';
 
@@ -483,6 +490,11 @@
           if(vacSet.has(iso)){
             tile.classList.remove('holiday','weekend','rest','workSaturday');
             tile.classList.add('vac');
+          }
+
+          // ✅ hiányzó rögzítés jelölés (csak ott, ahol hiányzó)
+          if(missingSet && missingSet.has(iso)){
+            tile.classList.add('missing');
           }
 
           if(iso === todayIso){
@@ -679,7 +691,11 @@
       }
 
       renderMissingDatesGrouped(missingIso);
-      renderYearCalendar(calendarMap, vacSet);
+
+      /* ✅ HIÁNYZÓ napok Set-je a mini naptárhoz */
+      const missingSet = new Set(missingIso);
+
+      renderYearCalendar(calendarMap, vacSet, missingSet);
     }
 
     let refreshing = false;
