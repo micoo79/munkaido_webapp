@@ -121,7 +121,6 @@
     }
     .missingTitle{
       font-size:13px;
-    /*  font-weight:800;*/
       margin-bottom:16px;
       color:var(--text);
     }
@@ -133,12 +132,8 @@
       white-space:normal;
     }
 
-    .yearTitle{
-      font-weight:800;
-      font-size:1rem;
-      margin:10px 0 8px;
-      text-align:center;
-    }
+    /* ❌ év cím kiszedve (kérted, hogy ne legyen "2026 éves naptár") */
+    .yearTitle{display:none !important;}
 
     .monthsWrap{
       display:flex;
@@ -228,13 +223,49 @@
 
     /* ✅ HIÁNYZÓ RÖGZÍTÉS jelölés */
     .dTile.missing{
-  /*    outline:2px solid var(--piros); */
-  /*    outline-offset:-2px; */
-      background: #ff4500;
+      background:#ff4500;
     }
 
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
+
+    /* ✅ Jelmagyarázat (a naptár alatt) */
+    .legendWrap{
+      margin-top:10px;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      align-items:center;
+    }
+    .legendItem{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:var(--text);
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .legendTile{
+      width:18px;
+      height:18px;
+      border-radius:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+      font-size:11px;
+      font-weight:900;
+      line-height:1;
+      color:#111;
+    }
+    .legendTile.holiday{ background:var(--holiday); }
+    .legendTile.missing{ background:#ff4500; color:#111; }
+    .legendTile.vac{ background:var(--vac); }
 
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
@@ -286,8 +317,24 @@
         <div id="missingList" class="missingList">Betöltés…</div>
       </div>
 
-      <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div>
+      <!-- (kiszeddük) <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div> -->
       <div id="monthsWrap" class="monthsWrap"></div>
+
+      <!-- ✅ Jelmagyarázat a naptár alatt -->
+      <div class="legendWrap" aria-label="Jelmagyarázat">
+        <div class="legendItem">
+          <div class="legendTile holiday"><span>15</span></div>
+          <div>Ünnepnapok</div>
+        </div>
+        <div class="legendItem">
+          <div class="legendTile missing"><span>7</span></div>
+          <div>Hiányzó rögzítések</div>
+        </div>
+        <div class="legendItem">
+          <div class="legendTile vac"><span>23</span></div>
+          <div>Szabadságok</div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -425,7 +472,6 @@
       return '';
     }
 
-    /* ✅ kap missingSet-et is */
     function renderYearCalendar(calendarMap, vacSet, missingSet){
       const wrap = $('monthsWrap');
       wrap.innerHTML = '';
@@ -487,13 +533,11 @@
             tile.classList.add('rest');
           }
 
-          // ✅ szabi jelölés: teljes év (jövőbeli is)
           if(vacSet.has(iso)){
             tile.classList.remove('holiday','weekend','rest','workSaturday');
             tile.classList.add('vac');
           }
 
-          // ✅ hiányzó rögzítés jelölés (csak ott, ahol hiányzó)
           if(missingSet && missingSet.has(iso)){
             tile.classList.add('missing');
           }
@@ -604,11 +648,9 @@
 
       const missingIso = [];
 
-      // ✅ szabi: teljes év
       let takenVacationDaysFullYear = 0;
       const vacSet = new Set();
 
-      // 1) hiány + túlóra: today-ig
       const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
       for(const cal of sortedDays){
         const iso = cal.date;
@@ -670,7 +712,6 @@
       const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
       $('sumFlex').innerHTML = formatBalanceLine(balance);
 
-      // 2) szabi: teljes év (jövőbeli is) + vacSet a mini naptárhoz
       for(const [iso, entry] of entriesMap.entries()){
         if(!entry?.is_vacation) continue;
         const cal = calendarMap.get(iso);
@@ -693,9 +734,7 @@
 
       renderMissingDatesGrouped(missingIso);
 
-      /* ✅ HIÁNYZÓ napok Set-je a mini naptárhoz */
       const missingSet = new Set(missingIso);
-
       renderYearCalendar(calendarMap, vacSet, missingSet);
     }
 
@@ -712,7 +751,6 @@
           return;
         }
 
-        $('yearTitle').textContent = `${YEAR} – Éves naptár`;
         await loadProfile();
         await loadYearDataAndCompute();
       }finally{
