@@ -27,6 +27,8 @@
 
       --pillAdmin:#7c3aed;
       --pillMgr:#2563eb;
+
+      --cellVBorder: rgba(255,255,255,.10);
     }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
@@ -92,11 +94,13 @@
       display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap;
       padding:6px 4px 10px;
     }
-    .summaryWrap{overflow:auto;}
+    /* csak vízszintes görgetés kell, a sticky fejléchez ne legyen függőleges overflow */
+    .summaryWrap{overflow-x:auto; overflow-y:visible;}
     table.summaryTable{
       width:100%;
-      border-collapse:collapse;
-      min-width:980px;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:1040px;
     }
     .summaryTable th, .summaryTable td{
       padding:8px 10px;
@@ -104,12 +108,18 @@
       text-align:left;
       vertical-align:middle;
       white-space:nowrap;
+      border-right:1px solid var(--cellVBorder);
     }
+    .summaryTable th:last-child, .summaryTable td:last-child{ border-right:0; }
     .summaryTable th{
       font-size:12px;
       color:var(--muted);
       font-weight:900;
       letter-spacing:.02em;
+      position:sticky;
+      top:0;
+      z-index:6;
+      background:var(--panel);
     }
     .summaryTable td{
       font-size:13px;
@@ -295,18 +305,22 @@
       font-size:14px;
     }
 
-    /* --- ENTRIES VIEW (új oldal ugyanebben a fájlban) --- */
+    /* --- ENTRIES VIEW --- */
     .entriesHead{
       display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
       padding:6px 4px 10px;
     }
     .entriesTitle{font-size:16px; font-weight:900; margin:0;}
     .entriesMeta{font-size:13px; color:var(--muted); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80vw;}
-    .entriesWrap{overflow:auto;}
+
+    /* csak vízszintes overflow, sticky fejléchez */
+    .entriesWrap{overflow-x:auto; overflow-y:visible;}
+
     table.entriesTable{
       width:100%;
-      border-collapse:collapse;
-      min-width:980px;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:1120px;
     }
     .entriesTable th, .entriesTable td{
       padding:8px 10px;
@@ -314,18 +328,25 @@
       text-align:left;
       vertical-align:middle;
       white-space:nowrap;
+      border-right:1px solid var(--cellVBorder);
     }
+    .entriesTable th:last-child, .entriesTable td:last-child{ border-right:0; }
     .entriesTable th{
       font-size:12px;
       color:var(--muted);
       font-weight:900;
       letter-spacing:.02em;
+      position:sticky;
+      top:0;
+      z-index:6;
+      background:var(--panel);
     }
     .entriesTable td{
       font-size:13px;
       font-weight:800;
     }
     .entriesTable td.muted{color:var(--muted); font-weight:800;}
+
     .vacPill{
       display:inline-flex; align-items:center;
       padding:2px 8px;
@@ -402,8 +423,6 @@
 
     <!-- USERS VIEW -->
     <section id="usersView" class="panel">
-
-      <!-- csapat összesítő táblázat -->
       <section class="summaryCard">
         <div class="summaryHead">
           <div class="who" id="sumMeta">—</div>
@@ -498,14 +517,14 @@
       </div>
     </section>
 
-    <!-- EXPORT VIEW (placeholder) -->
+    <!-- EXPORT VIEW -->
     <section id="exportView" class="panel hidden">
       <div class="placeholder">
         Export menü – később mondod, mi legyen itt.
       </div>
     </section>
 
-    <!-- ENTRIES VIEW (új “oldal”) -->
+    <!-- ENTRIES VIEW -->
     <section id="entriesView" class="panel hidden">
       <div class="entriesHead">
         <div style="min-width:0;">
@@ -525,13 +544,14 @@
               <th>Dátum</th>
               <th>Érkezés</th>
               <th>Távozás</th>
+              <th>Ledolgozott órák</th>
               <th>Csúsztatás (perc)</th>
               <th>Szabadság</th>
               <th>Megjegyzés</th>
             </tr>
           </thead>
           <tbody id="entriesTbody">
-            <tr><td colspan="6" class="muted">Betöltés…</td></tr>
+            <tr><td colspan="7" class="muted">Betöltés…</td></tr>
           </tbody>
         </table>
       </div>
@@ -676,17 +696,17 @@
     let editingIso = null;
 
     // Team summary cache
-    let yearCalendarRows = null; // [{date,is_workday,holiday_name,special_workday,year}]
-    let yearEntriesRows = null;  // all entries for year
+    let yearCalendarRows = null;
+    let yearEntriesRows = null;
     let yearEntriesByUser = null;
 
     // ✅ TESZT "mai nap"
-    // ÉLESÍTÉSHEZ: állítsd ''-re (üres stringre), és onnantól a valódi mai napot használja.
+    // ÉLESÍTÉSHEZ: állítsd ''-re, és valódi mai napot fog használni.
     const DEV_TODAY = '2026-04-16';
 
     // Entries view state
-    let entriesUser = null;          // selected user object
-    let entriesRowsRendered = [];    // array of rendered rows (for CSV)
+    let entriesUser = null;
+    let entriesRowsRendered = []; // CSV-hez
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -714,6 +734,21 @@
       const h = Math.floor(m/60);
       const mm = m%60;
       return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
+    }
+
+    function minsToHHMMPos(mins){
+      const n = Math.max(0, Math.trunc(Number(mins)||0));
+      const h = Math.floor(n/60);
+      const mm = n%60;
+      return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
+    }
+
+    function workedHoursFromArrivalDeparture(arrival, departure){
+      const a = hhmmToMins(arrival);
+      const b = hhmmToMins(departure);
+      if(a == null || b == null) return '';
+      if(b < a) return ''; // nem számolunk át éjfélen
+      return minsToHHMMPos(b - a);
     }
 
     function daysBetween(aIso, bIso){
@@ -832,7 +867,6 @@
         const isWorkday = !!cal.is_workday;
         const isSpecial = !!cal.special_workday;
 
-        // hiányzó: (munkanap vagy szombati munkanap) és nincs entry, de csak múlt napokra számoljuk “2+ hetes” stathoz
         if((isWorkday || isSpecial) && !entry && iso < today){
           if(daysBetween(iso, today) >= 14) oldMissingCount++;
         }
@@ -914,7 +948,7 @@
 
         tbody.innerHTML = '';
 
-        // admin kimarad az összesítőből
+        // admin kimarad
         const list = (profiles||[]).filter(p => p.role !== 'admin');
 
         const sorted = list.slice().sort((a,b)=>{
@@ -956,7 +990,6 @@
           tbody.innerHTML = `<tr><td colspan="5" class="muted">Nincs felhasználó.</td></tr>`;
         }
 
-        // gomb események
         tbody.querySelectorAll('button[data-open-entries]').forEach(btn=>{
           btn.addEventListener('click', async ()=>{
             const uid = btn.getAttribute('data-open-entries');
@@ -995,7 +1028,7 @@
 
     function downloadCsv(rows, filename){
       const delim = ';';
-      const header = ['Dátum','Érkezés','Távozás','Csúsztatás (perc)','Szabadság','Megjegyzés'];
+      const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Megjegyzés'];
       const lines = [];
       lines.push(header.map(h=>csvEscape(h,delim)).join(delim));
       for(const r of rows){
@@ -1003,6 +1036,7 @@
           r.date,
           r.arrival,
           r.departure,
+          r.worked,
           r.flex_minutes,
           r.vacation,
           r.note
@@ -1022,7 +1056,6 @@
     async function openEntriesView(user){
       entriesUser = user;
 
-      // UI: tabok elrejtése, csak entries panel
       $('tabsRow').classList.add('hidden');
 
       $('usersView').classList.add('hidden');
@@ -1036,10 +1069,9 @@
       $('entriesMeta').textContent = `Listázva: ${YEAR}-01-01 → ${today} (jövőből csak előre rögzített szabadságok)`;
 
       const tbody = $('entriesTbody');
-      tbody.innerHTML = `<tr><td colspan="6" class="muted">Betöltés…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="muted">Betöltés…</td></tr>`;
 
       try{
-        // entries lekérés az egész évre
         const start = `${YEAR}-01-01`;
         const end = `${YEAR+1}-01-01`;
 
@@ -1055,33 +1087,34 @@
 
         const entries = (data||[]).map(e=>({ ...e, date: normalizeIsoDate(e.date) }));
 
-        // map: iso -> entry
         const eMap = new Map();
         for(const e of entries){
           eMap.set(e.date, e);
         }
 
-        // alapsorok: év elejétől ma-ig minden nap
         const baseDates = Array.from(dateRangeInclusive(start, today));
 
-        // plusz: jövőbeli szabik (előre rögzített)
         const futureVac = entries
           .filter(e => e.is_vacation && e.date > today)
           .map(e => e.date)
           .sort();
 
-        // összeállított dátumlista:
         const dates = baseDates.concat(futureVac);
 
-        // kirenderelés + CSV cache
         entriesRowsRendered = [];
 
         tbody.innerHTML = '';
         for(const iso of dates){
           const e = eMap.get(iso);
+
           const arrival = e ? timeToHHMM(e.arrival) : '';
           const departure = e ? timeToHHMM(e.departure) : '';
-          const flex = e ? (Number(e.flex_minutes ?? '') === 0 ? 0 : (e.flex_minutes ?? '')) : '';
+          const worked = workedHoursFromArrivalDeparture(arrival, departure);
+
+          // ✅ ha 0, ne jelenjen meg
+          const flexVal = e ? Number(e.flex_minutes || 0) : 0;
+          const flex = (e && flexVal > 0) ? String(flexVal) : '';
+
           const vac = (e && e.is_vacation) ? 'Szabadság' : '';
           const note = e ? (e.note || '') : '';
 
@@ -1089,7 +1122,8 @@
             date: iso.replaceAll('-','.'),
             arrival,
             departure,
-            flex_minutes: (flex === '' ? '' : String(flex)),
+            worked,
+            flex_minutes: flex,
             vacation: vac,
             note
           });
@@ -1099,7 +1133,8 @@
             <td>${escapeHtml(iso.replaceAll('-','.'))}</td>
             <td>${escapeHtml(arrival)}</td>
             <td>${escapeHtml(departure)}</td>
-            <td>${escapeHtml(flex === '' ? '' : String(flex))}</td>
+            <td>${escapeHtml(worked)}</td>
+            <td>${escapeHtml(flex)}</td>
             <td>${vac ? `<span class="vacPill">Szabadság</span>` : ''}</td>
             <td style="white-space:normal; max-width:520px;">${escapeHtml(note)}</td>
           `;
@@ -1107,11 +1142,11 @@
         }
 
         if(dates.length === 0){
-          tbody.innerHTML = `<tr><td colspan="6" class="muted">Nincs adat.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" class="muted">Nincs adat.</td></tr>`;
         }
 
       }catch(e){
-        tbody.innerHTML = `<tr><td colspan="6" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
       }
     }
 
@@ -1122,7 +1157,6 @@
       $('entriesView').classList.add('hidden');
       $('tabsRow').classList.remove('hidden');
 
-      // vissza az users tabra
       setTab('users');
     }
 
@@ -1136,7 +1170,6 @@
       $('yearView').classList.toggle('hidden', tab!=='year');
       $('exportView').classList.toggle('hidden', tab!=='export');
 
-      // entries view mindig külön logikával
       $('entriesView').classList.add('hidden');
       $('tabsRow').classList.remove('hidden');
     }
@@ -1579,11 +1612,24 @@
 
       renderUsers();
 
-      // cache reset + summary újraszámolás
       yearCalendarRows = null;
       yearEntriesRows = null;
       yearEntriesByUser = null;
       await renderTeamSummary();
+    }
+
+    // Tabs
+    function setTab(tab){
+      $('tabUsers').classList.toggle('active', tab==='users');
+      $('tabYear').classList.toggle('active', tab==='year');
+      $('tabExport').classList.toggle('active', tab==='export');
+
+      $('usersView').classList.toggle('hidden', tab!=='users');
+      $('yearView').classList.toggle('hidden', tab!=='year');
+      $('exportView').classList.toggle('hidden', tab!=='export');
+
+      $('entriesView').classList.add('hidden');
+      $('tabsRow').classList.remove('hidden');
     }
 
     window.addEventListener('DOMContentLoaded', async ()=>{
@@ -1591,7 +1637,6 @@
         await ensureSupabase();
 
         $('refreshBtn').addEventListener('click', async ()=>{
-          // ha entries viewben vagyunk, akkor is frissít, de utána maradjon ott
           const wasEntries = !$('entriesView').classList.contains('hidden');
           const keepUser = entriesUser;
 
@@ -1608,7 +1653,6 @@
           location.replace('/index.html?v=' + Date.now());
         });
 
-        // Tabs
         $('tabUsers').addEventListener('click', ()=>setTab('users'));
         $('tabYear').addEventListener('click', async ()=>{
           setTab('year');
@@ -1616,7 +1660,6 @@
         });
         $('tabExport').addEventListener('click', ()=>setTab('export'));
 
-        // Entries view buttons
         $('backToUsersBtn').addEventListener('click', closeEntriesView);
         $('csvBtn').addEventListener('click', ()=>{
           if(!entriesUser) return;
@@ -1626,14 +1669,12 @@
           downloadCsv(entriesRowsRendered, filename);
         });
 
-        // User actions
         $('closeBtn').addEventListener('click', closeEditProfile);
         $('backdrop').addEventListener('click', (e)=>{ if(e.target === $('backdrop')) closeEditProfile(); });
         $('saveBtn').addEventListener('click', async ()=>{ try{ await saveEditProfile(); }catch(e){ toast(e.message||String(e)); } });
 
         $('inviteBtn').addEventListener('click', async ()=>{ try{ await saveInvite(); await refreshAll(); }catch(e){ toast(e.message||String(e)); } });
 
-        // Year actions
         $('reloadYearBtn').addEventListener('click', async ()=>{ try{ await loadYear(); toast('Naptár frissítve'); }catch(e){ toast(e.message||String(e)); } });
 
         $('dCloseBtn').addEventListener('click', closeDayEditor);
@@ -1658,7 +1699,6 @@
         $('dSaveBtn').addEventListener('click', async ()=>{ try{ await saveDayEditor(); }catch(e){ toast(e.message||String(e)); } });
         $('dResetBtn').addEventListener('click', async ()=>{ try{ await resetDayEditor(); }catch(e){ toast(e.message||String(e)); } });
 
-        // init
         await refreshAll();
         setTab('users');
       }catch(e){
