@@ -68,39 +68,6 @@
       line-height:1.1;
     }
 
-    /* ✅ státusz sor (a név alatt) */
-    .status-bar{
-      display:flex;
-      align-items:center;
-      gap:16px;
-      background:transparent;
-      height:13px;
-      padding:0 2px;
-      border-radius:4px;
-      max-width:420px;
-    }
-    .status-item{
-      display:flex;
-      align-items:center;
-      gap:3px;
-      font-size:11px;
-      line-height:1;
-    }
-    .status-bar .material-symbols-outlined{
-      font-size:13px;
-      color:var(--text);
-      line-height:1;
-      font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    }
-    .status-text{
-      color:var(--text);
-      font-weight:700;
-      white-space:nowrap;
-    }
-    .status-text.blue{ color: var(--vac); }
-    .status-text.green{ color: var(--zold); }
-    .status-text.red{ color: var(--piros); }
-
     .nav-container{
       display:flex;
       gap:0;
@@ -200,6 +167,38 @@
       gap:3px;
     }
 
+    /* ✅ státusz sor: közvetlenül a naptár alatt */
+    .status-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:18px;
+      height:15px;           /* kért: 15px */
+      padding:0 6px;
+      margin:6px 0 0;        /* szorosan a naptár alatt */
+    }
+    .status-item{
+      display:flex;
+      align-items:center;
+      gap:4px;
+      font-size:12px;        /* kért: 12px */
+      line-height:1;
+    }
+    .status-bar .material-symbols-outlined{
+      font-size:15px;        /* kért: 15px */
+      color:var(--text);
+      line-height:1;
+      font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .status-text{
+      color:var(--text);
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .status-text.blue{ color: var(--vac); }
+    .status-text.green{ color: var(--zold); }
+    .status-text.red{ color: var(--piros); }
+
     .tile{
       background:var(--work);
       border-radius:0px;
@@ -269,7 +268,7 @@
     .line.red{color:var(--piros) !important;}
     .line.black{color:#111 !important;}
 
-    .jumpWrap{padding:8px 0 0;}
+    .jumpWrap{padding:6px 0 0;}
     .jumpBtn{
       width:100%;
       border:0;
@@ -380,21 +379,9 @@
     <div class="user-block">
       <div class="user-meta">
         <div id="userName" class="user-name"></div>
-
-        <!-- ✅ státusz sor a név alatt -->
-        <div id="statusBar" class="status-bar">
-          <div class="status-item" title="Hátralévő szabadságok">
-            <span class="material-symbols-outlined">beach_access</span>
-            <span id="statVac" class="status-text blue">—</span>
-          </div>
-          <div class="status-item" title="Túlóra / hátralék">
-            <span class="material-symbols-outlined">schedule</span>
-            <span id="statBal" class="status-text">—</span>
-          </div>
-        </div>
       </div>
 
-      <!-- ✅ Kilépés a státusz sor után következik -->
+      <!-- ✅ Kilépés közvetlenül a név után -->
       <button id="logoutBtn" class="nav-item logout-item" type="button" aria-label="Kilépés">
         <span class="material-symbols-outlined">logout</span>
         <span class="menu-label">Kilépés</span>
@@ -432,6 +419,19 @@
         <div id="grid" class="grid"></div>
       </div>
 
+      <!-- ✅ Státusz sor: mindig közvetlenül a naptár alatt (gridWrap után) -->
+      <div id="statusBar" class="status-bar">
+        <div class="status-item" title="Hátralévő szabadságok">
+          <span class="material-symbols-outlined">beach_access</span>
+          <span id="statVac" class="status-text blue">—</span>
+        </div>
+        <div class="status-item" title="Túlóra / hátralék">
+          <span class="material-symbols-outlined">schedule</span>
+          <span id="statBal" class="status-text">—</span>
+        </div>
+      </div>
+
+      <!-- ✅ ha van Ugrás gomb, akkor ez a státusz sor alatt van -->
       <div class="jumpWrap">
         <button id="jumpTodayBtn" class="jumpBtn hidden" type="button">Ugrás a mai napra</button>
       </div>
@@ -815,7 +815,6 @@
       let expectedTotal = 0;
       let fulfilledTotal = 0;
 
-      // calendar sorok: végigmegyünk az éven (térképből sortolva)
       const calRows = Array.from(yearCalMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
 
       for(const cal of calRows){
@@ -827,7 +826,6 @@
 
         const entry = yearEntryMap.get(iso);
 
-        // ma csak akkor számít, ha van "értelmes" rögzítés
         if(iso === today){
           const meaningful = !!(entry && (
             (entry.arrival && entry.departure) ||
@@ -846,12 +844,10 @@
         if(entry){
           const vac = !!entry.is_vacation;
 
-          // szabi nap: elvártat teljesítettnek vesszük (ha elvárt nap)
           if(vac && isExpectedDay){
             fulfilled += expected;
           }
 
-          // munka perc (érkezés-távozás - csúsztatás)
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(String(entry.arrival).slice(0,5));
@@ -863,7 +859,6 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          // dupla: nem elvárt nap, vagy szabi alatt dolgozott
           const isDouble = (!isExpectedDay) || (vac && worked > 0);
           const mult = isDouble ? 2 : 1;
 
@@ -877,11 +872,9 @@
     }
 
     function updateStatusBar(){
-      // szabi
       const vacRemain = calcVacationRemaining();
       $('statVac').textContent = String(Math.max(0, Math.round(vacRemain)));
 
-      // túlóra/hátralék
       const balMin = calcBalanceMinToToday();
       const dayBase = Number(profile?.daily_expected_minutes ?? 480) || 480;
       const days = Math.round(Math.abs(balMin) / dayBase);
@@ -896,7 +889,6 @@
       el.classList.remove('green','red');
       if(balMin > 0) el.classList.add('green');
       else if(balMin < 0) el.classList.add('red');
-      // 0: marad fehér
     }
 
     // ---- edit / mentés ----
@@ -1049,7 +1041,6 @@
         yearEntryMap.delete(iso);
       }
 
-      // újraszámoljuk éves szabi db-t (munkanapokra)
       yearVacUsed = 0;
       for(const [d, e] of yearEntryMap.entries()){
         if(e?.is_vacation && isWorkdayForVacation(d)){
@@ -1183,7 +1174,6 @@
         yearEntryMap.set(iso, { ...r, date: iso });
       });
 
-      // éves munkanapi szabi db
       yearVacUsed = 0;
       for(const [d, e] of yearEntryMap.entries()){
         if(e?.is_vacation && isWorkdayForVacation(d)){
@@ -1353,7 +1343,6 @@
           await saveCurrentEdit();
           closeEdit();
           await loadMonth();
-          // státusz már frissült saveCurrentEdit-ben
         }catch(e){
           toast('Mentés hiba: ' + (e?.message||String(e)));
         }
