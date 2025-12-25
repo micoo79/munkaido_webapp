@@ -94,21 +94,30 @@
       display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap;
       padding:6px 4px 10px;
     }
-    /* csak vízszintes görgetés kell, a sticky fejléchez ne legyen függőleges overflow */
-    .summaryWrap{overflow-x:auto; overflow-y:visible;}
+
+    /* nincs vízszintes görgetés: mindig befér */
+    .summaryWrap{overflow:visible;}
+
     table.summaryTable{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      min-width:1040px;
+      table-layout:fixed; /* ✅ befér, nem tol ki */
     }
+
     .summaryTable th, .summaryTable td{
       padding:8px 10px;
       border-bottom:1px solid rgba(255,255,255,.10);
       text-align:left;
       vertical-align:middle;
-      white-space:nowrap;
+
       border-right:1px solid var(--cellVBorder);
+
+      /* ✅ ne legyen vízszintes csúszka */
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width:0; /* ellipsis fixhez */
     }
     .summaryTable th:last-child, .summaryTable td:last-child{ border-right:0; }
     .summaryTable th{
@@ -116,9 +125,6 @@
       color:var(--muted);
       font-weight:900;
       letter-spacing:.02em;
-      position:sticky;
-      top:0;
-      z-index:6;
       background:var(--panel);
     }
     .summaryTable td{
@@ -295,16 +301,6 @@
       opacity:.9;
     }
 
-    /* --- EXPORT VIEW placeholder --- */
-    .placeholder{
-      padding:16px;
-      border-radius:14px;
-      background:rgba(255,255,255,.06);
-      color:var(--muted);
-      font-weight:800;
-      font-size:14px;
-    }
-
     /* --- ENTRIES VIEW --- */
     .entriesHead{
       display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
@@ -313,39 +309,54 @@
     .entriesTitle{font-size:16px; font-weight:900; margin:0;}
     .entriesMeta{font-size:13px; color:var(--muted); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80vw;}
 
-    /* csak vízszintes overflow, sticky fejléchez */
-    .entriesWrap{overflow-x:auto; overflow-y:visible;}
+    /* ✅ nincs horizontal overflow */
+    .entriesWrap{overflow:visible;}
 
     table.entriesTable{
       width:100%;
       border-collapse:separate;
       border-spacing:0;
-      min-width:1120px;
+      table-layout:fixed; /* ✅ befér a konténerbe */
     }
+
     .entriesTable th, .entriesTable td{
       padding:8px 10px;
       border-bottom:1px solid rgba(255,255,255,.10);
       text-align:left;
       vertical-align:middle;
-      white-space:nowrap;
+
       border-right:1px solid var(--cellVBorder);
+
+      /* ✅ befér: ellipsis */
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width:0;
     }
     .entriesTable th:last-child, .entriesTable td:last-child{ border-right:0; }
+
+    /* ✅ Excel-szerű fejléc rögzítés: a LAP tetején */
     .entriesTable th{
       font-size:12px;
       color:var(--muted);
       font-weight:900;
       letter-spacing:.02em;
+
       position:sticky;
       top:0;
-      z-index:6;
+      z-index:50;
       background:var(--panel);
+      /* opcionális: aláhúzás, hogy jobban "külön álljon" */
+      box-shadow: 0 2px 0 rgba(255,255,255,.06);
     }
     .entriesTable td{
       font-size:13px;
       font-weight:800;
     }
     .entriesTable td.muted{color:var(--muted); font-weight:800;}
+
+    /* megjegyzés oszlop: engedjünk több helyet, de marad ellipsis */
+    .entriesTable td.noteCell{white-space:nowrap;}
 
     .vacPill{
       display:inline-flex; align-items:center;
@@ -418,7 +429,6 @@
     <div id="tabsRow" class="tabs">
       <button id="tabUsers" class="tab active" type="button">Felhasználók</button>
       <button id="tabYear" class="tab" type="button">Éves munkarend</button>
-      <button id="tabExport" class="tab" type="button">Export</button>
     </div>
 
     <!-- USERS VIEW -->
@@ -430,6 +440,13 @@
 
         <div class="summaryWrap">
           <table class="summaryTable">
+            <colgroup>
+              <col style="width:22%">
+              <col style="width:24%">
+              <col style="width:24%">
+              <col style="width:20%">
+              <col style="width:10%">
+            </colgroup>
             <thead>
               <tr>
                 <th>Név</th>
@@ -517,13 +534,6 @@
       </div>
     </section>
 
-    <!-- EXPORT VIEW -->
-    <section id="exportView" class="panel hidden">
-      <div class="placeholder">
-        Export menü – később mondod, mi legyen itt.
-      </div>
-    </section>
-
     <!-- ENTRIES VIEW -->
     <section id="entriesView" class="panel hidden">
       <div class="entriesHead">
@@ -539,6 +549,15 @@
 
       <div class="entriesWrap">
         <table class="entriesTable">
+          <colgroup>
+            <col style="width:12%">
+            <col style="width:10%">
+            <col style="width:10%">
+            <col style="width:14%">
+            <col style="width:14%">
+            <col style="width:12%">
+            <col style="width:28%">
+          </colgroup>
           <thead>
             <tr>
               <th>Dátum</th>
@@ -747,7 +766,7 @@
       const a = hhmmToMins(arrival);
       const b = hhmmToMins(departure);
       if(a == null || b == null) return '';
-      if(b < a) return ''; // nem számolunk át éjfélen
+      if(b < a) return '';
       return minsToHHMMPos(b - a);
     }
 
@@ -936,74 +955,6 @@
       `;
     }
 
-    async function renderTeamSummary(){
-      const tbody = $('teamTbody');
-      if(!tbody) return;
-
-      try{
-        await ensureYearCache();
-
-        const today = getTodayISO();
-        $('sumMeta').textContent = `Számolva eddig: ${today.replaceAll('-','.')}`;
-
-        tbody.innerHTML = '';
-
-        // admin kimarad
-        const list = (profiles||[]).filter(p => p.role !== 'admin');
-
-        const sorted = list.slice().sort((a,b)=>{
-          const wa = roleWeight(a.role);
-          const wb = roleWeight(b.role);
-          if(wa !== wb) return wa - wb;
-          const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
-          const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
-          return an.localeCompare(bn, 'hu');
-        });
-
-        for(const u of sorted){
-          const uid = u.user_id;
-          const myEntries = yearEntriesByUser?.get(uid) || [];
-          const m = calcUserMetricsLikeAdatlap(u, yearCalendarRows, myEntries);
-
-          const tr = document.createElement('tr');
-
-          const roleLabel = (u.role === 'manager')
-            ? `<span class="summaryTag" style="border-color:rgba(37,99,235,.45); background:rgba(37,99,235,.10);">manager</span>`
-            : '';
-
-          tr.innerHTML = `
-            <td>
-              ${escapeHtml(u.display_name || u.email || '(névtelen)')}
-              ${roleLabel}
-            </td>
-            <td>${fmtBalanceCell(m.balanceMin, m.approxDays)}</td>
-            <td>${Math.max(0, Math.round(m.vacRemain))} <span class="muted">nap</span></td>
-            <td>${m.oldMissingCount} <span class="muted">db</span></td>
-            <td>
-              <button class="btn small" type="button" data-open-entries="${escapeHtml(uid)}">Rögzítések</button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        }
-
-        if(sorted.length === 0){
-          tbody.innerHTML = `<tr><td colspan="5" class="muted">Nincs felhasználó.</td></tr>`;
-        }
-
-        tbody.querySelectorAll('button[data-open-entries]').forEach(btn=>{
-          btn.addEventListener('click', async ()=>{
-            const uid = btn.getAttribute('data-open-entries');
-            const u = profiles.find(x => String(x.user_id) === String(uid));
-            if(!u){ toast('Nincs user'); return; }
-            await openEntriesView(u);
-          });
-        });
-
-      }catch(e){
-        tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
-      }
-    }
-
     // --- ENTRIES VIEW ---
     function timeToHHMM(t){
       if(!t) return '';
@@ -1060,7 +1011,6 @@
 
       $('usersView').classList.add('hidden');
       $('yearView').classList.add('hidden');
-      $('exportView').classList.add('hidden');
       $('entriesView').classList.remove('hidden');
 
       const today = getTodayISO();
@@ -1111,7 +1061,6 @@
           const departure = e ? timeToHHMM(e.departure) : '';
           const worked = workedHoursFromArrivalDeparture(arrival, departure);
 
-          // ✅ ha 0, ne jelenjen meg
           const flexVal = e ? Number(e.flex_minutes || 0) : 0;
           const flex = (e && flexVal > 0) ? String(flexVal) : '';
 
@@ -1136,7 +1085,7 @@
             <td>${escapeHtml(worked)}</td>
             <td>${escapeHtml(flex)}</td>
             <td>${vac ? `<span class="vacPill">Szabadság</span>` : ''}</td>
-            <td style="white-space:normal; max-width:520px;">${escapeHtml(note)}</td>
+            <td class="noteCell">${escapeHtml(note)}</td>
           `;
           tbody.appendChild(tr);
         }
@@ -1164,11 +1113,9 @@
     function setTab(tab){
       $('tabUsers').classList.toggle('active', tab==='users');
       $('tabYear').classList.toggle('active', tab==='year');
-      $('tabExport').classList.toggle('active', tab==='export');
 
       $('usersView').classList.toggle('hidden', tab!=='users');
       $('yearView').classList.toggle('hidden', tab!=='year');
-      $('exportView').classList.toggle('hidden', tab!=='export');
 
       $('entriesView').classList.add('hidden');
       $('tabsRow').classList.remove('hidden');
@@ -1566,14 +1513,18 @@
       renderYear();
     }
 
-    async function refreshAll(){
+    async function ensureSupabaseAndSession(){
       await ensureSupabase();
-
       const { data: sess } = await supabase.auth.getSession();
       if(!sess.session){
         location.replace('/index.html?v=' + Date.now());
-        return;
+        return false;
       }
+      return true;
+    }
+
+    async function refreshAll(){
+      if(!(await ensureSupabaseAndSession())) return;
 
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
@@ -1618,15 +1569,79 @@
       await renderTeamSummary();
     }
 
-    // Tabs
+    async function renderTeamSummary(){
+      const tbody = $('teamTbody');
+      if(!tbody) return;
+
+      try{
+        await ensureYearCache();
+
+        const today = getTodayISO();
+        $('sumMeta').textContent = `Számolva eddig: ${today.replaceAll('-','.')}`;
+
+        tbody.innerHTML = '';
+
+        const list = (profiles||[]).filter(p => p.role !== 'admin');
+
+        const sorted = list.slice().sort((a,b)=>{
+          const wa = roleWeight(a.role);
+          const wb = roleWeight(b.role);
+          if(wa !== wb) return wa - wb;
+          const an = (a.display_name || a.email || '').toLocaleLowerCase('hu');
+          const bn = (b.display_name || b.email || '').toLocaleLowerCase('hu');
+          return an.localeCompare(bn, 'hu');
+        });
+
+        for(const u of sorted){
+          const uid = u.user_id;
+          const myEntries = yearEntriesByUser?.get(uid) || [];
+          const m = calcUserMetricsLikeAdatlap(u, yearCalendarRows, myEntries);
+
+          const tr = document.createElement('tr');
+
+          const roleLabel = (u.role === 'manager')
+            ? `<span class="summaryTag" style="border-color:rgba(37,99,235,.45); background:rgba(37,99,235,.10);">manager</span>`
+            : '';
+
+          tr.innerHTML = `
+            <td>
+              ${escapeHtml(u.display_name || u.email || '(névtelen)')}
+              ${roleLabel}
+            </td>
+            <td>${fmtBalanceCell(m.balanceMin, m.approxDays)}</td>
+            <td>${Math.max(0, Math.round(m.vacRemain))} <span class="muted">nap</span></td>
+            <td>${m.oldMissingCount} <span class="muted">db</span></td>
+            <td>
+              <button class="btn small" type="button" data-open-entries="${escapeHtml(uid)}">Rögzítések</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        if(sorted.length === 0){
+          tbody.innerHTML = `<tr><td colspan="5" class="muted">Nincs felhasználó.</td></tr>`;
+        }
+
+        tbody.querySelectorAll('button[data-open-entries]').forEach(btn=>{
+          btn.addEventListener('click', async ()=>{
+            const uid = btn.getAttribute('data-open-entries');
+            const u = profiles.find(x => String(x.user_id) === String(uid));
+            if(!u){ toast('Nincs user'); return; }
+            await openEntriesView(u);
+          });
+        });
+
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
+      }
+    }
+
     function setTab(tab){
       $('tabUsers').classList.toggle('active', tab==='users');
       $('tabYear').classList.toggle('active', tab==='year');
-      $('tabExport').classList.toggle('active', tab==='export');
 
       $('usersView').classList.toggle('hidden', tab!=='users');
       $('yearView').classList.toggle('hidden', tab!=='year');
-      $('exportView').classList.toggle('hidden', tab!=='export');
 
       $('entriesView').classList.add('hidden');
       $('tabsRow').classList.remove('hidden');
@@ -1658,7 +1673,6 @@
           setTab('year');
           await loadYear();
         });
-        $('tabExport').addEventListener('click', ()=>setTab('export'));
 
         $('backToUsersBtn').addEventListener('click', closeEntriesView);
         $('csvBtn').addEventListener('click', ()=>{
@@ -1705,6 +1719,15 @@
         toast(e?.message || String(e));
       }
     });
+
+    function closeEditProfile(){
+      $('backdrop').classList.add('hidden');
+      editing = null;
+    }
+    function closeDayEditor(){
+      $('dayBackdrop').classList.add('hidden');
+      editingIso = null;
+    }
   })();
   </script>
 </body>
