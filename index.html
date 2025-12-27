@@ -5,11 +5,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Belépés</title>
+
+  <!-- ✅ PWA / ikon / fullscreen (iOS + Android) -->
+  <link rel="manifest" href="/manifest.webmanifest?v=1" />
+  <meta name="theme-color" content="#27272a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Munkaidő" />
+
+  <!-- ✅ ikonok -->
+  <link rel="icon" type="image/png" href="/kult_logo.png" />
+  <!-- iOS home-screen ikonhoz ajánlott: 180x180 -->
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
+  <!-- Android/általános: -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=1" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=1" />
+
   <style>
     :root{ --bg:#2f3237; --panel:#3a3f45; --text:#f2f3f5; --muted:#c9cbd1; --accent:#ff8a00; }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     .wrap{max-width:520px; margin:0 auto; padding:18px;}
+
+    /* ✅ logo */
+    .appLogo{
+      display:block;
+      width:150px;
+      height:auto;
+      margin:12px auto 14px; /* középre + térköz */
+    }
+
     .card{background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;}
     h1{margin:0 0 12px; font-size:22px;}
     label{display:block; font-size:18px; margin:12px 0 6px;}
@@ -23,10 +49,15 @@
     .err{color:#ff6b6b;}
     .ok{color:#7CFF9B;}
   </style>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- ✅ LOGO: Belépés blokk fölött, középen -->
+    <img class="appLogo" src="kult_logo.png" alt="Kult logo" />
+
     <div class="card">
       <h1>Belépés</h1>
 
@@ -79,7 +110,7 @@
     if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
 
     supabase = window.supabase.createClient(url, key, {
-      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
+      auth: { persistSession:true, autoRefreshToken:true, detectSession_in_url:true, detectSessionInUrl:true },
       db: { schema:'app' }
     });
     return supabase;
