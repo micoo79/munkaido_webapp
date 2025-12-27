@@ -113,7 +113,6 @@
 
     const url = j.SUPABASE_URL || j.supabaseUrl;
     const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
-
     if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
 
     supabase = window.supabase.createClient(url, key, {
@@ -123,14 +122,34 @@
     return supabase;
   }
 
-  // ✅ csak boolean-t kérünk vissza (RPC)
+  // ✅ allowlist ellenőrzés (RPC): app.is_email_allowed(p_email) -> boolean
   async function checkEmailAllowed(email){
     const { data, error } = await supabase
-  .schema('public')
-  .rpc('is_email_allowed', { p_email: email });
+      .schema('app')
+      .rpc('is_email_allowed', { p_email: email });
 
-    if(error) throw error;
+    if(error){
+      // ha az RPC nincs meg / rossz schema: inkább egyértelmű hiba
+      throw new Error('Allowlist ellenőrzés nem elérhető (is_email_allowed).');
+    }
     return !!data;
+  }
+
+  function isOtpInvalidError(err){
+    const em = String(err?.message || '').toLowerCase();
+    const status = err?.status;
+
+    // tipikus supabase auth szövegek
+    if(em.includes('token has expired')) return true;
+    if(em.includes('expired')) return true;
+    if(em.includes('invalid')) return true;
+    if(em.includes('otp')) return true;
+    if(em.includes('token')) return true;
+
+    // néha status kód alapján is
+    if(status === 400) return true;
+
+    return false;
   }
 
   async function goApp(){
@@ -165,28 +184,14 @@
       }
 
       msg('Küldés...', 'warn');
-     const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
 
-if(error){
-  const em = String(error.message || '').toLowerCase();
+      // ✅ HELYES: kód küldése
+      const { error } = await supabase.auth.signInWithOtp({ email });
 
-  // rossz / lejárt / érvénytelen kód
-  if(
-    em.includes('token has expired') ||
-    em.includes('invalid') ||
-    em.includes('expired') ||
-    em.includes('otp') ||
-    em.includes('token')
-  ){
-    msg('Hibás kód, vagy lejárt!', 'err');
-    return;
-  }
-
-  // minden más hiba esetén maradhat általános magyar hiba
-  msg('Hiba történt a belépésnél.', 'err');
-  return;
-}
-
+      if(error){
+        msg('Hiba történt a kód küldésekor.', 'err');
+        return;
+      }
 
       $('otpBlock').style.display = 'block';
       msg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide', 'ok');
@@ -210,8 +215,17 @@ if(error){
       }
 
       msg('Ellenőrzés...', 'warn');
+
       const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
-      if(error){ msg('Hiba: ' + error.message, 'err'); return; }
+
+      if(error){
+        if(isOtpInvalidError(error)){
+          msg('Hibás kód, vagy lejárt!', 'err');
+          return;
+        }
+        msg('Hiba történt a belépésnél.', 'err');
+        return;
+      }
 
       msg('Sikeres belépés ✓', 'ok');
       await goApp();
