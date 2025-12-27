@@ -165,8 +165,28 @@
       }
 
       msg('Küldés...', 'warn');
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if(error){ msg('Hiba: ' + error.message, 'err'); return; }
+     const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
+
+if(error){
+  const em = String(error.message || '').toLowerCase();
+
+  // rossz / lejárt / érvénytelen kód
+  if(
+    em.includes('token has expired') ||
+    em.includes('invalid') ||
+    em.includes('expired') ||
+    em.includes('otp') ||
+    em.includes('token')
+  ){
+    msg('Hibás kód, vagy lejárt!', 'err');
+    return;
+  }
+
+  // minden más hiba esetén maradhat általános magyar hiba
+  msg('Hiba történt a belépésnél.', 'err');
+  return;
+}
+
 
       $('otpBlock').style.display = 'block';
       msg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide', 'ok');
