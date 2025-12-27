@@ -125,7 +125,10 @@
 
   // ✅ csak boolean-t kérünk vissza (RPC)
   async function checkEmailAllowed(email){
-    const { data, error } = await supabase.rpc('is_email_allowed', { p_email: email });
+    const { data, error } = await supabase
+  .schema('public')
+  .rpc('is_email_allowed', { p_email: email });
+
     if(error) throw error;
     return !!data;
   }
