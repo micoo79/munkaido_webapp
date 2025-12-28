@@ -6,25 +6,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>VMKK KultÓra</title>
 
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
 
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=1">
-<link rel="apple-touch-icon-precomposed" href="/icons/apple-touch-icon.png?v=1">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=1">
+  <link rel="apple-touch-icon-precomposed" href="/icons/apple-touch-icon.png?v=1">
 
-  
-<link rel="manifest" href="/manifest.webmanifest?v=1" />
-<meta name="theme-color" content="#27272a" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
+  <link rel="manifest" href="/manifest.webmanifest?v=1" />
+  <meta name="theme-color" content="#27272a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
 
-<link rel="icon" type="image/png" href="/kult_logo.png" />
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=1" />
-<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=1" />
+  <link rel="icon" type="image/png" href="/kult_logo.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=1" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=1" />
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -107,7 +106,6 @@
     .settings-item:hover .material-symbols-outlined,
     .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
 
-    /* ✅ mobilon ne látszódjon a fogaskerék */
     @media (max-width:520px){
       #settingsBtn{display:none !important;}
     }
@@ -142,18 +140,21 @@
     }
     .missingTitle{
       font-size:13px;
-      margin-bottom:16px;
+      margin:0;
       color:var(--text);
-    }
-    .missingList{
-      font-size:12px;
-      line-height:1.2;
-      color:var(--text);
-      user-select:text;
-      white-space:normal;
     }
 
-    /* ❌ év cím kiszedve (kérted, hogy ne legyen "2026 éves naptár") */
+    /* ✅ piros kis négyzet a mondatba (szám nélkül) */
+    .inlineLegendSquare{
+      display:inline-block;
+      width:12px;
+      height:12px;
+      background:#ff4500;
+      vertical-align:middle;
+      margin:0 6px;
+      border-radius:0;
+    }
+
     .yearTitle{display:none !important;}
 
     .monthsWrap{
@@ -242,7 +243,6 @@
       outline-offset:-2px;
     }
 
-    /* ✅ HIÁNYZÓ RÖGZÍTÉS jelölés */
     .dTile.missing{
       background:#ff4500;
     }
@@ -256,7 +256,6 @@
       padding:10px;
       border-radius:14px;
       background:rgba(255,255,255,.06);
-    /*  display:flex;  */
       gap:10px;
       flex-wrap:wrap;
       justify-content:center;
@@ -334,15 +333,13 @@
         <div id="sumVac"  class="summaryLine">Betöltés…</div>
       </div>
 
-      <div class="missingBox">
-        <div id="missingTitle" class="missingTitle">Betöltés…</div>
-       <div id="missingList" class="missingList">Betöltés…</div> 
+      <!-- ✅ Hiányzó rögzítés üzenet (csak ha van) -->
+      <div id="missingBox" class="missingBox hidden">
+        <div id="missingTitle" class="missingTitle"></div>
       </div>
 
-      <!-- (kiszeddük) <div class="yearTitle" id="yearTitle">2026 – Éves naptár</div> -->
       <div id="monthsWrap" class="monthsWrap"></div>
 
-      <!-- ✅ Jelmagyarázat a naptár alatt -->
       <div class="legendWrap" aria-label="Jelmagyarázat">
         <div class="legendItem">
           <div class="legendTile holiday"><span>15</span></div>
@@ -412,12 +409,6 @@
       const h = Math.floor(m/60);
       const mm = m%60;
       return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
-    }
-
-    function daysBetween(aIso, bIso){
-      const a = new Date(aIso + 'T12:00:00');
-      const b = new Date(bIso + 'T12:00:00');
-      return Math.round((b - a) / (24*60*60*1000));
     }
 
     function noStoreFetch(input, init){
@@ -597,33 +588,18 @@
       return `A mai napig <span class="num">${hhmm}</span> óra ${label} van.`;
     }
 
-    function renderMissingDatesGrouped(missingIsoList){
-      const listEl = $('missingList');
+    function renderMissingMessage(missingCount){
+      const box = $('missingBox');
       const titleEl = $('missingTitle');
 
-      if(!missingIsoList || missingIsoList.length === 0){
-        titleEl.textContent = 'Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen 0 db)';
-        listEl.textContent = 'Nincs hiányzó rögzítés.';
+      if(!missingCount || missingCount <= 0){
+        box.classList.add('hidden');
+        titleEl.textContent = '';
         return;
       }
 
-      const today = getTodayISO();
-      const olderCount = missingIsoList.filter(iso => daysBetween(iso, today) >= 14).length;
-
-      titleEl.textContent =
-        `Az alább felsorolt napokon nincs semmilyen rögzítésed. (Összesen ${missingIsoList.length} db, ebből ${olderCount} db két hétnél régebbi, ezeket pótold!)`;
-
-      const groups = new Map();
-      for(const iso of missingIsoList){
-        const ym = iso.slice(0,7);
-        const fmt = iso.replaceAll('-', '.');
-        if(!groups.has(ym)) groups.set(ym, []);
-        groups.get(ym).push(fmt);
-      }
-
-      const ymKeys = Array.from(groups.keys()).sort();
-      const parts = ymKeys.map(ym => groups.get(ym).join(', '));
-      listEl.textContent = parts.join(' | ');
+      box.classList.remove('hidden');
+      titleEl.innerHTML = `A <span class="inlineLegendSquare" aria-hidden="true"></span>-el jelölt napokon nincs rögzítésed, kérlek pótold!`;
     }
 
     async function loadYearDataAndCompute(){
@@ -754,7 +730,8 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      renderMissingDatesGrouped(missingIso);
+      // ✅ csak a rövid üzenet, felsorolás nélkül
+      renderMissingMessage(missingIso.length);
 
       const missingSet = new Set(missingIso);
       renderYearCalendar(calendarMap, vacSet, missingSet);
