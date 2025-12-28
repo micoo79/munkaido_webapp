@@ -59,8 +59,6 @@
 </head>
 <body>
   <div class="wrap">
-
-    <!-- ✅ LOGO: Belépés blokk fölött, középen -->
     <img class="appLogo" src="kult_logo.png" alt="Kult logo" />
 
     <div class="card">
@@ -95,6 +93,8 @@
   };
 
   const NOT_ALLOWED_MSG = 'Ez az email cím nem engedélyezett, vedd fel a kapcsolatot az intézményvezetővel!';
+  const ALLOWLIST_UNAVAILABLE_MSG = 'Belépés ideiglenesen nem elérhető (engedély ellenőrzés).';
+  const OTP_INVALID_MSG = 'Hibás kód, vagy lejárt!';
 
   let supabase = null;
 
@@ -115,22 +115,21 @@
     const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
     if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
 
+    // ✅ login oldalon legyen public, hogy a public.is_email_allowed biztosan megtalálható legyen
     supabase = window.supabase.createClient(url, key, {
       auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-      db: { schema:'app' }
+      db: { schema:'public' }
     });
     return supabase;
   }
 
-  // ✅ allowlist ellenőrzés (RPC): app.is_email_allowed(p_email) -> boolean
   async function checkEmailAllowed(email){
-    const { data, error } = await supabase
-      .schema('app')
-      .rpc('is_email_allowed', { p_email: email });
-
+    // ✅ public.is_email_allowed(p_email)
+    const { data, error } = await supabase.rpc('is_email_allowed', { p_email: email });
     if(error){
-      // ha az RPC nincs meg / rossz schema: inkább egyértelmű hiba
-      throw new Error('Allowlist ellenőrzés nem elérhető (is_email_allowed).');
+      console.error('RPC is_email_allowed error:', error);
+      // ide nem a NOT_ALLOWED_MSG kell, mert ez technikai gond
+      throw new Error(ALLOWLIST_UNAVAILABLE_MSG);
     }
     return !!data;
   }
@@ -139,14 +138,11 @@
     const em = String(err?.message || '').toLowerCase();
     const status = err?.status;
 
-    // tipikus supabase auth szövegek
     if(em.includes('token has expired')) return true;
     if(em.includes('expired')) return true;
     if(em.includes('invalid')) return true;
     if(em.includes('otp')) return true;
     if(em.includes('token')) return true;
-
-    // néha status kód alapján is
     if(status === 400) return true;
 
     return false;
@@ -176,7 +172,6 @@
       const email = ($('email').value||'').trim().toLowerCase();
       if(!email){ msg('Írd be az email címed!', 'err'); return; }
 
-      // ✅ allowlist ellenőrzés
       const allowed = await checkEmailAllowed(email);
       if(!allowed){
         msg(NOT_ALLOWED_MSG, 'err');
@@ -207,7 +202,6 @@
       const token = ($('otp').value||'').trim();
       if(!token){ msg('Írd be a kódot!', 'err'); return; }
 
-      // ✅ plusz védelem: belépés előtt is
       const allowed = await checkEmailAllowed(email);
       if(!allowed){
         msg(NOT_ALLOWED_MSG, 'err');
@@ -220,7 +214,7 @@
 
       if(error){
         if(isOtpInvalidError(error)){
-          msg('Hibás kód, vagy lejárt!', 'err');
+          msg(OTP_INVALID_MSG, 'err');
           return;
         }
         msg('Hiba történt a belépésnél.', 'err');
