@@ -128,13 +128,21 @@
       max-width:0;
     }
     .summaryTable th:last-child, .summaryTable td:last-child{ border-right:0; }
+
+    /* ✅ fejlécben sortörés engedélyezése */
     .summaryTable th{
       font-size:12px;
       color:var(--muted);
       font-weight:900;
       letter-spacing:.02em;
       background:var(--panel);
+
+      white-space:normal;
+      overflow:visible;
+      text-overflow:clip;
+      line-height:1.15;
     }
+
     .summaryTable td{
       font-size:13px;
       font-weight:800;
@@ -340,6 +348,7 @@
     }
     .entriesTable th:last-child, .entriesTable td:last-child{ border-right:0; }
 
+    /* ✅ fejlécben sortörés engedélyezése */
     .entriesTable th{
       font-size:12px;
       color:var(--muted);
@@ -351,6 +360,11 @@
       z-index:50;
       background:var(--panel);
       box-shadow: 0 2px 0 rgba(255,255,255,.06);
+
+      white-space:normal;
+      overflow:visible;
+      text-overflow:clip;
+      line-height:1.15;
     }
     .entriesTable td{
       font-size:13px;
@@ -367,6 +381,17 @@
       font-weight:900;
       background:rgba(185,217,255,.18);
       border:1px solid rgba(185,217,255,.35);
+      color:var(--text);
+      margin-right:6px;
+    }
+    .sickPill{
+      display:inline-flex; align-items:center;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      background:rgba(30,203,91,.18);
+      border:1px solid rgba(30,203,91,.40);
       color:var(--text);
     }
 
@@ -444,8 +469,9 @@
             <colgroup>
               <col style="width:240px">
               <col style="width:260px">
-              <col style="width:220px"><!-- ✅ max 220px -->
-              <col>
+              <col style="width:200px"><!-- Szabi -->
+              <col style="width:180px"><!-- Beteg -->
+              <col><!-- Missing -->
               <col style="width:120px">
             </colgroup>
             <thead>
@@ -453,12 +479,13 @@
                 <th>Név</th>
                 <th>Túlóra / hátralék</th>
                 <th>Hátralévő szabadságok</th>
+                <th>Betegállomány</th>
                 <th>2 hétnél régebbi hiányzó rögzítések</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="teamTbody">
-              <tr><td colspan="5" class="muted">Betöltés…</td></tr>
+              <tr><td colspan="6" class="muted">Betöltés…</td></tr>
             </tbody>
           </table>
         </div>
@@ -556,8 +583,9 @@
             <col style="width:10%">
             <col style="width:14%">
             <col style="width:14%">
-            <col style="width:12%">
-            <col style="width:28%">
+            <col style="width:12%"><!-- Szabi -->
+            <col style="width:12%"><!-- Beteg -->
+            <col style="width:16%"><!-- Megjegyzés -->
           </colgroup>
           <thead>
             <tr>
@@ -567,11 +595,12 @@
               <th>Ledolgozott órák</th>
               <th>Csúsztatás (perc)</th>
               <th>Szabadság</th>
+              <th>Betegállomány</th>
               <th>Megjegyzés</th>
             </tr>
           </thead>
           <tbody id="entriesTbody">
-            <tr><td colspan="7" class="muted">Betöltés…</td></tr>
+            <tr><td colspan="8" class="muted">Betöltés…</td></tr>
           </tbody>
         </table>
       </div>
@@ -826,7 +855,7 @@
         const ents = await fetchAll((from,to)=>
           supabase
             .from('entries')
-            .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
+            .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
             .gte('date', start)
             .lt('date', end)
             .order('date', { ascending:true })
@@ -844,7 +873,7 @@
       }
     }
 
-    // --- számítás: egyezzen az adatlap logikával, DE szabi: teljes év ---
+    // --- számítás: egyezzen az adatlap logikával, DE szabi + beteg: teljes év ---
     function calcUserMetrics(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
@@ -861,7 +890,7 @@
         eMap.set(normalizeIsoDate(e.date), e);
       }
 
-      // cal map a teljes éves szabi-számításhoz
+      // cal map a teljes éves szabi/beteg számításhoz
       const calMap = new Map();
       for(const c of (calendarRows||[])){
         calMap.set(c.date, c);
@@ -883,7 +912,8 @@
           !!(entry && (
             (entry.arrival && entry.departure) ||
             (Number(entry.flex_minutes||0) > 0) ||
-            !!entry.is_vacation
+            !!entry.is_vacation ||
+            !!entry.is_sick
           ));
         if(isToday && !meaningfulToday){
           continue;
@@ -903,8 +933,10 @@
 
         if(entry){
           const vac = !!entry.is_vacation;
+          const sick = !!entry.is_sick;
 
-          if(vac && isWorkday){
+          // ✅ szabi/beteg: elvárt perc teljesítve munkanapon
+          if((vac || sick) && isWorkday){
             fulfilled += expected;
           }
 
@@ -938,19 +970,23 @@
 
       // 2) szabi: teljes év (jövőbeli is)
       let takenVacDays = 0;
+      let sickDays = 0;
+
       for(const [iso, e] of eMap.entries()){
-        if(!e?.is_vacation) continue;
         const cal = calMap.get(iso);
-        if(cal && !!cal.is_workday){
-          takenVacDays++;
-        }
+        if(!cal || !cal.is_workday) continue;
+
+        if(e?.is_vacation) takenVacDays++;
+        if(e?.is_sick) sickDays++;
       }
+
       const vacRemain = vacTotal - takenVacDays;
 
       return {
         balanceMin,
         approxDays,
         vacRemain,
+        sickDays,
         oldMissingCount
       };
     }
@@ -992,7 +1028,7 @@
 
     function downloadCsv(rows, filename, userDisplayName){
       const delim = ';';
-      const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Megjegyzés'];
+      const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Betegállomány','Megjegyzés'];
       const lines = [];
 
       // ✅ első sor: felhasználó név
@@ -1009,6 +1045,7 @@
           r.worked,
           r.flex_minutes,
           r.vacation,
+          r.sick,
           r.note
         ].map(x=>csvEscape(x,delim)).join(delim));
       }
@@ -1035,10 +1072,11 @@
       const today = getTodayISO();
       const name = user.display_name || user.email || '(névtelen)';
       $('entriesTitle').textContent = `Rögzítések – ${name}`;
-      $('entriesMeta').textContent = `Listázva: ${YEAR}-01-01 → ${today} (jövőből csak előre rögzített szabadságok)`;
+      $('entriesMeta').textContent = `Listázva: ${YEAR}-01-01 → ${today} (jövőből csak előre rögzített szabadságok/betegállomány)`;
+
 
       const tbody = $('entriesTbody');
-      tbody.innerHTML = `<tr><td colspan="7" class="muted">Betöltés…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="muted">Betöltés…</td></tr>`;
 
       try{
         const start = `${YEAR}-01-01`;
@@ -1046,7 +1084,7 @@
 
         const { data, error } = await supabase
           .from('entries')
-          .select('date,arrival,departure,flex_minutes,is_vacation,note')
+          .select('date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
           .eq('user_id', user.user_id)
           .gte('date', start)
           .lt('date', end)
@@ -1063,12 +1101,12 @@
 
         const baseDates = Array.from(dateRangeInclusive(start, today));
 
-        const futureVac = entries
-          .filter(e => e.is_vacation && e.date > today)
+        const futureTagged = entries
+          .filter(e => (e.is_vacation || e.is_sick) && e.date > today)
           .map(e => e.date)
           .sort();
 
-        const dates = baseDates.concat(futureVac);
+        const dates = baseDates.concat(futureTagged);
 
         entriesRowsRendered = [];
 
@@ -1084,6 +1122,7 @@
           const flex = (e && flexVal > 0) ? String(flexVal) : '';
 
           const vac = (e && e.is_vacation) ? 'Szabadság' : '';
+          const sick = (e && e.is_sick) ? 'Betegállomány' : '';
           const note = e ? (e.note || '') : '';
 
           entriesRowsRendered.push({
@@ -1093,6 +1132,7 @@
             worked,
             flex_minutes: flex,
             vacation: vac,
+            sick,
             note
           });
 
@@ -1104,17 +1144,18 @@
             <td>${escapeHtml(worked)}</td>
             <td>${escapeHtml(flex)}</td>
             <td>${vac ? `<span class="vacPill">Szabadság</span>` : ''}</td>
+            <td>${sick ? `<span class="sickPill">Betegállomány</span>` : ''}</td>
             <td class="noteCell">${escapeHtml(note)}</td>
           `;
           tbody.appendChild(tr);
         }
 
         if(dates.length === 0){
-          tbody.innerHTML = `<tr><td colspan="7" class="muted">Nincs adat.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" class="muted">Nincs adat.</td></tr>`;
         }
 
       }catch(e){
-        tbody.innerHTML = `<tr><td colspan="7" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
       }
     }
 
@@ -1623,6 +1664,7 @@
             </td>
             <td>${fmtBalanceCell(m.balanceMin, m.approxDays)}</td>
             <td>${Math.max(0, Math.round(m.vacRemain))} <span class="muted">nap</span></td>
+            <td>${Math.max(0, Math.round(m.sickDays || 0))} <span class="muted">nap</span></td>
             <td>${m.oldMissingCount} <span class="muted">db</span></td>
             <td>
               <button class="btn small" type="button" data-open-entries="${escapeHtml(uid)}">Rögzítések</button>
@@ -1632,7 +1674,7 @@
         }
 
         if(sorted.length === 0){
-          tbody.innerHTML = `<tr><td colspan="5" class="muted">Nincs felhasználó.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="muted">Nincs felhasználó.</td></tr>`;
         }
 
         tbody.querySelectorAll('button[data-open-entries]').forEach(btn=>{
@@ -1645,19 +1687,8 @@
         });
 
       }catch(e){
-        tbody.innerHTML = `<tr><td colspan="5" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="muted">${escapeHtml(e?.message || String(e))}</td></tr>`;
       }
-    }
-
-    function setTab(tab){
-      $('tabUsers').classList.toggle('active', tab==='users');
-      $('tabYear').classList.toggle('active', tab==='year');
-
-      $('usersView').classList.toggle('hidden', tab!=='users');
-      $('yearView').classList.toggle('hidden', tab!=='year');
-
-      $('entriesView').classList.add('hidden');
-      $('tabsRow').classList.remove('hidden');
     }
 
     window.addEventListener('DOMContentLoaded', async ()=>{
