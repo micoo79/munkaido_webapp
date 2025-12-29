@@ -13,7 +13,6 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=1">
 <link rel="apple-touch-icon-precomposed" href="/icons/apple-touch-icon.png?v=1">
 
-  
 <link rel="manifest" href="/manifest.webmanifest?v=1" />
 <meta name="theme-color" content="#27272a" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -42,6 +41,8 @@
       --weekend:#777b81;
       --zold:#1ecb5b;
       --piros:#ff3b30;
+
+      --sick:#1ecb5b;
 
       --inactive:#52525b;   /* inaktív háttér */
       --inactiveLbl:#9ca3af;/* inaktív felirat */
@@ -100,7 +101,6 @@
       display:flex;
       flex-direction:column;
       align-items:center;
-     /* justify-content:center;*/
       width:44px;
       height:42px;
       position:relative;
@@ -134,11 +134,9 @@
       opacity:1;
     }
 
-    /* Hover narancs (kivéve settings label, azt külön tiltjuk) */
     .nav-item:hover .material-symbols-outlined,
     .nav-item:hover .menu-label{color:var(--accent);}
 
-    /* Beállítások: a felirat SOHA ne látszódjon */
     .settings-item .menu-label{display:none !important;}
 
     /* ---------- MAIN ---------- */
@@ -186,25 +184,23 @@
       gap:3px;
     }
 
-    /* ✅ státusz sor: közvetlenül a naptár alatt */
     .status-bar{
       display:flex;
       align-items:center;
-   /*   justify-content:center; */
       gap:18px;
-      height:15px;           /* kért: 15px */
+      height:15px;
       padding:0 6px;
-      margin:6px 0 0;        /* szorosan a naptár alatt */
+      margin:6px 0 0;
     }
     .status-item{
       display:flex;
       align-items:center;
       gap:4px;
-      font-size:12px;        /* kért: 12px */
+      font-size:12px;
       line-height:1;
     }
     .status-bar .material-symbols-outlined{
-      font-size:15px;        /* kért: 15px */
+      font-size:15px;
       color:var(--text);
       line-height:1;
       font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -237,6 +233,7 @@
     .tile.weekend{background:var(--weekend);}
     .tile.holiday{background:var(--holiday);}
     .tile.vac{background:var(--vac);}
+    .tile.sick{background:var(--sick);}
     .tile.workSaturday{background:var(--work); border:0;}
     .tile.todayFill{background:var(--accent) !important; color:#111;}
 
@@ -283,6 +280,10 @@
 
     .tile.todayFill .tDay{color:#111;}
     .tile.todayFill .line{color:#fff;}
+
+    /* beteg nap: sötétebb szöveg olvashatóság */
+    .tile.sick .tDay{color:#111;}
+    .tile.sick .line{color:#111;}
 
     .line.red{color:var(--piros) !important;}
     .line.black{color:#111 !important;}
@@ -376,6 +377,12 @@
       font-weight:800;
     }
 
+    .noSick{
+      font-size:12px;
+      color:var(--piros);
+      font-weight:800;
+    }
+
     @media (max-width:520px){
       .title{font-size:1rem;}
       .dow div{font-size:14px;}
@@ -400,7 +407,6 @@
         <div id="userName" class="user-name"></div>
       </div>
 
-      <!-- ✅ Kilépés közvetlenül a név után -->
       <button id="logoutBtn" class="nav-item logout-item" type="button" aria-label="Kilépés">
         <span class="material-symbols-outlined">logout</span>
         <span class="menu-label">Kilépés</span>
@@ -438,7 +444,6 @@
         <div id="grid" class="grid"></div>
       </div>
 
-      <!-- ✅ Státusz sor: mindig közvetlenül a naptár alatt (gridWrap után) -->
       <div id="statusBar" class="status-bar">
         <div class="status-item" title="Hátralévő szabadságok">
           <span class="material-symbols-outlined">beach_access</span>
@@ -450,7 +455,6 @@
         </div>
       </div>
 
-      <!-- ✅ ha van Ugrás gomb, akkor ez a státusz sor alatt van -->
       <div class="jumpWrap">
         <button id="jumpTodayBtn" class="jumpBtn hidden" type="button">Ugrás a mai napra</button>
       </div>
@@ -490,6 +494,17 @@
         </div>
       </div>
 
+      <!-- ✅ Betegállomány: szabi alatt -->
+      <div class="gap30"></div>
+
+      <div class="row">
+        <label id="sickLbl">Betegállomány</label>
+        <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
+          <input id="sickChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
+          <span id="noSickMsg" class="noSick hidden">Hétvégén / ünnepnapon nem jelölhető.</span>
+        </div>
+      </div>
+
       <div class="gap30"></div>
 
       <div class="row">
@@ -517,8 +532,6 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // TESZT "mai nap"
-    // ÉLESÍTÉSHEZ: állítsd ''-re.
     const DEV_TODAY = '2026-04-16';
 
     let supabase = null;
@@ -533,13 +546,11 @@
     let editingDate = null;
     let editingCalRow = null;
 
-    // teljes év cache
-    let yearCalMap = new Map();         // iso -> calendar row
-    let yearEntryMap = new Map();       // iso -> entry (összes mező)
-    let yearVacUsed = 0;                // munkanapi szabi db
-    let vacTotalEntitlement = 0;        // entitlement + carryover
+    let yearCalMap = new Map();
+    let yearEntryMap = new Map();
+    let yearVacUsed = 0;
+    let vacTotalEntitlement = 0;
 
-    // edit state
     let initialEditState = null;
     let formDirty = false;
     let formInvalid = false;
@@ -617,7 +628,6 @@
       return supabase;
     }
 
-    // ✅ gap-es üres sor a wheel-hez
     function buildTimeOptionsWithGap(selectEl, step=15, max=24*60, blankAfterHHMM=null){
       selectEl.innerHTML = '';
       let gapIndex = -1;
@@ -711,6 +721,29 @@
       $('jumpTodayBtn').classList.toggle('hidden', !show);
     }
 
+    function isWorkdayForVacation(iso){
+      const cal = yearCalMap.get(iso);
+      if(!cal) return false;
+      const isSpecial = !!cal.special_workday;
+      const isNonWork = (!cal.is_workday && !isSpecial);
+      if(isNonWork) return false;
+      if(!cal.is_workday) return false;
+      return true;
+    }
+
+    function isSickAllowedOnDay(iso){
+      const cal = yearCalMap.get(iso);
+      if(!cal) return false;
+
+      const isSpecial = !!cal.special_workday;
+      const isNonWork = (!cal.is_workday && !isSpecial);
+      if(isNonWork) return false;
+
+      if(!!cal.holiday_name) return false;
+
+      return true;
+    }
+
     function renderGrid(){
       const grid = $('grid');
       grid.innerHTML = '';
@@ -762,16 +795,25 @@
         const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
         const flexMin = Number(entry?.flex_minutes || 0);
         const isVac = !!entry?.is_vacation;
+        const isSick = !!entry?.is_sick;
 
         if(isVac){
-          tile.classList.remove('holiday','weekend','rest','workSaturday');
+          tile.classList.remove('holiday','weekend','rest','workSaturday','sick');
           tile.classList.add('vac');
+        }
+
+        if(isSick){
+          tile.classList.remove('holiday','weekend','rest','workSaturday','vac');
+          tile.classList.add('sick');
         }
 
         if(arr) l1.textContent = arr;
         if(dep) l2.textContent = dep;
 
-        if(flexMin > 0){
+        if(isSick){
+          l3.textContent = 'Beteg';
+          l3.classList.add('black');
+        }else if(flexMin > 0){
           l3.textContent = minsToHHMM(flexMin);
           if(iso === todayIso){
             l3.classList.add('black');
@@ -797,18 +839,6 @@
       }
     }
 
-    // ---- státusz sor számítások ----
-
-    function isWorkdayForVacation(iso){
-      const cal = yearCalMap.get(iso);
-      if(!cal) return false;
-      const isSpecial = !!cal.special_workday;
-      const isNonWork = (!cal.is_workday && !isSpecial);
-      if(isNonWork) return false;
-      if(!cal.is_workday) return false;
-      return true;
-    }
-
     function calcVacationRemaining(){
       const remain = (vacTotalEntitlement || 0) - (yearVacUsed || 0);
       return remain;
@@ -822,6 +852,38 @@
       $('vacChk').disabled = shouldDisable;
       $('noVacMsg').classList.toggle('hidden', !shouldDisable);
       $('vacChk').style.cursor = shouldDisable ? 'not-allowed' : 'pointer';
+    }
+
+    function applySickAvailability(iso, entry){
+      const allowedByDay = isSickAllowedOnDay(iso);
+      const alreadySick = !!entry?.is_sick;
+
+      const shouldDisable = (!alreadySick && !allowedByDay);
+      $('sickChk').disabled = shouldDisable;
+      $('noSickMsg').classList.toggle('hidden', !(shouldDisable && !alreadySick));
+      $('sickChk').style.cursor = shouldDisable ? 'not-allowed' : 'pointer';
+    }
+
+    function setWorkControlsEnabled(enabled){
+      $('arrSel').disabled = !enabled;
+      $('depSel').disabled = !enabled;
+      $('flexSel').disabled = !enabled;
+
+      $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+      $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+    }
+
+    function enforceSickModeUI(){
+      const sick = !!$('sickChk').checked;
+      if(sick){
+        setSelectToGapBlank($('arrSel'));
+        setSelectToGapBlank($('depSel'));
+        setSelectToGapBlank($('flexSel'));
+        setWorkControlsEnabled(false);
+      }else{
+        // a nap típus szerinti tiltásokat openEdit / onFormChanged állítja vissza
+      }
     }
 
     function calcBalanceMinToToday(){
@@ -850,6 +912,7 @@
             (entry.arrival && entry.departure) ||
             (Number(entry.flex_minutes||0) > 0) ||
             !!entry.is_vacation ||
+            !!entry.is_sick ||
             (!!entry.note && String(entry.note).trim().length > 0)
           ));
           if(!meaningful) continue;
@@ -862,8 +925,10 @@
 
         if(entry){
           const vac = !!entry.is_vacation;
+          const sick = !!entry.is_sick;
 
-          if(vac && isExpectedDay){
+          // ✅ szabi vagy beteg: 8 óra (elvárt perc) teljesítve
+          if((vac || sick) && isExpectedDay){
             fulfilled += expected;
           }
 
@@ -910,14 +975,13 @@
       else if(balMin < 0) el.classList.add('red');
     }
 
-    // ---- edit / mentés ----
-
     function getCurrentFormState(){
       return {
         arrival: $('arrSel').value || '',
         departure: $('depSel').value || '',
         flex: $('flexSel').value || '',
         vac: !!$('vacChk').checked,
+        sick: !!$('sickChk').checked,
         note: ($('noteTxt').value || '')
       };
     }
@@ -928,6 +992,7 @@
         (a.departure||'') === (b.departure||'') &&
         (a.flex||'') === (b.flex||'') &&
         (!!a.vac) === (!!b.vac) &&
+        (!!a.sick) === (!!b.sick) &&
         (a.note||'') === (b.note||'')
       );
     }
@@ -944,6 +1009,14 @@
     }
 
     function validateEditForm(){
+      // beteg módban nincs mit validálni időkre
+      if($('sickChk').checked){
+        $('editErr').classList.add('hidden');
+        formInvalid = false;
+        updateSaveButton();
+        return true;
+      }
+
       const inV = $('arrSel').value;
       const outV = $('depSel').value;
 
@@ -995,14 +1068,15 @@
       if(flexVal) $('flexSel').value = flexVal; else setSelectToGapBlank($('flexSel'));
 
       $('vacChk').checked = !!entry.is_vacation;
+      $('sickChk').checked = !!entry.is_sick;
       $('noteTxt').value = entry.note ? String(entry.note) : '';
 
       const isSpecial = !!calRow.special_workday;
       const isNonWork = (!calRow.is_workday && !isSpecial);
       const isWeekend = isWeekendISO(iso);
-
       const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
 
+      // alap tiltás jövőre
       $('arrSel').disabled = isFuture;
       $('depSel').disabled = isFuture;
       $('flexSel').disabled = isFuture ? true : disFlexByDayType;
@@ -1012,6 +1086,15 @@
       $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
 
       applyVacationAvailability(entry);
+      applySickAvailability(iso, entry);
+
+      // beteg esetén mindent letiltunk + ürítünk
+      if($('sickChk').checked){
+        setSelectToGapBlank($('arrSel'));
+        setSelectToGapBlank($('depSel'));
+        setSelectToGapBlank($('flexSel'));
+        setWorkControlsEnabled(false);
+      }
 
       initialEditState = getCurrentFormState();
       updateSaveButton();
@@ -1028,6 +1111,7 @@
       formDirty = false;
       formInvalid = false;
       $('noVacMsg').classList.add('hidden');
+      $('noSickMsg').classList.add('hidden');
     }
 
     function clearEditForm(){
@@ -1035,9 +1119,33 @@
       setSelectToGapBlank($('depSel'));
       setSelectToGapBlank($('flexSel'));
       $('vacChk').checked = false;
+      $('sickChk').checked = false;
       $('noteTxt').value = '';
 
       applyVacationAvailability({ is_vacation:false });
+      applySickAvailability(editingDate, { is_sick:false });
+
+      // visszaállítjuk a nap-típus szerinti engedélyezést
+      if(editingDate && editingCalRow){
+        const iso = editingDate;
+        const calRow = editingCalRow;
+
+        const todayIso = getTodayISO();
+        const isFuture = iso > todayIso;
+
+        const isSpecial = !!calRow.special_workday;
+        const isNonWork = (!calRow.is_workday && !isSpecial);
+        const isWeekend = isWeekendISO(iso);
+        const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
+
+        $('arrSel').disabled = isFuture;
+        $('depSel').disabled = isFuture;
+        $('flexSel').disabled = isFuture ? true : disFlexByDayType;
+
+        $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+        $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+        $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+      }
 
       validateEditForm();
       updateSaveButton();
@@ -1049,6 +1157,7 @@
         !payload.departure &&
         (payload.flex_minutes === 0) &&
         !payload.is_vacation &&
+        !payload.is_sick &&
         (!payload.note || payload.note.length === 0)
       );
     }
@@ -1077,12 +1186,22 @@
       const before = entriesByDate.get(iso) || null;
       const beforeVac = !!before?.is_vacation;
 
+      // UI védelem: beteg csak engedélyezett napra
+      const wantSick = !!$('sickChk').checked;
+      if(wantSick && !isSickAllowedOnDay(iso)){
+        throw new Error('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
+      }
+
+      // beteg esetén nullázzuk a munka mezőket (DB is védi)
+      const sickMode = wantSick;
+
       const payload = {
         date: iso,
-        arrival: $('arrSel').value || null,
-        departure: $('depSel').value || null,
-        flex_minutes: $('flexSel').value ? Number($('flexSel').value) : 0,
-        is_vacation: $('vacChk').checked,
+        arrival: sickMode ? null : ($('arrSel').value || null),
+        departure: sickMode ? null : ($('depSel').value || null),
+        flex_minutes: sickMode ? 0 : ($('flexSel').value ? Number($('flexSel').value) : 0),
+        is_vacation: sickMode ? false : $('vacChk').checked,
+        is_sick: sickMode,
         note: ($('noteTxt').value || '').trim()
       };
 
@@ -1113,8 +1232,6 @@
         await refreshYearCachesAfterSave(iso, merged);
       }
     }
-
-    // ---- DB load ----
 
     async function loadProfile(){
       const { data: u } = await supabase.auth.getUser();
@@ -1179,7 +1296,7 @@
 
       const { data: ents, error } = await supabase
         .from('entries')
-        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
+        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end)
@@ -1221,7 +1338,7 @@
 
       const { data: ents, error: e2 } = await supabase
         .from('entries')
-        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,note')
+        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end)
@@ -1259,10 +1376,12 @@
 
     function onFormChanged(){
       const iso = editingDate;
+
       if(iso){
         const entry = entriesByDate.get(iso) || {};
         const alreadyVac = !!entry.is_vacation;
 
+        // vac limit
         if($('vacChk').checked && !alreadyVac){
           const remaining = calcVacationRemaining();
           if(remaining <= 0){
@@ -1272,6 +1391,48 @@
             toast('Nincs már szabid.');
           }
         }
+
+        // sick: nap típus tiltás + módváltás
+        if($('sickChk').checked){
+          if(!isSickAllowedOnDay(iso)){
+            $('sickChk').checked = false;
+            toast('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
+          }else{
+            // beteg mód: munka mezők tiltása + ürítés
+            setSelectToGapBlank($('arrSel'));
+            setSelectToGapBlank($('depSel'));
+            setSelectToGapBlank($('flexSel'));
+            setWorkControlsEnabled(false);
+
+            // szabi automatikus kikapcsolás
+            if($('vacChk').checked){
+              $('vacChk').checked = false;
+            }
+          }
+        }else{
+          // ha kikapcsoljuk a beteg-et, visszaállítjuk a nap típus szerinti tiltást
+          if(editingCalRow){
+            const calRow = editingCalRow;
+
+            const todayIso = getTodayISO();
+            const isFuture = iso > todayIso;
+
+            const isSpecial = !!calRow.special_workday;
+            const isNonWork = (!calRow.is_workday && !isSpecial);
+            const isWeekend = isWeekendISO(iso);
+            const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
+
+            $('arrSel').disabled = isFuture;
+            $('depSel').disabled = isFuture;
+            $('flexSel').disabled = isFuture ? true : disFlexByDayType;
+
+            $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+            $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+            $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+          }
+        }
+
+        applySickAvailability(iso, entry);
       }
 
       validateEditForm();
@@ -1293,7 +1454,6 @@
       await loadYearEntries();
       updateStatusBar();
 
-      // wheel-gap üresek
       buildTimeOptionsWithGap($('arrSel'), 15, 24*60, '08:00');
       buildTimeOptionsWithGap($('depSel'), 15, 24*60, '16:00');
       buildFlexMinutesOptionsWithGap($('flexSel'), 15, 8*60, 240);
@@ -1347,6 +1507,7 @@
       $('depSel').addEventListener('change', onFormChanged);
       $('flexSel').addEventListener('change', onFormChanged);
       $('vacChk').addEventListener('change', onFormChanged);
+      $('sickChk').addEventListener('change', onFormChanged);
       $('noteTxt').addEventListener('input', onFormChanged);
 
       $('delBtn').addEventListener('click', ()=>clearEditForm());
