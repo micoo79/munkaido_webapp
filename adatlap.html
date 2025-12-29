@@ -42,7 +42,7 @@
       --work:#ffffff;
       --weekend:#777b81;
 
-      --zold:#1ecb5b;
+      --zold:#1ecb5b; /* betegszabadság */
       --piros:#ff3b30;
 
       --day:16px;
@@ -233,6 +233,7 @@
     .dTile.weekend{background:var(--weekend);}
     .dTile.holiday{background:var(--holiday);}
     .dTile.vac{background:var(--vac);}
+    .dTile.sick{background:var(--zold);}
     .dTile.workSaturday{background:var(--work);}
 
     .dTile.empty{background:transparent; border:0;}
@@ -287,6 +288,7 @@
     .legendTile.holiday{ background:var(--holiday); }
     .legendTile.missing{ background:#ff4500; color:#111; }
     .legendTile.vac{ background:var(--vac); }
+    .legendTile.sick{ background:var(--zold); }
 
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
@@ -331,6 +333,7 @@
       <div class="summaryBox">
         <div id="sumFlex" class="summaryLine">Betöltés…</div>
         <div id="sumVac"  class="summaryLine">Betöltés…</div>
+        <div id="sumSick" class="summaryLine hidden"></div>
       </div>
 
       <!-- ✅ Hiányzó rögzítés üzenet (csak ha van) -->
@@ -352,6 +355,10 @@
   <div class="legendItem">
     <div class="legendTile vac" aria-hidden="true"></div>
     <div>Szabadságok</div>
+  </div>
+  <div class="legendItem">
+    <div class="legendTile sick" aria-hidden="true"></div>
+    <div>Betegállomány</div>
   </div>
 </div>
 
@@ -486,7 +493,7 @@
       return '';
     }
 
-    function renderYearCalendar(calendarMap, vacSet, missingSet){
+    function renderYearCalendar(calendarMap, vacSet, sickSet, missingSet){
       const wrap = $('monthsWrap');
       wrap.innerHTML = '';
 
@@ -548,8 +555,13 @@
           }
 
           if(vacSet.has(iso)){
-            tile.classList.remove('holiday','weekend','rest','workSaturday');
+            tile.classList.remove('holiday','weekend','rest','workSaturday','sick');
             tile.classList.add('vac');
+          }
+
+          if(sickSet && sickSet.has(iso)){
+            tile.classList.remove('holiday','weekend','rest','workSaturday','vac');
+            tile.classList.add('sick');
           }
 
           if(missingSet && missingSet.has(iso)){
@@ -626,7 +638,7 @@
 
       const { data: ents, error: e2 } = await supabase
         .from('entries')
-        .select('date,arrival,departure,flex_minutes,is_vacation,note')
+        .select('date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end);
@@ -650,6 +662,9 @@
       let takenVacationDaysFullYear = 0;
       const vacSet = new Set();
 
+      let sickDaysFullYear = 0;
+      const sickSet = new Set();
+
       const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
       for(const cal of sortedDays){
         const iso = cal.date;
@@ -662,7 +677,8 @@
           !!(entry && (
             (entry.arrival && entry.departure) ||
             (Number(entry.flex_minutes||0) > 0) ||
-            !!entry.is_vacation
+            !!entry.is_vacation ||
+            !!entry.is_sick
           ));
         if(isToday && !meaningfulToday){
           continue;
@@ -682,10 +698,15 @@
 
         if(entry){
           const vac = !!entry.is_vacation;
-          if(vac && isWorkday){
+          const sick = !!entry.is_sick;
+
+          // ✅ szabi és beteg: elvárt perc teljesítve
+          if((vac || sick) && isWorkday){
             fulfilled += expected;
           }
 
+          // ✅ beteg nap: nincs munka-idő számolás (tiltott is), de ha valamiért mégis van adat,
+          // akkor a sima logika számolja hozzá (DB trigger úgyis védi).
           let worked = 0;
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
@@ -712,11 +733,16 @@
       $('sumFlex').innerHTML = formatBalanceLine(balance);
 
       for(const [iso, entry] of entriesMap.entries()){
-        if(!entry?.is_vacation) continue;
         const cal = calendarMap.get(iso);
-        if(cal && !!cal.is_workday){
+
+        if(entry?.is_vacation && cal && !!cal.is_workday){
           takenVacationDaysFullYear++;
           vacSet.add(iso);
+        }
+
+        if(entry?.is_sick && cal && !!cal.is_workday){
+          sickDaysFullYear++;
+          sickSet.add(iso);
         }
       }
 
@@ -731,11 +757,20 @@
         $('sumVac').innerHTML = `Még <span class="num">${vacRemaining}</span> nap szabid van.`;
       }
 
-      // ✅ csak a rövid üzenet, felsorolás nélkül
+      // ✅ betegsor csak akkor jelenik meg, ha van legalább 1
+      const sickEl = $('sumSick');
+      if(sickDaysFullYear > 0){
+        sickEl.classList.remove('hidden');
+        sickEl.innerHTML = `<span class="num">${sickDaysFullYear}</span> napot voltál betegállományban.`;
+      }else{
+        sickEl.classList.add('hidden');
+        sickEl.innerHTML = '';
+      }
+
       renderMissingMessage(missingIso.length);
 
       const missingSet = new Set(missingIso);
-      renderYearCalendar(calendarMap, vacSet, missingSet);
+      renderYearCalendar(calendarMap, vacSet, sickSet, missingSet);
     }
 
     let refreshing = false;
