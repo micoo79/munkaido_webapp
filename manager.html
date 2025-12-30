@@ -528,7 +528,6 @@
 
         <div class="summaryWrap">
           <table class="summaryTable">
-            <!-- ✅ szélességek %-ban állíthatók root változókkal -->
             <colgroup>
               <col style="width:var(--sumColName)">
               <col style="width:var(--sumColBal)">
@@ -936,7 +935,6 @@
       }
     }
 
-    // --- számítás: egyezzen az adatlap logikával ---
     function calcUserMetrics(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
@@ -953,7 +951,6 @@
         eMap.set(normalizeIsoDate(e.date), e);
       }
 
-      // cal map (munkanap szűréshez)
       const calMap = new Map();
       for(const c of (calendarRows||[])){
         calMap.set(c.date, c);
@@ -998,7 +995,6 @@
           const vac = !!entry.is_vacation;
           const sick = !!entry.is_sick;
 
-          // ✅ szabi/beteg: elvárt perc teljesítve munkanapon
           if((vac || sick) && isWorkday){
             fulfilled += expected;
           }
@@ -1031,12 +1027,9 @@
       const dayMins = Math.max(1, expPerDay || 480);
       const approxDays = Math.floor(abs / dayMins);
 
-      // 2) szabadság számítás (X/Z/Y logika) + beteg: teljes év
-      // X: összes szabi - (mai napig rögzített szabik száma, ma is benne ha szabi)
-      // Z: mai napig rögzített szabik száma (ma is benne)
-      // Y: összes szabi - (összes rögzített szabi az évben, jövőbeliek is)
+      // 2) szabadság (X/Y/Z) + beteg: teljes év
       let vacTakenToToday = 0;  // Z
-      let vacRecordedAll = 0;   // év összes rögzített szabi (jövő is)
+      let vacRecordedAll = 0;   // (rögzített szabi az évben, jövő is)
       let sickDays = 0;
 
       for(const [iso, e] of eMap.entries()){
@@ -1079,15 +1072,20 @@
       `;
     }
 
-    // ✅ "Még X nap szabid van." + opcionális Z/Y sorok
-    function fmtVacText(vacRemainToToday, vacTakenToToday, vacUnplanned){
+    // ✅ Manager: "X nap" / alatta: "Nincs kiírva Y nap" / alatta: "Már kivett Z napot."
+    function fmtVacText(vacRemainToToday, vacUnplanned, vacTakenToToday){
       const X = Math.max(0, Math.round(Number(vacRemainToToday || 0)));
-      const Z = Math.max(0, Math.round(Number(vacTakenToToday || 0)));
       const Y = Math.max(0, Math.round(Number(vacUnplanned || 0)));
+      const Z = Math.max(0, Math.round(Number(vacTakenToToday || 0)));
 
-      let html = `<div>Még ${X} nap szabid van.</div>`;
-      if(Z !== 0) html += `<div class="muted" style="font-size:12px; margin-top:2px;">${Z} napot már kivettél.</div>`;
-      if(Y !== 0) html += `<div class="muted" style="font-size:12px; margin-top:2px;">${Y} napot még nem írtál ki.</div>`;
+      let html = `<div>${X} nap</div>`;
+
+      if(Y !== 0){
+        html += `<div class="muted" style="font-size:12px; margin-top:2px;">Nincs kiírva ${Y} nap</div>`;
+      }
+      if(Z !== 0){
+        html += `<div class="muted" style="font-size:12px; margin-top:2px;">Már kivett ${Z} napot.</div>`;
+      }
       return html;
     }
 
@@ -1117,10 +1115,7 @@
       const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Betegállomány','Megjegyzés'];
       const lines = [];
 
-      // ✅ első sor: felhasználó név
       lines.push(['Felhasználó', userDisplayName || ''].map(x=>csvEscape(x,delim)).join(delim));
-
-      // fejléc
       lines.push(header.map(h=>csvEscape(h,delim)).join(delim));
 
       for(const r of rows){
@@ -1748,11 +1743,10 @@
               ${roleLabel}
             </td>
             <td>${fmtBalanceCell(m.balanceMin, m.approxDays)}</td>
-            <td class="wrapCell">${fmtVacText(m.vacRemainToToday, m.vacTakenToToday, m.vacUnplanned)}</td>
+            <td class="wrapCell">${fmtVacText(m.vacRemainToToday, m.vacUnplanned, m.vacTakenToToday)}</td>
             <td>${Math.max(0, Math.round(m.sickDays || 0))} <span class="muted">nap</span></td>
             <td>${m.oldMissingCount} <span class="muted">db</span></td>
             <td>
-              <!-- ✅ "Rögzítések" helyett article ikon + "Táblázat" -->
               <button class="sumIconBtn" type="button" aria-label="Táblázat" data-open-entries="${escapeHtml(uid)}">
                 <span class="material-symbols-outlined" aria-hidden="true">article</span>
                 <span class="sumIconLabel">Táblázat</span>
