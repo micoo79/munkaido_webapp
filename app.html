@@ -329,8 +329,19 @@
     .row label{font-size:20px; font-weight:400; min-width:140px;}
     .row .ctrl{flex:1; min-width:180px;}
 
-    select, textarea{
+    /* select külön, textarea külön (✅ megjegyzés full szélesség) */
+    select{
       width:60%;
+      padding:4px 4px;
+      border-radius:0px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#ffffff;
+      color:#111;
+      font-size:0.7rem;
+      outline:none;
+    }
+    textarea{
+      width:100%;
       padding:4px 4px;
       border-radius:0px;
       border:1px solid rgba(255,255,255,.14);
@@ -347,9 +358,11 @@
     }
     .labelDisabled{ color:var(--inactiveLbl) !important; }
 
-    textarea{
-      min-height:50px;
-      max-height:50px;
+    /* ✅ max 2 sor magas megjegyzés */
+    #noteTxt{
+      line-height:1.2;
+      min-height:2.6em;
+      max-height:2.6em;
       resize:none;
       overflow:auto;
     }
@@ -359,7 +372,7 @@
     .gap30{height:30px;}
     .gap40{height:40px;}
     .gap50{height:50px;}
-    
+
     .btnRow{display:flex; gap:12px; margin-top:12px;}
     .btn{
       border:0; border-radius:6px;
@@ -388,6 +401,64 @@
       font-weight:800;
     }
 
+    /* ✅ Quick pairs panel (sárga helyre) */
+    .editTop{
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .editLeft{
+      flex:1 1 320px;
+      min-width:260px;
+    }
+    .editRight{
+      flex:0 0 260px;
+      width:260px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(0,0,0,.14);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .qpTitle{
+      font-size:14px;
+      font-weight:900;
+      color:var(--text);
+      margin:0;
+    }
+    .qpBtns{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .qpBtn{
+      width:100%;
+      height:34px;
+      border:0;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:14px;
+      background:#ffffff;
+      color:#111;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .qpBtn:active{opacity:.9;}
+    .qpBtn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+    .qpHint{
+      font-size:12px;
+      font-weight:800;
+      color:rgba(255,255,255,.75);
+      line-height:1.2;
+    }
+
     @media (max-width:520px){
       .title{font-size:1rem;}
       .dow div{font-size:14px;}
@@ -399,6 +470,13 @@
       .line{font-size:0.625rem;}
       .nav-item{width:42px;}
       .user-name{max-width:64vw;}
+
+      /* ✅ mobilon a quick panel lejjebb kerül, 100% szélesség */
+      .editRight{
+        flex:1 1 100%;
+        width:100%;
+      }
+      select{width:60%;} /* marad app-os */
     }
   </style>
 
@@ -452,6 +530,7 @@
       <div id="statusBar" class="status-bar">
         <div class="status-item" title="Hátralévő szabadságok">
           <span class="material-symbols-outlined">beach_access</span>
+          <!-- ✅ X érték marad -->
           <span id="statVac" class="status-text blue">—</span>
         </div>
         <div class="status-item" title="Túlóra / hátralék">
@@ -470,23 +549,36 @@
     <div class="modal">
       <div id="editDate" class="modalHeader">2026.04.16</div>
 
-      <div class="row" style="margin-top:10px;">
-        <label id="arrLbl">Érkezés</label>
-        <div class="ctrl"><select id="arrSel"></select></div>
-      </div>
+      <!-- ✅ felső blokk: bal oldalt szerkesztés, jobb oldalt quick_pairs (sárga hely) -->
+      <div class="editTop">
 
-      <div class="gap30"></div>
+        <div class="editLeft">
+          <div class="row" style="margin-top:10px;">
+            <label id="arrLbl">Érkezés</label>
+            <div class="ctrl"><select id="arrSel"></select></div>
+          </div>
 
-      <div class="row">
-        <label id="depLbl">Távozás</label>
-        <div class="ctrl"><select id="depSel"></select></div>
-      </div>
+          <div class="gap30"></div>
 
-      <div class="gap30"></div>
+          <div class="row">
+            <label id="depLbl">Távozás</label>
+            <div class="ctrl"><select id="depSel"></select></div>
+          </div>
 
-      <div class="row">
-        <label id="flexLbl">Csúsztatás</label>
-        <div class="ctrl"><select id="flexSel"></select></div>
+          <div class="gap30"></div>
+
+          <div class="row">
+            <label id="flexLbl">Csúsztatás</label>
+            <div class="ctrl"><select id="flexSel"></select></div>
+          </div>
+        </div>
+
+        <div id="quickPairsBox" class="editRight hidden" aria-label="Gyorsgombok">
+          <div class="qpTitle">Gyorsgombok</div>
+          <div id="quickPairsBtns" class="qpBtns"></div>
+          <div id="quickPairsHint" class="qpHint hidden"></div>
+        </div>
+
       </div>
 
       <div class="gap30"></div>
@@ -495,7 +587,8 @@
         <label id="vacLbl">Szabi ezen a napon</label>
         <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
           <input id="vacChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
-          <span id="noVacMsg" class="noVac hidden">Nincs már szabid.</span>
+          <!-- ✅ szöveg csere -->
+          <span id="noVacMsg" class="noVac hidden">Nincs már kiírható szabid.</span>
         </div>
       </div>
 
@@ -541,6 +634,11 @@
 
     let supabase = null;
     let profile = null;
+    let currentUserId = null;
+
+    // ✅ quick pairs (max 3) – DB tábla: user_quick_pairs, fallback localStorage
+    let quickPairs = []; // [{arrival:'08:00', departure:'16:00'}]
+    let quickMode = 'db'; // 'db' | 'local'
 
     let curYear = 2026;
     let curMonth = 4;
@@ -592,7 +690,8 @@
 
     function hhmmToMins(hhmm){
       if(!hhmm) return null;
-      const [h,m] = hhmm.split(':').map(Number);
+      const [h,m] = String(hhmm).slice(0,5).split(':').map(Number);
+      if(Number.isNaN(h) || Number.isNaN(m)) return null;
       return h*60 + m;
     }
 
@@ -706,6 +805,137 @@
       }else{
         selectEl.value = '';
       }
+    }
+
+    // ===== ✅ quick pairs: load (db + local fallback) =====
+    function localKey(){
+      return `kultora_quickpairs_${currentUserId || 'anon'}`;
+    }
+
+    function loadQuickPairsFromLocal(){
+      try{
+        const raw = localStorage.getItem(localKey());
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      }catch(_){
+        return [];
+      }
+    }
+
+    function saveQuickPairsToLocal(){
+      try{
+        localStorage.setItem(localKey(), JSON.stringify(quickPairs.slice(0,3)));
+      }catch(_){}
+    }
+
+    async function loadQuickPairs(){
+      // local azonnal (gyors UI)
+      quickPairs = loadQuickPairsFromLocal()
+        .map(p => ({ arrival:String(p?.arrival||'').slice(0,5), departure:String(p?.departure||'').slice(0,5) }))
+        .filter(p => p.arrival && p.departure)
+        .slice(0,3);
+
+      quickMode = 'local';
+      $('quickPairsHint').classList.add('hidden');
+      $('quickPairsHint').textContent = '';
+
+      if(!currentUserId) return;
+
+      try{
+        const { data, error } = await supabase
+          .from('user_quick_pairs')
+          .select('id,arrival,departure,created_at')
+          .eq('user_id', currentUserId)
+          .order('created_at', { ascending:true });
+
+        if(error) throw error;
+
+        const fromDb = (data||[])
+          .map(r => ({ arrival:String(r.arrival||'').slice(0,5), departure:String(r.departure||'').slice(0,5), id:r.id }))
+          .filter(p => p.arrival && p.departure)
+          .slice(0,3);
+
+        if(fromDb.length){
+          quickPairs = fromDb.map(p => ({ arrival:p.arrival, departure:p.departure, id:p.id }));
+          saveQuickPairsToLocal();
+        }
+        quickMode = 'db';
+      }catch(_e){
+        // nincs tábla / nincs jog -> marad local
+        quickMode = 'local';
+        $('quickPairsHint').classList.remove('hidden');
+        $('quickPairsHint').textContent = 'Gyorsgomb mentés jelenleg csak ezen az eszközön működik.';
+      }
+    }
+
+    function renderQuickPairsBox(){
+      const box = $('quickPairsBox');
+      const host = $('quickPairsBtns');
+      host.innerHTML = '';
+
+      if(!quickPairs.length){
+        box.classList.add('hidden');
+        return;
+      }
+
+      box.classList.remove('hidden');
+
+      quickPairs.slice(0,3).forEach((p, idx)=>{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'qpBtn';
+        btn.textContent = `${p.arrival}–${p.departure}`;
+        btn.addEventListener('click', ()=>{
+          applyQuickPair(idx);
+        });
+        host.appendChild(btn);
+      });
+
+      updateQuickPairsEnabledState();
+    }
+
+    function updateQuickPairsEnabledState(){
+      const host = $('quickPairsBtns');
+      const disabled =
+        !!$('sickChk').checked ||
+        !!$('arrSel').disabled ||
+        !!$('depSel').disabled;
+
+      Array.from(host.querySelectorAll('button')).forEach(b=>{
+        b.disabled = disabled;
+      });
+    }
+
+    function applyQuickPair(idx){
+      const p = quickPairs[idx];
+      if(!p) return;
+
+      if($('sickChk').checked){
+        $('sickChk').checked = false;
+        // a nap típus szerinti engedélyezést onFormChanged állítja be
+      }
+
+      const a = String(p.arrival||'').slice(0,5);
+      const d = String(p.departure||'').slice(0,5);
+
+      // csak akkor állítjuk be, ha benne van az option listában
+      const hasA = Array.from($('arrSel').options).some(o=>o.value===a);
+      const hasD = Array.from($('depSel').options).some(o=>o.value===d);
+
+      if(!hasA || !hasD){
+        toast('Gyorsgomb időpontja nem választható.');
+        return;
+      }
+
+      $('arrSel').value = a;
+      $('depSel').value = d;
+
+      // flex ürítés
+      setSelectToGapBlank($('flexSel'));
+
+      onFormChanged();
+      validateEditForm();
+      updateSaveButton();
     }
 
     function tileClass(row){
@@ -879,18 +1109,6 @@
       $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
     }
 
-    function enforceSickModeUI(){
-      const sick = !!$('sickChk').checked;
-      if(sick){
-        setSelectToGapBlank($('arrSel'));
-        setSelectToGapBlank($('depSel'));
-        setSelectToGapBlank($('flexSel'));
-        setWorkControlsEnabled(false);
-      }else{
-        // a nap típus szerinti tiltásokat openEdit / onFormChanged állítja vissza
-      }
-    }
-
     function calcBalanceMinToToday(){
       const today = getTodayISO();
 
@@ -962,6 +1180,7 @@
 
     function updateStatusBar(){
       const vacRemain = calcVacationRemaining();
+      // ✅ mindig X (0 is)
       $('statVac').textContent = String(Math.max(0, Math.round(vacRemain)));
 
       const balMin = calcBalanceMinToToday();
@@ -1101,11 +1320,15 @@
         setWorkControlsEnabled(false);
       }
 
+      // ✅ quick panel frissítés
+      renderQuickPairsBox();
+
       initialEditState = getCurrentFormState();
       updateSaveButton();
 
       $('modalBackdrop').classList.remove('hidden');
       validateEditForm();
+      updateQuickPairsEnabledState();
     }
 
     function closeEdit(){
@@ -1154,6 +1377,7 @@
 
       validateEditForm();
       updateSaveButton();
+      updateQuickPairsEnabledState();
     }
 
     function isPayloadEmpty(payload){
@@ -1197,7 +1421,6 @@
         throw new Error('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
       }
 
-      // beteg esetén nullázzuk a munka mezőket (DB is védi)
       const sickMode = wantSick;
 
       const payload = {
@@ -1213,7 +1436,7 @@
       if(payload.is_vacation && !beforeVac){
         const remaining = calcVacationRemaining();
         if(remaining <= 0){
-          throw new Error('Nincs több szabi.');
+          throw new Error('Nincs már kiírható szabid.');
         }
       }
 
@@ -1241,6 +1464,7 @@
     async function loadProfile(){
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
+      currentUserId = uid;
       if(!uid) return null;
 
       const { data, error } = await supabase
@@ -1274,6 +1498,9 @@
       }else{
         $('settingsBtn').classList.add('hidden');
       }
+
+      // ✅ quick pairs betöltés (modalban jelenik meg)
+      await loadQuickPairs();
     }
 
     async function loadYearCalendar(){
@@ -1393,7 +1620,7 @@
             $('vacChk').checked = false;
             $('vacChk').disabled = true;
             $('noVacMsg').classList.remove('hidden');
-            toast('Nincs már szabid.');
+            toast('Nincs már kiírható szabid.');
           }
         }
 
@@ -1442,6 +1669,7 @@
 
       validateEditForm();
       updateSaveButton();
+      updateQuickPairsEnabledState();
     }
 
     async function boot(){
