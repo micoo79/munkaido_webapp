@@ -1121,7 +1121,7 @@
       lines.push(`Az éves szabi kereted <span class="num">${E}</span> nap.`);
       lines.push(`Ebben az évben még <span class="num">${X}</span> napot lehetsz szabin.`);
       lines.push(`Már beírtál a naptárba <span class="num">${Q}</span> nap szabadságot, még beírhatsz <span class="num">${Y}</span> napot.`);
-      $('sumVac').innerHTML = lines.join('<br>');
+      $('sumVac').innerHTML = lines.join('<br><br>');
 
       const sickEl = $('sumSick');
       if(sickDaysFullYear > 0){
