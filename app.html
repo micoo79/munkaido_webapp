@@ -401,63 +401,36 @@
       font-weight:800;
     }
 
-    /* ✅ Quick pairs panel (sárga helyre) */
-    .editTop{
+    /* ✅ QUICK BUTTONS (dátum alatt, Érkezés előtt) */
+    .qpRow{
       display:flex;
-      gap:14px;
-      align-items:flex-start;
-      justify-content:space-between;
       flex-wrap:wrap;
-    }
-    .editLeft{
-      flex:1 1 320px;
-      min-width:260px;
-    }
-    .editRight{
-      flex:0 0 260px;
-      width:260px;
-      display:flex;
-      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
       gap:8px;
-      padding:10px;
-      border-radius:14px;
-      background:rgba(0,0,0,.14);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .qpTitle{
-      font-size:14px;
-      font-weight:900;
-      color:var(--text);
-      margin:0;
-    }
-    .qpBtns{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+
+      /* könnyen állítható */
+      margin: 0 0 10px 0;   /* <-- ezt állítsd */
+      padding: 0;          /* <-- ezt állítsd */
     }
     .qpBtn{
-      width:100%;
-      height:34px;
+      background: var(--zold);
+      color:#111;
       border:0;
       border-radius:6px;
       cursor:pointer;
       font-weight:900;
-      font-size:14px;
-      background:#ffffff;
-      color:#111;
+      font-size:1rem;      /* ✅ 1rem */
+      line-height:1;
+
+      /* könnyen állítható */
+      padding: 6px 10px;   /* <-- ezt állítsd */
+      margin: 0;           /* <-- ezt állítsd */
+
       -webkit-tap-highlight-color:transparent;
     }
     .qpBtn:active{opacity:.9;}
-    .qpBtn:disabled{
-      opacity:.55;
-      cursor:not-allowed;
-    }
-    .qpHint{
-      font-size:12px;
-      font-weight:800;
-      color:rgba(255,255,255,.75);
-      line-height:1.2;
-    }
+    .qpBtn:disabled{opacity:.55; cursor:not-allowed;}
 
     @media (max-width:520px){
       .title{font-size:1rem;}
@@ -471,12 +444,7 @@
       .nav-item{width:42px;}
       .user-name{max-width:64vw;}
 
-      /* ✅ mobilon a quick panel lejjebb kerül, 100% szélesség */
-      .editRight{
-        flex:1 1 100%;
-        width:100%;
-      }
-      select{width:60%;} /* marad app-os */
+      select{width:60%;}
     }
   </style>
 
@@ -530,7 +498,6 @@
       <div id="statusBar" class="status-bar">
         <div class="status-item" title="Hátralévő szabadságok">
           <span class="material-symbols-outlined">beach_access</span>
-          <!-- ✅ X érték marad -->
           <span id="statVac" class="status-text blue">—</span>
         </div>
         <div class="status-item" title="Túlóra / hátralék">
@@ -549,36 +516,26 @@
     <div class="modal">
       <div id="editDate" class="modalHeader">2026.04.16</div>
 
-      <!-- ✅ felső blokk: bal oldalt szerkesztés, jobb oldalt quick_pairs (sárga hely) -->
-      <div class="editTop">
+      <!-- ✅ gyorsgombok: dátum alatt, Érkezés előtt, egy sorban -->
+      <div id="quickPairsRow" class="qpRow hidden"></div>
 
-        <div class="editLeft">
-          <div class="row" style="margin-top:10px;">
-            <label id="arrLbl">Érkezés</label>
-            <div class="ctrl"><select id="arrSel"></select></div>
-          </div>
+      <div class="row" style="margin-top:10px;">
+        <label id="arrLbl">Érkezés</label>
+        <div class="ctrl"><select id="arrSel"></select></div>
+      </div>
 
-          <div class="gap30"></div>
+      <div class="gap30"></div>
 
-          <div class="row">
-            <label id="depLbl">Távozás</label>
-            <div class="ctrl"><select id="depSel"></select></div>
-          </div>
+      <div class="row">
+        <label id="depLbl">Távozás</label>
+        <div class="ctrl"><select id="depSel"></select></div>
+      </div>
 
-          <div class="gap30"></div>
+      <div class="gap30"></div>
 
-          <div class="row">
-            <label id="flexLbl">Csúsztatás</label>
-            <div class="ctrl"><select id="flexSel"></select></div>
-          </div>
-        </div>
-
-        <div id="quickPairsBox" class="editRight hidden" aria-label="Gyorsgombok">
-          <div class="qpTitle">Gyorsgombok</div>
-          <div id="quickPairsBtns" class="qpBtns"></div>
-          <div id="quickPairsHint" class="qpHint hidden"></div>
-        </div>
-
+      <div class="row">
+        <label id="flexLbl">Csúsztatás</label>
+        <div class="ctrl"><select id="flexSel"></select></div>
       </div>
 
       <div class="gap30"></div>
@@ -587,12 +544,10 @@
         <label id="vacLbl">Szabi ezen a napon</label>
         <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
           <input id="vacChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
-          <!-- ✅ szöveg csere -->
           <span id="noVacMsg" class="noVac hidden">Nincs már kiírható szabid.</span>
         </div>
       </div>
 
-      <!-- ✅ Betegállomány: szabi alatt -->
       <div class="gap30"></div>
 
       <div class="row">
@@ -636,8 +591,8 @@
     let profile = null;
     let currentUserId = null;
 
-    // ✅ quick pairs (max 3) – DB tábla: user_quick_pairs, fallback localStorage
-    let quickPairs = []; // [{arrival:'08:00', departure:'16:00'}]
+    // quick_pairs (max 3) – DB tábla: user_quick_pairs, fallback localStorage
+    let quickPairs = []; // [{arrival:'08:00', departure:'16:00', id?}]
     let quickMode = 'db'; // 'db' | 'local'
 
     let curYear = 2026;
@@ -807,7 +762,7 @@
       }
     }
 
-    // ===== ✅ quick pairs: load (db + local fallback) =====
+    // ===== quick pairs: load (db + local fallback) =====
     function localKey(){
       return `kultora_quickpairs_${currentUserId || 'anon'}`;
     }
@@ -824,20 +779,18 @@
 
     function saveQuickPairsToLocal(){
       try{
-        localStorage.setItem(localKey(), JSON.stringify(quickPairs.slice(0,3)));
+        localStorage.setItem(localKey(), JSON.stringify(quickPairs.slice(0,3).map(p=>({arrival:p.arrival, departure:p.departure}))));
       }catch(_){}
     }
 
     async function loadQuickPairs(){
-      // local azonnal (gyors UI)
+      // local azonnal
       quickPairs = loadQuickPairsFromLocal()
         .map(p => ({ arrival:String(p?.arrival||'').slice(0,5), departure:String(p?.departure||'').slice(0,5) }))
         .filter(p => p.arrival && p.departure)
         .slice(0,3);
 
       quickMode = 'local';
-      $('quickPairsHint').classList.add('hidden');
-      $('quickPairsHint').textContent = '';
 
       if(!currentUserId) return;
 
@@ -861,64 +814,62 @@
         }
         quickMode = 'db';
       }catch(_e){
-        // nincs tábla / nincs jog -> marad local
         quickMode = 'local';
-        $('quickPairsHint').classList.remove('hidden');
-        $('quickPairsHint').textContent = 'Gyorsgomb mentés jelenleg csak ezen az eszközön működik.';
       }
     }
 
-    function renderQuickPairsBox(){
-      const box = $('quickPairsBox');
-      const host = $('quickPairsBtns');
-      host.innerHTML = '';
+    // ===== ✅ quick buttons render (no title, no colored container) =====
+    function renderQuickPairsRow(){
+      const row = $('quickPairsRow');
+      row.innerHTML = '';
 
       if(!quickPairs.length){
-        box.classList.add('hidden');
+        row.classList.add('hidden');
         return;
       }
-
-      box.classList.remove('hidden');
 
       quickPairs.slice(0,3).forEach((p, idx)=>{
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'qpBtn';
         btn.textContent = `${p.arrival}–${p.departure}`;
-        btn.addEventListener('click', ()=>{
-          applyQuickPair(idx);
+        btn.addEventListener('click', async ()=>{
+          await applyQuickPairAndSave(idx);
         });
-        host.appendChild(btn);
+        row.appendChild(btn);
       });
 
-      updateQuickPairsEnabledState();
+      row.classList.remove('hidden');
+      updateQuickButtonsEnabledState();
     }
 
-    function updateQuickPairsEnabledState(){
-      const host = $('quickPairsBtns');
+    function updateQuickButtonsEnabledState(){
+      const row = $('quickPairsRow');
       const disabled =
+        !editingDate ||
         !!$('sickChk').checked ||
         !!$('arrSel').disabled ||
         !!$('depSel').disabled;
 
-      Array.from(host.querySelectorAll('button')).forEach(b=>{
+      Array.from(row.querySelectorAll('button')).forEach(b=>{
         b.disabled = disabled;
       });
     }
 
-    function applyQuickPair(idx){
+    async function applyQuickPairAndSave(idx){
+      const iso = editingDate;
+      if(!iso) return;
+
       const p = quickPairs[idx];
       if(!p) return;
 
       if($('sickChk').checked){
         $('sickChk').checked = false;
-        // a nap típus szerinti engedélyezést onFormChanged állítja be
       }
 
       const a = String(p.arrival||'').slice(0,5);
       const d = String(p.departure||'').slice(0,5);
 
-      // csak akkor állítjuk be, ha benne van az option listában
       const hasA = Array.from($('arrSel').options).some(o=>o.value===a);
       const hasD = Array.from($('depSel').options).some(o=>o.value===d);
 
@@ -929,13 +880,32 @@
 
       $('arrSel').value = a;
       $('depSel').value = d;
-
-      // flex ürítés
       setSelectToGapBlank($('flexSel'));
 
+      // legyen dirty + validálva
       onFormChanged();
-      validateEditForm();
-      updateSaveButton();
+      if(!validateEditForm()) return;
+
+      // ✅ kattintásra azonnal mentünk az adott napra
+      try{
+        await saveCurrentEdit();
+        // cache friss + naptár friss
+        await loadMonth();
+        // az edit form state frissüljön (ne legyen "Mentés" feleslegesen)
+        const entry = entriesByDate.get(iso) || {};
+        initialEditState = {
+          arrival: $('arrSel').value || '',
+          departure: $('depSel').value || '',
+          flex: $('flexSel').value || '',
+          vac: !!$('vacChk').checked,
+          sick: !!$('sickChk').checked,
+          note: ($('noteTxt').value || '')
+        };
+        updateSaveButton();
+        toast('Mentve.');
+      }catch(e){
+        toast('Mentés hiba: ' + (e?.message||String(e)));
+      }
     }
 
     function tileClass(row){
@@ -1150,7 +1120,6 @@
           const vac = !!entry.is_vacation;
           const sick = !!entry.is_sick;
 
-          // ✅ szabi vagy beteg: 8 óra (elvárt perc) teljesítve
           if((vac || sick) && isExpectedDay){
             fulfilled += expected;
           }
@@ -1180,7 +1149,6 @@
 
     function updateStatusBar(){
       const vacRemain = calcVacationRemaining();
-      // ✅ mindig X (0 is)
       $('statVac').textContent = String(Math.max(0, Math.round(vacRemain)));
 
       const balMin = calcBalanceMinToToday();
@@ -1233,7 +1201,6 @@
     }
 
     function validateEditForm(){
-      // beteg módban nincs mit validálni időkre
       if($('sickChk').checked){
         $('editErr').classList.add('hidden');
         formInvalid = false;
@@ -1300,7 +1267,6 @@
       const isWeekend = isWeekendISO(iso);
       const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
 
-      // alap tiltás jövőre
       $('arrSel').disabled = isFuture;
       $('depSel').disabled = isFuture;
       $('flexSel').disabled = isFuture ? true : disFlexByDayType;
@@ -1312,7 +1278,6 @@
       applyVacationAvailability(entry);
       applySickAvailability(iso, entry);
 
-      // beteg esetén mindent letiltunk + ürítünk
       if($('sickChk').checked){
         setSelectToGapBlank($('arrSel'));
         setSelectToGapBlank($('depSel'));
@@ -1320,15 +1285,15 @@
         setWorkControlsEnabled(false);
       }
 
-      // ✅ quick panel frissítés
-      renderQuickPairsBox();
+      // ✅ quick buttons kirajzolás
+      renderQuickPairsRow();
 
       initialEditState = getCurrentFormState();
       updateSaveButton();
 
       $('modalBackdrop').classList.remove('hidden');
       validateEditForm();
-      updateQuickPairsEnabledState();
+      updateQuickButtonsEnabledState();
     }
 
     function closeEdit(){
@@ -1340,6 +1305,7 @@
       formInvalid = false;
       $('noVacMsg').classList.add('hidden');
       $('noSickMsg').classList.add('hidden');
+      $('quickPairsRow').classList.add('hidden');
     }
 
     function clearEditForm(){
@@ -1353,7 +1319,6 @@
       applyVacationAvailability({ is_vacation:false });
       applySickAvailability(editingDate, { is_sick:false });
 
-      // visszaállítjuk a nap-típus szerinti engedélyezést
       if(editingDate && editingCalRow){
         const iso = editingDate;
         const calRow = editingCalRow;
@@ -1377,7 +1342,7 @@
 
       validateEditForm();
       updateSaveButton();
-      updateQuickPairsEnabledState();
+      updateQuickButtonsEnabledState();
     }
 
     function isPayloadEmpty(payload){
@@ -1415,7 +1380,6 @@
       const before = entriesByDate.get(iso) || null;
       const beforeVac = !!before?.is_vacation;
 
-      // UI védelem: beteg csak engedélyezett napra
       const wantSick = !!$('sickChk').checked;
       if(wantSick && !isSickAllowedOnDay(iso)){
         throw new Error('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
@@ -1499,7 +1463,6 @@
         $('settingsBtn').classList.add('hidden');
       }
 
-      // ✅ quick pairs betöltés (modalban jelenik meg)
       await loadQuickPairs();
     }
 
@@ -1613,7 +1576,6 @@
         const entry = entriesByDate.get(iso) || {};
         const alreadyVac = !!entry.is_vacation;
 
-        // vac limit
         if($('vacChk').checked && !alreadyVac){
           const remaining = calcVacationRemaining();
           if(remaining <= 0){
@@ -1624,25 +1586,21 @@
           }
         }
 
-        // sick: nap típus tiltás + módváltás
         if($('sickChk').checked){
           if(!isSickAllowedOnDay(iso)){
             $('sickChk').checked = false;
             toast('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
           }else{
-            // beteg mód: munka mezők tiltása + ürítés
             setSelectToGapBlank($('arrSel'));
             setSelectToGapBlank($('depSel'));
             setSelectToGapBlank($('flexSel'));
             setWorkControlsEnabled(false);
 
-            // szabi automatikus kikapcsolás
             if($('vacChk').checked){
               $('vacChk').checked = false;
             }
           }
         }else{
-          // ha kikapcsoljuk a beteg-et, visszaállítjuk a nap típus szerinti tiltást
           if(editingCalRow){
             const calRow = editingCalRow;
 
@@ -1669,7 +1627,7 @@
 
       validateEditForm();
       updateSaveButton();
-      updateQuickPairsEnabledState();
+      updateQuickButtonsEnabledState();
     }
 
     async function boot(){
