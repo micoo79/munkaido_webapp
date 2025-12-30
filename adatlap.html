@@ -53,6 +53,9 @@
       --monthPad:8px;
       --monthGridW: calc(7 * var(--day) + 6 * var(--dayGap));
       --monthCardW: calc(var(--monthGridW) + 2 * var(--monthPad));
+
+      --inactive:#52525b;
+      --inactiveLbl:#9ca3af;
     }
 
     *{box-sizing:border-box;}
@@ -290,7 +293,7 @@
     .legendTile.vac{ background:var(--vac); }
     .legendTile.sick{ background:var(--zold); }
 
-    /* ✅ Napi gyorsgomb blokk (app-szerű input megjelenés) */
+    /* ✅ Napi gyorsgomb doboz */
     .quickBox{
       margin-top:10px;
       padding:10px;
@@ -303,51 +306,50 @@
       margin:0 0 10px 0;
       color:var(--text);
     }
-    .quickRow{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-      align-items:end;
-    }
-    @media (max-width:520px){
-      .quickRow{grid-template-columns:1fr;}
-    }
-    .quickField label{
-      display:block;
-      font-size:12px;
-      font-weight:800;
-      color:var(--muted);
-      margin:0 0 6px 0;
+
+    /* app.html-s select / wheel stílus + elrendezés */
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+    .row label{font-size:16px; font-weight:400; min-width:120px;}
+    .row .ctrl{flex:1; min-width:180px; display:flex; justify-content:flex-end;}
+
+    select{
+      width:60%;
+      padding:4px 4px;
+      border-radius:0px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#ffffff;
+      color:#111;
+      font-size:0.7rem;
+      outline:none;
     }
 
-    /* app.html jellegű time input (fehér, nagy, kerekített) */
-    .timeInput{
-      width:100%;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:#fff;
-      color:#111;
-      font-size:16px;
-      font-weight:800;
-      outline:none;
-      -webkit-appearance:none;
-      appearance:none;
+    select:disabled{
+      background:var(--inactive) !important;
+      color:#e5e7eb !important;
+      border-color:rgba(255,255,255,.14) !important;
+    }
+
+    @media (max-width:520px){
+      .row label{font-size:1rem;}
+      select{font-size:0.7rem;}
+      .row .ctrl{justify-content:flex-start;}
+      select{width:100%;}
     }
 
     .quickAddBtn{
       margin-top:10px;
       width:100%;
       border:0;
-      border-radius:12px;
-      padding:12px 12px;
-      font-size:14px;
+      border-radius:6px;          /* app gombokhoz közelebb */
+      height:44px;
+      font-size:1rem;
       font-weight:900;
       cursor:pointer;
-      background:var(--accent);
+      background:var(--zold);
       color:#111;
+      -webkit-tap-highlight-color:transparent;
     }
-    .quickAddBtn:active{ transform:scale(.99); }
+    .quickAddBtn:active{opacity:.9;}
 
     .quickHint{
       margin-top:8px;
@@ -379,15 +381,14 @@
     }
     .quickDelete{
       border:0;
-      border-radius:10px;
+      border-radius:6px;
       padding:8px 10px;
       font-size:12px;
       font-weight:900;
       cursor:pointer;
-      background:rgba(255,255,255,.10);
-      color:var(--text);
+      background:#c9cbd1;
+      color:#111;
     }
-    .quickDelete:hover{ background:rgba(255,255,255,.16); }
 
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
@@ -460,21 +461,20 @@
         </div>
       </div>
 
-      <!-- ✅ ÚJ: Napi gyorsgomb létrehozása -->
+      <!-- ✅ ÚJ: Napi gyorsgomb létrehozása (app.html-es wheel/Select logika) -->
       <div class="quickBox" aria-label="Napi gyorsgomb létrehozása">
         <div class="quickTitle">Napi gyorsgomb létrehozása</div>
 
-        <div class="quickRow">
-          <div class="quickField">
-            <label for="quickArrival">Érkezés</label>
-            <!-- wheel: natív time picker -->
-            <input id="quickArrival" class="timeInput" type="time" step="60" />
-          </div>
-          <div class="quickField">
-            <label for="quickDeparture">Távozás</label>
-            <!-- wheel: natív time picker -->
-            <input id="quickDeparture" class="timeInput" type="time" step="60" />
-          </div>
+        <div class="row" style="margin-top:10px;">
+          <label for="quickArrSel">Érkezés</label>
+          <div class="ctrl"><select id="quickArrSel"></select></div>
+        </div>
+
+        <div style="height:18px;"></div>
+
+        <div class="row">
+          <label for="quickDepSel">Távozás</label>
+          <div class="ctrl"><select id="quickDepSel"></select></div>
         </div>
 
         <button id="quickAddBtn" class="quickAddBtn hidden" type="button">Hozzáadás</button>
@@ -506,7 +506,7 @@
 
     // ✅ user-specifikus mentett párosok (max 3)
     let quickPairs = []; // [{arrival:'08:00', departure:'16:00'}, ...]
-    let quickMode = 'db'; // 'db' | 'local'  (ha nincs tábla, localStorage-ra esik vissza)
+    let quickMode = 'db'; // 'db' | 'local'
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -576,6 +576,51 @@
       return supabase;
     }
 
+    // ✅ app.html-es wheel logika: gap blank beszúrás
+    function buildTimeOptionsWithGap(selectEl, step=15, max=24*60, blankAfterHHMM=null){
+      selectEl.innerHTML = '';
+      let gapIndex = -1;
+
+      for(let t=0; t<=max; t+=step){
+        const h = Math.floor(t/60);
+        const mm = t%60;
+        const val = `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        selectEl.appendChild(opt);
+
+        if(blankAfterHHMM && val === blankAfterHHMM){
+          const optGapBlank = document.createElement('option');
+          optGapBlank.value = '';
+          optGapBlank.textContent = '';
+          selectEl.appendChild(optGapBlank);
+          gapIndex = selectEl.options.length - 1;
+        }
+      }
+
+      if(gapIndex < 0){
+        const optBlank = document.createElement('option');
+        optBlank.value = '';
+        optBlank.textContent = '';
+        selectEl.insertBefore(optBlank, selectEl.firstChild);
+        gapIndex = 0;
+      }
+
+      selectEl.dataset.gapBlankIndex = String(gapIndex);
+      selectEl.selectedIndex = gapIndex;
+    }
+
+    function setSelectToGapBlank(selectEl){
+      const idx = Number(selectEl.dataset.gapBlankIndex || 0);
+      if(Number.isFinite(idx) && selectEl.options && selectEl.options[idx]){
+        selectEl.selectedIndex = idx;
+      }else{
+        selectEl.value = '';
+      }
+    }
+
     function localKey(){
       return `kultora_quickpairs_${currentUserId || 'anon'}`;
     }
@@ -597,19 +642,16 @@
     }
 
     async function loadQuickPairs(){
-      // mindig legyen local mirror
       quickPairs = loadQuickPairsFromLocal()
         .map(p => ({ arrival:String(p?.arrival||'').slice(0,5), departure:String(p?.departure||'').slice(0,5) }))
         .filter(p => p.arrival && p.departure)
         .slice(0,3);
 
-      // ha nincs uid vagy nincs supabase -> csak local
       if(!currentUserId || !supabase) {
         quickMode = 'local';
         return;
       }
 
-      // DB próbálkozás: app.user_quick_pairs
       try{
         const { data, error } = await supabase
           .from('user_quick_pairs')
@@ -626,11 +668,11 @@
 
         if(fromDb.length){
           quickPairs = fromDb.map(p => ({ arrival:p.arrival, departure:p.departure, id:p.id }));
-          saveQuickPairsToLocal(); // mirror
+          saveQuickPairsToLocal();
         }
+
         quickMode = 'db';
-      }catch(e){
-        // ha a tábla még nem létezik / nincs policy -> ne dőljön el az oldal
+      }catch(_e){
         quickMode = 'local';
         $('quickHint').classList.remove('hidden');
         $('quickHint').textContent = 'Gyorsgomb mentés jelenleg csak ezen az eszközön működik (DB tábla hiányzik / nincs hozzáférés).';
@@ -641,71 +683,24 @@
       if(quickMode !== 'db') return;
       if(!currentUserId) return;
 
-      // töröljük és újraírjuk (max 3)
       const payload = quickPairs.slice(0,3).map(p => ({
         user_id: currentUserId,
         arrival: String(p.arrival||'').slice(0,5),
         departure: String(p.departure||'').slice(0,5),
       }));
 
-      // megoldás: wipe + insert
       const { error: delErr } = await supabase
         .from('user_quick_pairs')
         .delete()
         .eq('user_id', currentUserId);
-
       if(delErr) throw delErr;
 
       if(payload.length){
         const { error: insErr } = await supabase
           .from('user_quick_pairs')
           .insert(payload);
-
         if(insErr) throw insErr;
       }
-    }
-
-    async function loadProfile(){
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
-      currentUserId = uid;
-      if(!uid) return null;
-
-      // ✅ quick_pairs oszlopot NEM kérjük (mert nincs)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
-        .eq('user_id', uid)
-        .maybeSingle();
-
-      if(error) throw error;
-
-      profile = data || {
-        display_name: u.user.email,
-        email: u.user.email,
-        role:'user',
-        daily_expected_minutes:480,
-        vacation_entitlement_days:0,
-        vacation_carryover_days:0,
-        flex_carryover_minutes:0,
-        flex_bonus_minutes:0
-      };
-
-      $('userName').textContent = profile.display_name || profile.email || '';
-
-      const role = String(profile.role || 'user');
-      if(role === 'admin' || role === 'manager'){
-        $('settingsBtn').classList.remove('hidden');
-      }else{
-        $('settingsBtn').classList.add('hidden');
-      }
-
-      // ✅ quickPairs betöltés (DB ha van, különben local)
-      $('quickHint').classList.add('hidden');
-      $('quickHint').textContent = '';
-      await loadQuickPairs();
-      renderQuickPairs();
-      updateQuickAddBtn();
     }
 
     function dayClassFromCalendar(row){
@@ -840,6 +835,137 @@
       titleEl.innerHTML = `A <span class="inlineLegendSquare" aria-hidden="true"></span>-el jelölt napokon nincs rögzítésed, kérlek pótold!`;
     }
 
+    // ====== ✅ Gyorsgomb logika ======
+    function isValidQuickPair(arrival, departure){
+      if(!arrival || !departure) return false;
+      const a = hhmmToMins(arrival);
+      const d = hhmmToMins(departure);
+      if(a == null || d == null) return false;
+      return a <= d;
+    }
+
+    function updateQuickAddBtn(){
+      const btn = $('quickAddBtn');
+      const a = $('quickArrSel').value || '';
+      const d = $('quickDepSel').value || '';
+      const valid = isValidQuickPair(a, d);
+      const hasRoom = (quickPairs.length < 3);
+      btn.classList.toggle('hidden', !(valid && hasRoom));
+    }
+
+    function renderQuickPairs(){
+      const host = $('quickList');
+      host.innerHTML = '';
+
+      if(!quickPairs.length){
+        return;
+      }
+
+      quickPairs.slice(0,3).forEach((p, idx)=>{
+        const item = document.createElement('div');
+        item.className = 'quickItem';
+
+        const left = document.createElement('div');
+        left.className = 'quickItemText';
+        left.textContent = `${String(p.arrival).slice(0,5)} – ${String(p.departure).slice(0,5)}`;
+
+        const del = document.createElement('button');
+        del.className = 'quickDelete';
+        del.type = 'button';
+        del.textContent = 'Törlés';
+        del.addEventListener('click', async ()=>{
+          try{
+            quickPairs.splice(idx, 1);
+            saveQuickPairsToLocal();
+            if(quickMode === 'db') await syncQuickPairsToDb();
+            renderQuickPairs();
+            updateQuickAddBtn();
+            toast('Törölve');
+          }catch(e){
+            toast(e?.message || String(e));
+          }
+        });
+
+        item.appendChild(left);
+        item.appendChild(del);
+        host.appendChild(item);
+      });
+    }
+
+    async function addQuickPair(){
+      const a = $('quickArrSel').value || '';
+      const d = $('quickDepSel').value || '';
+
+      if(quickPairs.length >= 3){
+        toast('Legfeljebb 3 gyorsgomb lehet.');
+        return;
+      }
+      if(!isValidQuickPair(a, d)){
+        toast('Hiba: Távozás nem lehet korábbi, mint Érkezés!');
+        return;
+      }
+
+      try{
+        quickPairs.push({ arrival:a, departure:d });
+        quickPairs = quickPairs.slice(0,3);
+
+        saveQuickPairsToLocal();
+        if(quickMode === 'db') await syncQuickPairsToDb();
+
+        setSelectToGapBlank($('quickArrSel'));
+        setSelectToGapBlank($('quickDepSel'));
+
+        renderQuickPairs();
+        updateQuickAddBtn();
+        toast('Hozzáadva');
+      }catch(e){
+        toast(e?.message || String(e));
+      }
+    }
+
+    async function loadProfile(){
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      currentUserId = uid;
+      if(!uid) return null;
+
+      // ✅ quick_pairs oszlop NINCS -> nem kérjük le
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      if(error) throw error;
+
+      profile = data || {
+        display_name: u.user.email,
+        email: u.user.email,
+        role:'user',
+        daily_expected_minutes:480,
+        vacation_entitlement_days:0,
+        vacation_carryover_days:0,
+        flex_carryover_minutes:0,
+        flex_bonus_minutes:0
+      };
+
+      $('userName').textContent = profile.display_name || profile.email || '';
+
+      const role = String(profile.role || 'user');
+      if(role === 'admin' || role === 'manager'){
+        $('settingsBtn').classList.remove('hidden');
+      }else{
+        $('settingsBtn').classList.add('hidden');
+      }
+
+      $('quickHint').classList.add('hidden');
+      $('quickHint').textContent = '';
+
+      await loadQuickPairs();
+      renderQuickPairs();
+      updateQuickAddBtn();
+    }
+
     async function loadYearDataAndCompute(){
       const today = getTodayISO();
       const start = `${YEAR}-01-01`;
@@ -884,13 +1010,12 @@
 
       const missingIso = [];
 
-      // ✅ Szabi: Z = eddig kivett (maig), Y = még nincs kiírva (évben), X = még van (maig)
+      // Szabi: X (maig hátralévő), Y (még nincs kiírva évben), Z (maig kivett)
       let vacTakenToToday = 0;   // Z
-      let vacRecordedAll = 0;    // évben, jövő is
-
-      const vacSet = new Set();
+      let vacRecordedAll = 0;    // évben összes (jövő is)
 
       let sickDaysFullYear = 0;
+      const vacSet = new Set();
       const sickSet = new Set();
 
       const sortedDays = Array.from(calendarMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
@@ -933,7 +1058,6 @@
           const vac = !!entry.is_vacation;
           const sick = !!entry.is_sick;
 
-          // szabi és beteg: elvárt perc teljesítve
           if((vac || sick) && isWorkday){
             fulfilled += expected;
           }
@@ -963,7 +1087,7 @@
       const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
       $('sumFlex').innerHTML = formatBalanceLine(balance);
 
-      // év összes bejegyzésén végig: szabi/sick set + vac számok
+      // év összes bejegyzése: vac/sick számlálás + jelölés
       for(const [iso, entry] of entriesMap.entries()){
         const cal = calendarMap.get(iso);
         const isWorkday = !!(cal && cal.is_workday);
@@ -984,16 +1108,21 @@
       const vacCarry = Number(profile?.vacation_carryover_days || 0);
       const vacTotal = vacEnt + vacCarry;
 
-      const X = Math.max(0, vacTotal - vacTakenToToday);  // még van (maig)
-      const Y = Math.max(0, vacTotal - vacRecordedAll);   // még nem írtad ki
-      const Z = Math.max(0, vacTakenToToday);             // már kivetted
+      const X = Math.max(0, vacTotal - vacTakenToToday);
+      const Y = Math.max(0, vacTotal - vacRecordedAll);
+      const Z = Math.max(0, vacTakenToToday);
 
-      $('sumVac').innerHTML =
-        `Még <span class="num">${X}</span> nap szabid van. ` +
-        `Ebből <span class="num">${Y}</span> napot még nem írtál ki. ` +
-        `<span class="num">${Z}</span> napot már kivettél.`;
+      // ✅ sortörés + Y/Z=0 esetén elhagyás
+      if(X <= 0){
+        $('sumVac').innerHTML = `Nincs több szabid.`;
+      }else{
+        const lines = [];
+        lines.push(`Még <span class="num">${X}</span> nap szabid van.`);
+        if(Y > 0) lines.push(`Ebből <span class="num">${Y}</span> napot még nem írtál ki.`);
+        if(Z > 0) lines.push(`<span class="num">${Z}</span> napot már kivettél.`);
+        $('sumVac').innerHTML = lines.join('<br>');
+      }
 
-      // betegsor csak akkor jelenik meg, ha van legalább 1
       const sickEl = $('sumSick');
       if(sickDaysFullYear > 0){
         sickEl.classList.remove('hidden');
@@ -1007,100 +1136,6 @@
 
       const missingSet = new Set(missingIso);
       renderYearCalendar(calendarMap, vacSet, sickSet, missingSet);
-    }
-
-    // ====== ✅ Napi gyorsgomb logika ======
-    function normalizeTime5(t){
-      return String(t || '').slice(0,5);
-    }
-
-    function isValidQuickPair(arrival, departure){
-      if(!arrival || !departure) return false;
-      const a = hhmmToMins(arrival);
-      const d = hhmmToMins(departure);
-      if(a == null || d == null) return false;
-      return a <= d;
-    }
-
-    function updateQuickAddBtn(){
-      const btn = $('quickAddBtn');
-      const a = normalizeTime5($('quickArrival').value);
-      const d = normalizeTime5($('quickDeparture').value);
-
-      const valid = isValidQuickPair(a, d);
-      const hasRoom = (quickPairs.length < 3);
-
-      btn.classList.toggle('hidden', !(valid && hasRoom));
-    }
-
-    function renderQuickPairs(){
-      const host = $('quickList');
-      host.innerHTML = '';
-
-      if(!quickPairs.length){
-        return;
-      }
-
-      quickPairs.slice(0,3).forEach((p, idx)=>{
-        const item = document.createElement('div');
-        item.className = 'quickItem';
-
-        const left = document.createElement('div');
-        left.className = 'quickItemText';
-        left.textContent = `${normalizeTime5(p.arrival)} – ${normalizeTime5(p.departure)}`;
-
-        const del = document.createElement('button');
-        del.className = 'quickDelete';
-        del.type = 'button';
-        del.textContent = 'Törlés';
-        del.addEventListener('click', async ()=>{
-          try{
-            quickPairs.splice(idx, 1);
-            saveQuickPairsToLocal();
-            if(quickMode === 'db') await syncQuickPairsToDb();
-            renderQuickPairs();
-            updateQuickAddBtn();
-            toast('Törölve');
-          }catch(e){
-            toast(e?.message || String(e));
-          }
-        });
-
-        item.appendChild(left);
-        item.appendChild(del);
-        host.appendChild(item);
-      });
-    }
-
-    async function addQuickPair(){
-      const a = normalizeTime5($('quickArrival').value);
-      const d = normalizeTime5($('quickDeparture').value);
-
-      if(quickPairs.length >= 3){
-        toast('Legfeljebb 3 gyorsgomb lehet.');
-        return;
-      }
-      if(!isValidQuickPair(a, d)){
-        toast('Adj meg helyes érkezés/távozás értékeket.');
-        return;
-      }
-
-      try{
-        quickPairs.push({ arrival:a, departure:d });
-        quickPairs = quickPairs.slice(0,3);
-
-        saveQuickPairsToLocal();
-        if(quickMode === 'db') await syncQuickPairsToDb();
-
-        $('quickArrival').value = '';
-        $('quickDeparture').value = '';
-        renderQuickPairs();
-        updateQuickAddBtn();
-
-        toast('Hozzáadva');
-      }catch(e){
-        toast(e?.message || String(e));
-      }
     }
 
     let refreshing = false;
@@ -1124,6 +1159,10 @@
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
+      // ✅ wheel-ek: ugyanaz a mechanika mint app.html-ben
+      buildTimeOptionsWithGap($('quickArrSel'), 15, 24*60, '08:00');
+      buildTimeOptionsWithGap($('quickDepSel'), 15, 24*60, '16:00');
+
       $('logoutBtn').addEventListener('click', async ()=>{
         try{
           await ensureSupabase();
@@ -1140,8 +1179,8 @@
         location.href = '/manager.html?v=' + Date.now();
       });
 
-      $('quickArrival').addEventListener('input', updateQuickAddBtn);
-      $('quickDeparture').addEventListener('input', updateQuickAddBtn);
+      $('quickArrSel').addEventListener('change', updateQuickAddBtn);
+      $('quickDepSel').addEventListener('change', updateQuickAddBtn);
       $('quickAddBtn').addEventListener('click', addQuickPair);
 
       refresh().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
