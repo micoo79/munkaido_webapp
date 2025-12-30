@@ -1010,9 +1010,13 @@
 
       const missingIso = [];
 
-      // Szabi: X (maig hátralévő), Y (még nincs kiírva évben), Z (maig kivett)
+      // Szabi:
+      // X: ebben az évben még lehetsz szabin (vacTotal - vacTakenToToday)
+      // Y: még beírható (vacTotal - vacRecordedAll)
+      // Q: összes beírt szabi az évben (jövő is) -> vacRecordedAll
+      // Z: maig kivett -> vacTakenToToday
       let vacTakenToToday = 0;   // Z
-      let vacRecordedAll = 0;    // évben összes (jövő is)
+      let vacRecordedAll = 0;    // Q
 
       let sickDaysFullYear = 0;
       const vacSet = new Set();
@@ -1093,9 +1097,9 @@
         const isWorkday = !!(cal && cal.is_workday);
 
         if(entry?.is_vacation && isWorkday){
-          vacRecordedAll++;
+          vacRecordedAll++;     // Q
           vacSet.add(iso);
-          if(iso <= today) vacTakenToToday++;
+          if(iso <= today) vacTakenToToday++; // Z
         }
 
         if(entry?.is_sick && isWorkday){
@@ -1106,22 +1110,18 @@
 
       const vacEnt = Number(profile?.vacation_entitlement_days || 0);
       const vacCarry = Number(profile?.vacation_carryover_days || 0);
-      const vacTotal = vacEnt + vacCarry;
+      const E = vacEnt + vacCarry;
 
-      const X = Math.max(0, vacTotal - vacTakenToToday);
-      const Y = Math.max(0, vacTotal - vacRecordedAll);
-      const Z = Math.max(0, vacTakenToToday);
+      const X = Math.max(0, E - vacTakenToToday);
+      const Y = Math.max(0, E - vacRecordedAll);
+      const Q = Math.max(0, vacRecordedAll);
 
-      // ✅ sortörés + Y/Z=0 esetén elhagyás
-      if(X <= 0){
-        $('sumVac').innerHTML = `Nincs több szabid.`;
-      }else{
-        const lines = [];
-        lines.push(`Még <span class="num">${X}</span> nap szabid van.`);
-        if(Y > 0) lines.push(`Ebből <span class="num">${Y}</span> napot még nem írtál ki.`);
-        if(Z > 0) lines.push(`<span class="num">${Z}</span> napot már kivettél.`);
-        $('sumVac').innerHTML = lines.join('<br>');
-      }
+      // ✅ ÚJ szövegezés (3 sor)
+      const lines = [];
+      lines.push(`Az éves szabi kereted <span class="num">${E}</span> nap.`);
+      lines.push(`Ebben az évben még <span class="num">${X}</span> napot lehetsz szabin.`);
+      lines.push(`Már beírtál a naptárba <span class="num">${Q}</span> nap szabadságot, még beírhatsz <span class="num">${Y}</span> napot.`);
+      $('sumVac').innerHTML = lines.join('<br>');
 
       const sickEl = $('sumSick');
       if(sickDaysFullYear > 0){
