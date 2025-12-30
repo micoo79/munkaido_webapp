@@ -856,57 +856,48 @@
       });
     }
 
-    async function applyQuickPairAndSave(idx){
-      const iso = editingDate;
-      if(!iso) return;
+ async function applyQuickPairAndSave(idx){
+  const iso = editingDate;
+  if(!iso) return;
 
-      const p = quickPairs[idx];
-      if(!p) return;
+  const p = quickPairs[idx];
+  if(!p) return;
 
-      if($('sickChk').checked){
-        $('sickChk').checked = false;
-      }
+  if($('sickChk').checked){
+    $('sickChk').checked = false;
+  }
 
-      const a = String(p.arrival||'').slice(0,5);
-      const d = String(p.departure||'').slice(0,5);
+  const a = String(p.arrival||'').slice(0,5);
+  const d = String(p.departure||'').slice(0,5);
 
-      const hasA = Array.from($('arrSel').options).some(o=>o.value===a);
-      const hasD = Array.from($('depSel').options).some(o=>o.value===d);
+  const hasA = Array.from($('arrSel').options).some(o=>o.value===a);
+  const hasD = Array.from($('depSel').options).some(o=>o.value===d);
 
-      if(!hasA || !hasD){
-        toast('Gyorsgomb időpontja nem választható.');
-        return;
-      }
+  if(!hasA || !hasD){
+    toast('Gyorsgomb időpontja nem választható.');
+    return;
+  }
 
-      $('arrSel').value = a;
-      $('depSel').value = d;
-      setSelectToGapBlank($('flexSel'));
+  $('arrSel').value = a;
+  $('depSel').value = d;
+  setSelectToGapBlank($('flexSel'));
 
-      // legyen dirty + validálva
-      onFormChanged();
-      if(!validateEditForm()) return;
+  onFormChanged();
+  if(!validateEditForm()) return;
 
-      // ✅ kattintásra azonnal mentünk az adott napra
-      try{
-        await saveCurrentEdit();
-        // cache friss + naptár friss
-        await loadMonth();
-        // az edit form state frissüljön (ne legyen "Mentés" feleslegesen)
-        const entry = entriesByDate.get(iso) || {};
-        initialEditState = {
-          arrival: $('arrSel').value || '',
-          departure: $('depSel').value || '',
-          flex: $('flexSel').value || '',
-          vac: !!$('vacChk').checked,
-          sick: !!$('sickChk').checked,
-          note: ($('noteTxt').value || '')
-        };
-        updateSaveButton();
-        toast('Mentve.');
-      }catch(e){
-        toast('Mentés hiba: ' + (e?.message||String(e)));
-      }
-    }
+  try{
+    await saveCurrentEdit();
+
+    // ✅ zárás és vissza a naptárra
+    closeEdit();
+    await loadMonth();
+
+    toast('Mentve.');
+  }catch(e){
+    toast('Mentés hiba: ' + (e?.message||String(e)));
+  }
+}
+
 
     function tileClass(row){
       const iso = row.date;
