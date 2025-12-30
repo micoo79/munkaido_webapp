@@ -105,6 +105,9 @@
     }
     .hidden{display:none !important;}
 
+    /* ✅ általános muted osztály (span/div esetén is) */
+    .muted{ color: var(--muted); font-weight:800; }
+
     /* --- TEAM SUMMARY --- */
     .summaryCard{
       background:var(--panel);
@@ -162,6 +165,16 @@
       font-weight:800;
     }
     .summaryTable td.muted{color:var(--muted); font-weight:800;}
+
+    /* ✅ ha egy cellában több soros szöveg kell (pl. szabadság mondatok) */
+    .summaryTable td.wrapCell{
+      white-space:normal;
+      overflow:visible;
+      text-overflow:clip;
+      max-width:none;
+      line-height:1.2;
+    }
+
     .summaryTag{
       display:inline-flex; align-items:center;
       padding:2px 8px;
@@ -923,7 +936,7 @@
       }
     }
 
-    // --- számítás: egyezzen az adatlap logikával, DE szabi + beteg: teljes év ---
+    // --- számítás: egyezzen az adatlap logikával ---
     function calcUserMetrics(user, calendarRows, entriesRows){
       const today = getTodayISO();
 
@@ -940,7 +953,7 @@
         eMap.set(normalizeIsoDate(e.date), e);
       }
 
-      // cal map a teljes éves szabi/beteg számításhoz
+      // cal map (munkanap szűréshez)
       const calMap = new Map();
       for(const c of (calendarRows||[])){
         calMap.set(c.date, c);
@@ -1018,24 +1031,35 @@
       const dayMins = Math.max(1, expPerDay || 480);
       const approxDays = Math.floor(abs / dayMins);
 
-      // 2) szabi + beteg: teljes év (jövőbeli is)
-      let takenVacDays = 0;
+      // 2) szabadság számítás (X/Z/Y logika) + beteg: teljes év
+      // X: összes szabi - (mai napig rögzített szabik száma, ma is benne ha szabi)
+      // Z: mai napig rögzített szabik száma (ma is benne)
+      // Y: összes szabi - (összes rögzített szabi az évben, jövőbeliek is)
+      let vacTakenToToday = 0;  // Z
+      let vacRecordedAll = 0;   // év összes rögzített szabi (jövő is)
       let sickDays = 0;
 
       for(const [iso, e] of eMap.entries()){
         const cal = calMap.get(iso);
         if(!cal || !cal.is_workday) continue;
 
-        if(e?.is_vacation) takenVacDays++;
+        if(e?.is_vacation){
+          vacRecordedAll++;
+          if(iso <= today) vacTakenToToday++; // ma is benne
+        }
+
         if(e?.is_sick) sickDays++;
       }
 
-      const vacRemain = vacTotal - takenVacDays;
+      const vacRemainToToday = vacTotal - vacTakenToToday; // X
+      const vacUnplanned = vacTotal - vacRecordedAll;      // Y
 
       return {
         balanceMin,
         approxDays,
-        vacRemain,
+        vacRemainToToday,
+        vacTakenToToday,
+        vacUnplanned,
         sickDays,
         oldMissingCount
       };
@@ -1053,6 +1077,18 @@
         <span class="${cls}">${hhmm}</span> óra,
         <span class="${cls}">${approxDays}</span> nap ${label}
       `;
+    }
+
+    // ✅ "Még X nap szabid van." + opcionális Z/Y sorok
+    function fmtVacText(vacRemainToToday, vacTakenToToday, vacUnplanned){
+      const X = Math.max(0, Math.round(Number(vacRemainToToday || 0)));
+      const Z = Math.max(0, Math.round(Number(vacTakenToToday || 0)));
+      const Y = Math.max(0, Math.round(Number(vacUnplanned || 0)));
+
+      let html = `<div>Még ${X} nap szabid van.</div>`;
+      if(Z !== 0) html += `<div class="muted" style="font-size:12px; margin-top:2px;">${Z} napot már kivettél.</div>`;
+      if(Y !== 0) html += `<div class="muted" style="font-size:12px; margin-top:2px;">${Y} napot még nem írtál ki.</div>`;
+      return html;
     }
 
     function timeToHHMM(t){
@@ -1712,7 +1748,7 @@
               ${roleLabel}
             </td>
             <td>${fmtBalanceCell(m.balanceMin, m.approxDays)}</td>
-            <td>${Math.max(0, Math.round(m.vacRemain))} <span class="muted">nap</span></td>
+            <td class="wrapCell">${fmtVacText(m.vacRemainToToday, m.vacTakenToToday, m.vacUnplanned)}</td>
             <td>${Math.max(0, Math.round(m.sickDays || 0))} <span class="muted">nap</span></td>
             <td>${m.oldMissingCount} <span class="muted">db</span></td>
             <td>
