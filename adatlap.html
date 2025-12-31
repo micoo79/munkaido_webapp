@@ -527,6 +527,42 @@ html[data-theme="light"]{
 
   <script>
 
+    
+  (() => {
+    const $ = (id)=>document.getElementById(id);
+    const toast = (t)=>{
+      const el = document.createElement('div');
+      el.className='toast';
+      el.textContent=t;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(), 2200);
+    };
+
+    const DEV_TODAY = '2026-04-16';
+    const YEAR = 2026;
+
+    let supabase = null;
+    let profile = null;
+    let currentUserId = null;
+
+    // ✅ user-specifikus mentett párosok (max 3)
+    let quickPairs = []; // [{arrival:'08:00', departure:'16:00'}, ...]
+    let quickMode = 'db'; // 'db' | 'local'
+
+    function getTodayISO(){
+      if(DEV_TODAY) return DEV_TODAY;
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+
+
+
+
+
+
 
 
 
@@ -571,38 +607,10 @@ themeBtn.addEventListener('click', async ()=>{
 
 
 
+
+
+
     
-  (() => {
-    const $ = (id)=>document.getElementById(id);
-    const toast = (t)=>{
-      const el = document.createElement('div');
-      el.className='toast';
-      el.textContent=t;
-      document.body.appendChild(el);
-      setTimeout(()=>el.remove(), 2200);
-    };
-
-    const DEV_TODAY = '2026-04-16';
-    const YEAR = 2026;
-
-    let supabase = null;
-    let profile = null;
-    let currentUserId = null;
-
-    // ✅ user-specifikus mentett párosok (max 3)
-    let quickPairs = []; // [{arrival:'08:00', departure:'16:00'}, ...]
-    let quickMode = 'db'; // 'db' | 'local'
-
-    function getTodayISO(){
-      if(DEV_TODAY) return DEV_TODAY;
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth()+1).padStart(2,'0');
-      const day = String(d.getDate()).padStart(2,'0');
-      return `${y}-${m}-${day}`;
-    }
-
-
 
 
 
