@@ -608,9 +608,9 @@
         </section>
       </div>
 
-      <!-- ✅ Alul: minden felhasználó export -->
-      <div style="margin-top:14px; display:flex; justify-content:center;">
-        <button id="exportAllBtn" class="btn primary" type="button">Minden felhasználó exportálása</button>
+      <!-- ✅ Alul jobbra: minden felhasználó export (kisebb gomb) -->
+      <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+        <button id="exportAllBtn" class="btn small primary" type="button">Minden felhasználó exportálása</button>
       </div>
     </section>
 
@@ -1117,12 +1117,12 @@
       return '"' + s.replace(/"/g,'""') + '"';
     }
 
-    function makeCsvText(rows, userDisplayName){
+    function makeCsvString(rows, userDisplayName){
       const delim = ';';
       const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Betegállomány','Megjegyzés'];
 
       const lines = [];
-      // ✅ Excel-friendly delimiter hint
+      // ✅ Excel delimiter hint
       lines.push(`sep=${delim}`);
 
       lines.push(['Felhasználó', userDisplayName || ''].map(x=>csvEscape(x,delim)).join(delim));
@@ -1141,8 +1141,20 @@
         ].map(x=>csvEscape(x,delim)).join(delim));
       }
 
-      // ✅ UTF-8 BOM, hogy Excel társítva megnyitva is jól olvassa (ékezetek)
-      return '\ufeff' + lines.join('\r\n');
+      return lines.join('\r\n');
+    }
+
+    // ✅ Excel társítva megnyitva is jól: UTF-16LE + BOM
+    function utf16leBytes(str){
+      const out = new Uint8Array(2 + str.length * 2);
+      out[0] = 0xFF; // BOM
+      out[1] = 0xFE;
+      for(let i=0;i<str.length;i++){
+        const code = str.charCodeAt(i);
+        out[2 + i*2] = code & 0xFF;
+        out[3 + i*2] = (code >> 8) & 0xFF;
+      }
+      return out;
     }
 
     function downloadBlob(blob, filename){
@@ -1157,8 +1169,9 @@
     }
 
     function downloadCsv(rows, filename, userDisplayName){
-      const csvText = makeCsvText(rows, userDisplayName);
-      const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' });
+      const csvStr = makeCsvString(rows, userDisplayName);
+      const bytes = utf16leBytes(csvStr);
+      const blob = new Blob([bytes], { type:'text/csv;charset=utf-16le' });
       downloadBlob(blob, filename);
     }
 
@@ -1227,7 +1240,7 @@
         const today = getTodayISO();
         const zip = new JSZip();
 
-        const list = (profiles||[]).filter(p => p.role !== 'admin'); // "minden felhasználó" (admin nélkül)
+        const list = (profiles||[]).filter(p => p.role !== 'admin'); // admin nélkül
 
         if(list.length === 0){
           toast('Nincs felhasználó.');
@@ -1244,9 +1257,10 @@
           const filename = `${userPart}_${uidPart}_export_${today}.csv`;
 
           const display = u.display_name || u.email || '';
-          const csvText = makeCsvText(rows, display);
+          const csvStr = makeCsvString(rows, display);
+          const bytes = utf16leBytes(csvStr);
 
-          zip.file(filename, csvText);
+          zip.file(filename, bytes);
         }
 
         const zipBlob = await zip.generateAsync({ type:'blob' });
