@@ -497,6 +497,8 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- ✅ ZIP exporthoz -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -604,6 +606,11 @@
             <button id="inviteBtn" class="btn primary" type="button">Hozzáadás</button>
           </div>
         </section>
+      </div>
+
+      <!-- ✅ Alul: minden felhasználó export -->
+      <div style="margin-top:14px; display:flex; justify-content:center;">
+        <button id="exportAllBtn" class="btn primary" type="button">Minden felhasználó exportálása</button>
       </div>
     </section>
 
@@ -1110,10 +1117,13 @@
       return '"' + s.replace(/"/g,'""') + '"';
     }
 
-    function downloadCsv(rows, filename, userDisplayName){
+    function makeCsvText(rows, userDisplayName){
       const delim = ';';
       const header = ['Dátum','Érkezés','Távozás','Ledolgozott órák','Csúsztatás (perc)','Szabadság','Betegállomány','Megjegyzés'];
+
       const lines = [];
+      // ✅ Excel-friendly delimiter hint
+      lines.push(`sep=${delim}`);
 
       lines.push(['Felhasználó', userDisplayName || ''].map(x=>csvEscape(x,delim)).join(delim));
       lines.push(header.map(h=>csvEscape(h,delim)).join(delim));
@@ -1130,7 +1140,12 @@
           r.note
         ].map(x=>csvEscape(x,delim)).join(delim));
       }
-      const blob = new Blob([lines.join('\r\n')], { type:'text/csv;charset=utf-8' });
+
+      // ✅ UTF-8 BOM, hogy Excel társítva megnyitva is jól olvassa (ékezetek)
+      return '\ufeff' + lines.join('\r\n');
+    }
+
+    function downloadBlob(blob, filename){
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1139,6 +1154,110 @@
       a.click();
       a.remove();
       setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    }
+
+    function downloadCsv(rows, filename, userDisplayName){
+      const csvText = makeCsvText(rows, userDisplayName);
+      const blob = new Blob([csvText], { type:'text/csv;charset=utf-8' });
+      downloadBlob(blob, filename);
+    }
+
+    function buildRenderedRowsForUserEntries(entries, todayIso){
+      const start = `${YEAR}-01-01`;
+      const eMap = new Map();
+      for(const e of (entries||[])){
+        const d = normalizeIsoDate(e.date);
+        eMap.set(d, { ...e, date:d });
+      }
+
+      const baseDates = Array.from(dateRangeInclusive(start, todayIso));
+
+      const futureTagged = (entries||[])
+        .map(e => ({ ...e, date: normalizeIsoDate(e.date) }))
+        .filter(e => (e.is_vacation || e.is_sick) && e.date > todayIso)
+        .map(e => e.date);
+
+      const set = new Set(baseDates);
+      futureTagged.forEach(d => set.add(d));
+
+      const dates = Array.from(set).sort((a,b)=>a.localeCompare(b));
+
+      const rows = [];
+      for(const iso of dates){
+        const e = eMap.get(iso);
+
+        const arrival = e ? timeToHHMM(e.arrival) : '';
+        const departure = e ? timeToHHMM(e.departure) : '';
+        const worked = workedHoursFromArrivalDeparture(arrival, departure);
+
+        const flexVal = e ? Number(e.flex_minutes || 0) : 0;
+        const flex = (e && flexVal > 0) ? String(flexVal) : '';
+
+        const vac = (e && e.is_vacation) ? 'Szabadság' : '';
+        const sick = (e && e.is_sick) ? 'Betegállomány' : '';
+        const note = e ? (e.note || '') : '';
+
+        rows.push({
+          date: iso.replaceAll('-','.'),
+          arrival,
+          departure,
+          worked,
+          flex_minutes: flex,
+          vacation: vac,
+          sick,
+          note
+        });
+      }
+      return rows;
+    }
+
+    async function exportAllUsersZip(){
+      const btn = $('exportAllBtn');
+      if(btn) btn.disabled = true;
+
+      try{
+        if(!window.JSZip){
+          toast('ZIP könyvtár nem elérhető.');
+          return;
+        }
+
+        await ensureSupabase();
+        await ensureYearCache();
+
+        const today = getTodayISO();
+        const zip = new JSZip();
+
+        const list = (profiles||[]).filter(p => p.role !== 'admin'); // "minden felhasználó" (admin nélkül)
+
+        if(list.length === 0){
+          toast('Nincs felhasználó.');
+          return;
+        }
+
+        for(const u of list){
+          const uid = u.user_id;
+          const entries = yearEntriesByUser?.get(uid) || [];
+          const rows = buildRenderedRowsForUserEntries(entries, today);
+
+          const userPart = safeFilePart(u.display_name || u.email || 'user');
+          const uidPart = String(uid || '').slice(0,8) || 'uid';
+          const filename = `${userPart}_${uidPart}_export_${today}.csv`;
+
+          const display = u.display_name || u.email || '';
+          const csvText = makeCsvText(rows, display);
+
+          zip.file(filename, csvText);
+        }
+
+        const zipBlob = await zip.generateAsync({ type:'blob' });
+        const zipName = `kultora_export_all_${today}.zip`;
+        downloadBlob(zipBlob, zipName);
+
+      }catch(e){
+        toast(e?.message || String(e));
+      }finally{
+        if(btn) btn.disabled = false;
+      }
     }
 
     async function openEntriesView(user){
@@ -1802,6 +1921,7 @@
         });
 
         $('backToUsersBtn').addEventListener('click', closeEntriesView);
+
         $('csvBtn').addEventListener('click', ()=>{
           if(!entriesUser) return;
           const today = getTodayISO();
@@ -1809,6 +1929,8 @@
           const filename = `${userPart}_export_${today}.csv`;
           downloadCsv(entriesRowsRendered, filename, entriesUser.display_name || entriesUser.email || '');
         });
+
+        $('exportAllBtn').addEventListener('click', exportAllUsersZip);
 
         $('closeBtn').addEventListener('click', closeEditProfile);
         $('backdrop').addEventListener('click', (e)=>{ if(e.target === $('backdrop')) closeEditProfile(); });
