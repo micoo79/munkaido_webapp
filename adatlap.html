@@ -526,6 +526,52 @@ html[data-theme="light"]{
   </main>
 
   <script>
+
+
+
+
+
+
+
+const themeBtn = document.getElementById('themeToggleBtn');
+
+applyTheme(profile.theme);                 // betöltéskor alkalmaz
+setThemeButtonLabel(themeBtn, profile.theme);
+
+themeBtn.addEventListener('click', async ()=>{
+  const newTheme = nextTheme(profile.theme);
+  applyTheme(newTheme);
+  setThemeButtonLabel(themeBtn, newTheme);
+
+  // mentés profilba
+  const { error } = await supabase
+    .from('profiles')
+    .update({ theme: newTheme })
+    .eq('user_id', profile.user_id);
+
+  if(error){
+    // ha hiba, állítsuk vissza
+    applyTheme(profile.theme);
+    setThemeButtonLabel(themeBtn, profile.theme);
+    throw error;
+  }
+
+  profile.theme = newTheme;
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
   (() => {
     const $ = (id)=>document.getElementById(id);
     const toast = (t)=>{
