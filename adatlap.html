@@ -542,6 +542,37 @@ html[data-theme="light"]{
       return `${y}-${m}-${day}`;
     }
 
+
+
+
+
+function applyTheme(theme){
+  const t = (theme === 'light') ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+
+  // (opcionális) meta theme-color frissítés
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta){
+    meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+  }
+}
+
+function nextTheme(theme){
+  return (theme === 'light') ? 'dark' : 'light';
+}
+
+function setThemeButtonLabel(btn, theme){
+  btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
+}
+
+
+
+
+
+
+
+
+    
     function huMonthName(m){
       const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
       return names[m-1] || '';
