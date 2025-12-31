@@ -58,31 +58,25 @@
       --inactiveLbl:#9ca3af;
     }
 
+    html[data-theme="light"]{
+      --bg:#f3f4f6;
+      --panel:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
 
+      --rest:#e5e7eb;
+      --holiday:#fecaca;
+      --vac:#bfdbfe;
+      --work:#ffffff;
+      --weekend:#d1d5db;
 
-html[data-theme="light"]{
-  --bg:#f3f4f6;
-  --panel:#ffffff;
-  --text:#111827;
-  --muted:#6b7280;
+      --border:#e5e7eb;
+      --card:#ffffff;
 
-  --rest:#e5e7eb;
-  --holiday:#fecaca;
-  --vac:#bfdbfe;
-  --work:#ffffff;
-  --weekend:#d1d5db;
+      --inactive:#e5e7eb;
+      --inactiveLbl:#6b7280;
+    }
 
-  --border:#e5e7eb;
-  --card:#ffffff;
-
-  --inactive:#e5e7eb;
-  --inactiveLbl:#6b7280;
-
-  /* ha kell: a zöld/piros maradhat */
-}
-
-
-    
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
 
@@ -152,10 +146,24 @@ html[data-theme="light"]{
       margin-bottom:10px;
     }
 
-
-
+    /* ✅ gomb alap (eddig hiányzott), + small megvolt */
+    .btn{
+      border:0;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      background:rgba(255,255,255,.10);
+      color:var(--text);
+      transition:background .15s, transform .05s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn:hover{background:rgba(255,255,255,.16);}
+    .btn:active{transform:scale(.98);}
     .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
-    
+
     .summaryLine{
       font-size:14px; line-height:1.25; color:var(--text);
       white-space:normal;
@@ -512,22 +520,15 @@ html[data-theme="light"]{
         <div id="quickList" class="quickList"></div>
       </div>
 
+      <!-- ✅ Téma kapcsoló gomb legalul, jobbra -->
+      <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+        <button id="themeToggleBtn" class="btn small" type="button">Világos mód</button>
+      </div>
 
-
-<div style="display:flex; justify-content:flex-end; margin-top:12px;">
-  <button id="themeToggleBtn" class="btn small" type="button">Világos mód</button>
-</div>
-
-
-
-
-      
     </section>
   </main>
 
   <script>
-
-    
   (() => {
     const $ = (id)=>document.getElementById(id);
     const toast = (t)=>{
@@ -558,60 +559,23 @@ html[data-theme="light"]{
       return `${y}-${m}-${day}`;
     }
 
+    // ====== ✅ THEME ======
+    function applyTheme(theme){
+      const t = (theme === 'light') ? 'light' : 'dark';
+      document.documentElement.dataset.theme = t;
 
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if(meta){
+        meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+      }
+    }
+    function nextTheme(theme){
+      return (theme === 'light') ? 'dark' : 'light';
+    }
+    function setThemeButtonLabel(btn, theme){
+      btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-function applyTheme(theme){
-  const t = (theme === 'light') ? 'light' : 'dark';
-  document.documentElement.dataset.theme = t;
-
-  // (opcionális) meta theme-color frissítés
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta){
-    meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
-  }
-}
-
-function nextTheme(theme){
-  return (theme === 'light') ? 'dark' : 'light';
-}
-
-function setThemeButtonLabel(btn, theme){
-  btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
-}
-
-
-
-
-
-
-
-
-    
     function huMonthName(m){
       const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
       return names[m-1] || '';
@@ -1024,10 +988,10 @@ function setThemeButtonLabel(btn, theme){
       currentUserId = uid;
       if(!uid) return null;
 
-      // ✅ quick_pairs oszlop NINCS -> nem kérjük le
+      // ✅ THEME mezőt is lekérjük
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
+        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes,theme')
         .eq('user_id', uid)
         .maybeSingle();
 
@@ -1041,8 +1005,14 @@ function setThemeButtonLabel(btn, theme){
         vacation_entitlement_days:0,
         vacation_carryover_days:0,
         flex_carryover_minutes:0,
-        flex_bonus_minutes:0
+        flex_bonus_minutes:0,
+        theme:'dark'
       };
+
+      // ✅ téma alkalmazás + gomb felirat
+      const themeBtn = $('themeToggleBtn');
+      applyTheme(profile.theme || 'dark');
+      setThemeButtonLabel(themeBtn, profile.theme || 'dark');
 
       $('userName').textContent = profile.display_name || profile.email || '';
 
@@ -1105,11 +1075,6 @@ function setThemeButtonLabel(btn, theme){
 
       const missingIso = [];
 
-      // Szabi:
-      // X: ebben az évben még lehetsz szabin (vacTotal - vacTakenToToday)
-      // Y: még beírható (vacTotal - vacRecordedAll)
-      // Q: összes beírt szabi az évben (jövő is) -> vacRecordedAll
-      // Z: maig kivett -> vacTakenToToday
       let vacTakenToToday = 0;   // Z
       let vacRecordedAll = 0;    // Q
 
@@ -1123,7 +1088,6 @@ function setThemeButtonLabel(btn, theme){
 
         const entry = entriesMap.get(iso);
 
-        // hiány (csak múlt/ma napokra)
         if(iso <= today){
           const isToday = (iso === today);
           const meaningfulToday =
@@ -1142,7 +1106,6 @@ function setThemeButtonLabel(btn, theme){
           }
         }
 
-        // túlóra/hátralék számolás (csak maig)
         if(iso > today) continue;
 
         const isWorkday = !!cal.is_workday;
@@ -1186,15 +1149,14 @@ function setThemeButtonLabel(btn, theme){
       const balance = (carry + bonus) + (fulfilledTotal - expectedTotal);
       $('sumFlex').innerHTML = formatBalanceLine(balance);
 
-      // év összes bejegyzése: vac/sick számlálás + jelölés
       for(const [iso, entry] of entriesMap.entries()){
         const cal = calendarMap.get(iso);
         const isWorkday = !!(cal && cal.is_workday);
 
         if(entry?.is_vacation && isWorkday){
-          vacRecordedAll++;     // Q
+          vacRecordedAll++;
           vacSet.add(iso);
-          if(iso <= today) vacTakenToToday++; // Z
+          if(iso <= today) vacTakenToToday++;
         }
 
         if(entry?.is_sick && isWorkday){
@@ -1211,7 +1173,6 @@ function setThemeButtonLabel(btn, theme){
       const Y = Math.max(0, E - vacRecordedAll);
       const Q = Math.max(0, vacRecordedAll);
 
-      // ✅ ÚJ szövegezés (3 sor)
       const lines = [];
       lines.push(`Az éves szabi kereted <span class="num">${E}</span> nap.`);
       lines.push(`Ebben az évben még <span class="num">${X}</span> napot lehetsz szabin.`);
@@ -1277,6 +1238,35 @@ function setThemeButtonLabel(btn, theme){
       $('quickArrSel').addEventListener('change', updateQuickAddBtn);
       $('quickDepSel').addEventListener('change', updateQuickAddBtn);
       $('quickAddBtn').addEventListener('click', addQuickPair);
+
+      // ✅ THEME TOGGLE CLICK HANDLER (itt a helye: DOMContentLoaded-ben, mert már létezik a gomb)
+      $('themeToggleBtn').addEventListener('click', async ()=>{
+        if(!profile) return;
+        const oldTheme = (profile.theme === 'light') ? 'light' : 'dark';
+        const newTheme = nextTheme(oldTheme);
+
+        // UI azonnal
+        applyTheme(newTheme);
+        setThemeButtonLabel($('themeToggleBtn'), newTheme);
+
+        try{
+          await ensureSupabase();
+
+          const { error } = await supabase
+            .from('profiles')
+            .update({ theme: newTheme })
+            .eq('user_id', profile.user_id);
+
+          if(error) throw error;
+
+          profile.theme = newTheme;
+        }catch(e){
+          // rollback
+          applyTheme(oldTheme);
+          setThemeButtonLabel($('themeToggleBtn'), oldTheme);
+          toast(e?.message || String(e));
+        }
+      });
 
       refresh().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
 
