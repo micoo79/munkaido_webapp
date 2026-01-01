@@ -6,18 +6,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Admin KultÓra</title>
 
-  <script>
-  (() => {
-    try{
-      const t = localStorage.getItem('kultora_theme');
-      if(t === 'light' || t === 'dark'){
-        document.documentElement.dataset.theme = t;
-      }
-    }catch(_){/* ignore */}
-  })();
-  </script>
-
-
   <link rel="manifest" href="/manifest.webmanifest?v=1" />
   <meta name="theme-color" content="#27272a" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -66,33 +54,36 @@
       --sumColAction: 10%;
     }
 
-    /* ✅ Light mode */
-    html[data-theme="light"]{
-      --bg:#f3f4f6;
-      --panel:#ffffff;
-      --text:#111827;
-      --muted:#6b7280;
-      --accent:#ff8a00;
-
-      --rest:#e5e7eb;
-      --holiday:#fecaca;
-      --vac:#bfdbfe;
-      --work:#ffffff;
-      --weekend:#d1d5db;
-
-      --zold:#1ecb5b;
-      --piros:#ff3b30;
-
-      --border:#e5e7eb;
-      --card:#ffffff;
-
-      --pillAdmin:#7c3aed;
-      --pillMgr:#2563eb;
-
-      --cellVBorder: rgba(17,24,39,.10);
-    }
 
 
+html[data-theme="light"]{
+  --bg:#f3f4f6;
+  --panel:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
+
+  --rest:#e5e7eb;
+  --holiday:#fecaca;
+  --vac:#bfdbfe;
+  --work:#ffffff;
+  --weekend:#d1d5db;
+
+  --border:#e5e7eb;
+  --card:#ffffff;
+
+  --inactive:#e5e7eb;
+  --inactiveLbl:#6b7280;
+
+  /* ha kell: a zöld/piros maradhat */
+}
+
+
+
+
+
+
+
+    
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     a{color:var(--text); text-decoration:none;}
@@ -551,7 +542,6 @@
         </div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-        <button id="themeToggleBtn" class="btn small" type="button">Világos mód</button>
         <button id="refreshBtn" class="btn" type="button">Frissítés</button>
         <button id="logoutBtn" class="btn" type="button">Kijelentkezés</button>
       </div>
@@ -594,6 +584,13 @@
             </tbody>
           </table>
         </div>
+
+         <!-- ✅ Alul jobbra: minden felhasználó export (kisebb gomb) -->
+      <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+        <button id="exportAllBtn" class="btn small primary" type="button">Minden felhasználó exportálása</button>
+      </div>
+
+        
       </section>
 
       <div class="gridUsers">
@@ -649,10 +646,7 @@
         </section>
       </div>
 
-      <!-- ✅ Alul jobbra: minden felhasználó export (kisebb gomb) -->
-      <div style="margin-top:14px; display:flex; justify-content:flex-end;">
-        <button id="exportAllBtn" class="btn small primary" type="button">Minden felhasználó exportálása</button>
-      </div>
+     
     </section>
 
     <!-- YEAR VIEW -->
@@ -842,84 +836,6 @@
     };
 
     let supabase = null;
-
-    // ====== ✅ TÉMA (világos/sötét) – profilba mentve + localStorage fallback ======
-    const THEME_KEY = 'kultora_theme';
-
-    function normTheme(t){
-      const s = String(t||'').toLowerCase();
-      return (s === 'light' || s === 'dark') ? s : null;
-    }
-    function getStoredTheme(){
-      try{ return normTheme(localStorage.getItem(THEME_KEY)); }catch(_){ return null; }
-    }
-    function storeTheme(theme){
-      try{ localStorage.setItem(THEME_KEY, theme); }catch(_){}
-    }
-    function applyTheme(theme){
-      const t = normTheme(theme) || 'dark';
-      document.documentElement.dataset.theme = t;
-
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if(meta){
-        meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
-      }
-
-      const btn = $('themeToggleBtn');
-      if(btn){
-        btn.textContent = (t === 'light') ? 'Sötét mód' : 'Világos mód';
-      }
-    }
-
-    async function persistThemeToProfile(theme){
-      const t = normTheme(theme);
-      if(!t) return;
-
-      // ✅ csak akkor írunk DB-be, ha már van user_id (különben: uuid undefined)
-      const uid = me?.user_id;
-      if(!supabase || !uid) return;
-
-      try{
-        const { error } = await supabase
-          .from('profiles')
-          .update({ theme: t })
-          .eq('user_id', uid);
-
-        if(error) throw error;
-      }catch(_e){
-        // marad localStorage
-      }
-    }
-
-    async function initThemeAfterMeLoaded(){
-      const local = getStoredTheme();
-      const db = normTheme(me?.theme);
-
-      let theme = db || local;
-      if(!theme){
-        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-      }
-
-      applyTheme(theme);
-      storeTheme(theme);
-
-      if(!db){
-        await persistThemeToProfile(theme);
-      }
-    }
-
-    async function toggleTheme(){
-      const cur = normTheme(document.documentElement.dataset.theme) || 'dark';
-      const next = (cur === 'light') ? 'dark' : 'light';
-
-      applyTheme(next);
-      storeTheme(next);
-
-      await persistThemeToProfile(next);
-    }
-
-
-    let supabase = null;
     let me = null;
     let isMgr = false;
 
@@ -966,6 +882,35 @@
       return h*60 + m;
     }
 
+
+
+
+
+
+    function applyTheme(theme){
+  const t = (theme === 'light') ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+
+  // (opcionális) meta theme-color frissítés
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta){
+    meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+  }
+}
+
+function nextTheme(theme){
+  return (theme === 'light') ? 'dark' : 'light';
+}
+
+function setThemeButtonLabel(btn, theme){
+  btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
+}
+
+
+
+
+
+    
     function minsToHHMM(mins){
       const m = Math.abs(Math.trunc(Number(mins)||0));
       const h = Math.floor(m/60);
@@ -1917,7 +1862,7 @@
 
       const { data: myProf, error: e1 } = await supabase
         .from('profiles')
-        .select('user_id,email,display_name,role,theme')
+        .select('user_id,email,display_name,role')
         .eq('user_id', uid)
         .maybeSingle();
       if(e1) throw e1;
@@ -1925,7 +1870,6 @@
       me = myProf;
       isMgr = (me?.role === 'manager' || me?.role === 'admin');
       $('who').textContent = me ? `${me.display_name || me.email || ''} (${me.role})` : '—';
-      await initThemeAfterMeLoaded();
 
       if(!isMgr){
         toast('Nincs jogosultság');
@@ -2030,10 +1974,6 @@
     window.addEventListener('DOMContentLoaded', async ()=>{
       try{
         await ensureSupabase();
-
-        // ✅ téma gomb (azonnali váltás + mentés)
-        applyTheme(normTheme(document.documentElement.dataset.theme) || getStoredTheme() || 'dark');
-        $('themeToggleBtn')?.addEventListener('click', ()=>{ toggleTheme(); });
 
         $('refreshBtn').addEventListener('click', async ()=>{
           const wasEntries = !$('entriesView').classList.contains('hidden');
