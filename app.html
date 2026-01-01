@@ -1,3 +1,4 @@
+<!-- app.html -->
 <!doctype html>
 <html lang="hu">
 <head>
@@ -5,12 +6,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>VMKK KultÓra</title>
 
-  <link rel="manifest" href="/manifest.webmanifest?v=1" />
   <meta name="theme-color" content="#27272a" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
+
+  <link rel="manifest" href="/manifest.webmanifest?v=1" />
 
   <link rel="icon" type="image/png" href="/kult_logo.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
@@ -18,7 +20,6 @@
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=1" />
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root{
@@ -32,289 +33,425 @@
       --holiday:#f6b2b2;
       --vac:#b9d9ff;
       --work:#ffffff;
-      --weekend:#52525b;
-
+      --weekend:#777b81;
       --zold:#1ecb5b;
       --piros:#ff3b30;
 
-      --border:#3f3f46;
-      --card:#2f2f33;
+      --sick:#1ecb5b;
 
-      --inactive:#52525b;
-      --inactiveLbl:#9ca3af;
+      --inactive:#52525b;   /* inaktív háttér */
+      --inactiveLbl:#9ca3af;/* inaktív felirat */
     }
 
-    /* ✅ Light theme (profilból mentve) */
-    html[data-theme="light"]{
-      --bg:#f3f4f6;
-      --panel:#ffffff;
-      --text:#111827;
-      --muted:#6b7280;
 
-      --rest:#e5e7eb;
-      --holiday:#fecaca;
-      --vac:#bfdbfe;
-      --work:#ffffff;
-      --weekend:#d1d5db;
 
-      --border:#e5e7eb;
-      --card:#ffffff;
 
-      --inactive:#e5e7eb;
-      --inactiveLbl:#6b7280;
-    }
+html[data-theme="light"]{
+  --bg:#f3f4f6;
+  --panel:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
 
+  --rest:#e5e7eb;
+  --holiday:#fecaca;
+  --vac:#bfdbfe;
+  --work:#ffffff;
+  --weekend:#d1d5db;
+
+  --border:#e5e7eb;
+  --card:#ffffff;
+
+  --inactive:#e5e7eb;
+  --inactiveLbl:#6b7280;
+
+  /* ha kell: a zöld/piros maradhat */
+}
+
+
+
+
+
+    
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    a{color:var(--text); text-decoration:none;}
 
+    /* ---------- HEADER ---------- */
     .header{
       max-width:900px;
       margin:0 auto;
-      padding:0 12px;
-      height:52px;
+      padding:8px 12px 6px;
+      min-height:52px;
       display:flex;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       background:transparent;
-    }
-    .user-block{display:flex; align-items:center; gap:8px; min-width:0;}
-    .user-name{
-      font-weight:900; font-size:16px;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      max-width:48vw;
+      gap:10px;
     }
 
-    .nav-container{display:flex; gap:0; align-items:center;}
-    .nav-item{
-      border:0; background:transparent; color:var(--text);
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      width:44px; height:52px; position:relative; cursor:pointer;
-      -webkit-tap-highlight-color:transparent; padding:0;
+    .user-block{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      min-width:0;
     }
+
+    .user-meta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+
+    .user-name{
+      font-weight:700;
+      font-size:16px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:56vw;
+      line-height:1.1;
+    }
+
+    .nav-container{
+      display:flex;
+      gap:0;
+      align-items:center;
+    }
+
+    .nav-item{
+      border:0;
+      background:transparent;
+      color:var(--text);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      width:44px;
+      height:42px;
+      position:relative;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      padding:0;
+    }
+
     .material-symbols-outlined{
       font-size:24px;
       font-variation-settings:'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-      transition:color .2s ease; line-height:1;
+      transition:color 0.2s ease;
+      line-height:1;
     }
+
     .menu-label{
-      font-size:10px; position:absolute; bottom:4px; left:50%;
-      transform:translateX(-50%); white-space:nowrap; pointer-events:none;
-      transition:opacity .2s ease, color .2s ease;
+      font-size:10px;
+      position:absolute;
+      bottom:4px;
+      left:50%;
+      transform:translateX(-50%);
+      white-space:nowrap;
+      pointer-events:none;
+      transition:opacity 0.2s ease, color 0.2s ease;
     }
 
-    .logout-item .material-symbols-outlined{ color:var(--text); opacity:1; }
-    .logout-item .menu-label{ color:var(--text); opacity:1; }
-
-    .rec-item .menu-label{opacity:1; color:var(--text);}
-    .rec-item:hover .material-symbols-outlined,
-    .rec-item:hover .menu-label{color:var(--accent);}
-
-    .sum-item .menu-label{opacity:1; color:var(--text);}
-    .sum-item:hover .material-symbols-outlined,
-    .sum-item:hover .menu-label{color:var(--accent);}
-
-    .settings-item .menu-label{opacity:0;}
-    .settings-item:hover .material-symbols-outlined,
-    .settings-item:hover .menu-label{ opacity:1; color:var(--accent); }
-
-    @media (max-width:520px){
-      #settingsBtn{display:none !important;}
+    /* Kilépés: fehér ikon + fehér felirat */
+    .logout-item .material-symbols-outlined,
+    .logout-item .menu-label{
+      color:var(--text);
+      opacity:1;
     }
 
+    .nav-item:hover .material-symbols-outlined,
+    .nav-item:hover .menu-label{color:var(--accent);}
+
+    .settings-item .menu-label{display:none !important;}
+
+    /* ---------- MAIN ---------- */
+    .wrap{max-width:900px; margin:0 auto; padding:0px;}
+    .card{background:var(--panel); border:0; border-radius:16px; padding:6px;}
     .hidden{display:none !important;}
 
-    .wrap{max-width:900px; margin:0 auto; padding:0 12px 18px;}
-    .card{background:var(--panel); border:0; border-radius:16px; padding:10px;}
-
-    .toolbar{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-      padding:6px 4px 10px;
+    .pager{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:0px 0px 20px;
     }
-    .titleRow{display:flex; flex-direction:column; gap:2px; min-width:0;}
-    .title{font-size:16px; font-weight:900; margin:0;}
-    .sub{font-size:13px; color:var(--muted); font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80vw;}
-
-    .btn{
-      border:0;
-      border-radius:12px;
-      padding:10px 12px;
-      font-size:14px;
-      font-weight:900;
+    .arrow{
+      width:9%;
+      min-width:64px;
+      height:36px;
+      display:flex; align-items:center; justify-content:center;
+      background:#1ecb5b;
+      border-radius:0px;
       cursor:pointer;
-      background:var(--border);
-      color:var(--text);
-      transition:background .15s, transform .05s;
       user-select:none;
-      -webkit-tap-highlight-color:transparent;
+      font-size:32px;
+      transition:background 0.2s;
     }
-    .btn:hover{background:#52525b;}
-    html[data-theme="light"] .btn:hover{background:#e5e7eb;}
-    .btn:active{transform:scale(.98);}
-    .btn.primary{background:var(--accent); color:#111;}
-    .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
-    .btn.ghost{background:transparent; border:1px solid var(--border);}
+    .arrow:hover{background:#1ecb5b;}
+    .spacer{width:14%;}
+    .title{width:42%; text-align:center; font-size:1rem; font-weight:800;}
 
-    .monthNav{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end;
+    .dow{
+      height:1vh; min-height:20px;
+      display:grid; grid-template-columns:repeat(7,1fr); gap:8px;
+      align-items:center; margin-top:4px;
     }
-    .monthLabel{
-      font-weight:900; font-size:14px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:transparent;
-      color:var(--text);
-      min-width:160px;
+    .dow div{
       text-align:center;
+      font-size:16px;
+      font-weight:600;
     }
 
-    .gridWrap{overflow:visible;}
+    .gridWrap{height:60vh; min-height:360px; margin-top:8px;}
     .grid{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0;
-      table-layout:fixed;
+      height:100%;
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      grid-template-rows:repeat(6,1fr);
+      gap:3px;
     }
-    .grid th, .grid td{
-      padding:10px 10px;
-      border-bottom:1px solid rgba(255,255,255,.10);
+
+    .tile{
+      background:var(--work);
+      border-radius:0px;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      cursor:pointer;
+      position:relative;
+      border:0;
+      padding:0.2rem;
+      transition:transform 0.2s;
+    }
+    .tile:hover{transform:scale(1.05);}
+    .tile:active{transform:scale(0.95);}
+
+    .tile.rest{background:var(--rest); opacity:1;}
+    .tile.weekend{background:var(--weekend);}
+    .tile.holiday{background:var(--holiday);}
+    .tile.vac{background:var(--vac);}
+    .tile.sick{background:var(--sick);}
+    .tile.workSaturday{background:var(--work); border:0;}
+    .tile.todayFill{background:var(--accent) !important; color:#111;}
+
+    .tTop{
+      height:auto;
+      display:flex;
+      align-items:flex-start;
+      justify-content:flex-start;
+      padding:0;
+      margin-bottom:0.25rem;
+    }
+    .tDay{
+      font-size:1.2rem;
+      font-weight:900;
+      line-height:1;
       text-align:left;
-      vertical-align:middle;
-      border-right:1px solid rgba(255,255,255,.10);
+    }
+
+    .lines{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      padding:0;
+      gap:0;
+      justify-content:flex-start;
+    }
+    .line{
+      font-size:0.75rem;
+      line-height:1.2;
+      white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      white-space:nowrap;
-      max-width:0;
-    }
-    html[data-theme="light"] .grid th,
-    html[data-theme="light"] .grid td{
-      border-bottom:1px solid rgba(0,0,0,.08);
-      border-right:1px solid rgba(0,0,0,.08);
-    }
-    .grid th:last-child, .grid td:last-child{ border-right:0; }
-    .grid th{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:900;
-      letter-spacing:.02em;
-      position:sticky;
-      top:0;
-      z-index:50;
-      background:var(--panel);
-      box-shadow: 0 2px 0 rgba(255,255,255,.06);
-      white-space:normal;
-      overflow:visible;
-      text-overflow:clip;
-      line-height:1.15;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-      hyphens:auto;
-    }
-    html[data-theme="light"] .grid th{
-      box-shadow: 0 2px 0 rgba(0,0,0,.06);
-    }
-    .grid td{ font-size:13px; font-weight:800; }
-    .muted{ color:var(--muted); font-weight:800; }
-
-    .dayPill{
-      display:inline-flex; align-items:center; gap:6px;
-      padding:2px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:900;
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-    }
-    html[data-theme="light"] .dayPill{
-      border:1px solid rgba(0,0,0,.10);
-      background:rgba(0,0,0,.03);
-    }
-    .pillHoliday{ background:rgba(246,178,178,.18); border-color:rgba(246,178,178,.35); }
-    .pillVac{ background:rgba(185,217,255,.18); border-color:rgba(185,217,255,.35); }
-    .pillSick{ background:rgba(30,203,91,.18); border-color:rgba(30,203,91,.40); }
-
-    .formCard{
-      margin-top:12px;
-      background:var(--card);
-      border:1px solid var(--border);
-      border-radius:16px;
-      padding:12px;
+      font-weight:600;
     }
 
-    .row{
-      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-      margin-top:10px;
-    }
-    .row label{font-size:15px; font-weight:800; min-width:120px;}
-    .row .ctrl{flex:1; min-width:200px; display:flex; justify-content:flex-end;}
+    .tile .tDay{color:#000;}
+    .tile .line{color:#374151;}
 
-    select{
-      width:60%;
-      padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background:#ffffff;
-      color:#111;
-      font-size:14px;
-      outline:none;
-    }
-    select:disabled{
-      background:var(--inactive) !important;
-      color:#e5e7eb !important;
-      border-color:rgba(255,255,255,.14) !important;
-    }
+    .tile.weekend .tDay{color:#fff;}
+    .tile.weekend .line{color:#e5e7eb;}
 
-    textarea{
+    .tile.rest .tDay{color:#9ca3af;}
+    .tile.rest .line{color:#9ca3af;}
+
+    .tile.todayFill .tDay{color:#111;}
+    .tile.todayFill .line{color:#fff;}
+
+    /* beteg nap: sötétebb szöveg olvashatóság */
+    .tile.sick .tDay{color:#111;}
+    .tile.sick .line{color:#111;}
+
+    .line.red{color:var(--piros) !important;}
+    .line.black{color:#111 !important;}
+
+    .jumpWrap{padding:6px 0 0;}
+    .jumpBtn{
       width:100%;
-      padding:12px 12px;
-      border-radius:12px;
-      border:1px solid var(--border);
-      background:#fff;
+      border:0;
+      border-radius:6px;
+      height:44px;
+      background:var(--zold);
       color:#111;
-      font-size:14px;
-      outline:none;
-      min-height:90px;
-      resize:none;
-      margin-top:8px;
+      font-size:1rem;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
-
-    .chkRow{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px;
-      padding:12px;
-      border-radius:12px;
-      background:#fff;
-      color:#111;
-      border:1px solid var(--border);
-      margin-top:10px;
-    }
-    .chkRow .left{font-weight:900;}
-    .chkRow input[type="checkbox"]{
-      width:22px; height:22px; accent-color: var(--accent);
-    }
-
-    .saveWrap{
-      margin-top:12px;
-      display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;
-    }
+    .jumpBtn:active{opacity:.9;}
 
     .toast{
       position:fixed; left:12px; right:12px; bottom:12px;
       background:var(--accent); color:#111;
       padding:14px; border-radius:14px;
-      font-size:18px;
+      font-size:20px;
       z-index:99;
+    }
+
+    .modalBackdrop{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.55);
+      display:flex; align-items:center; justify-content:center;
+      padding:18px; z-index:50;
+    }
+    .modal{
+      width:min(900px,100%);
+      background:#52525b;
+      border-radius:20px;
+      padding:18px;
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:1px; flex-wrap:wrap;}
+    .row label{font-size:20px; font-weight:400; margin-right:10px;} /* min-width:140px;} */
+    .row .ctrl{flex:1; min-width:180px;}
+
+    /* select külön, textarea külön (✅ megjegyzés full szélesség) */
+    select{
+      width:30%;
+      padding:4px 4px;
+      border-radius:0px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#ffffff;
+      color:#111;
+      font-size:0.7rem;
+      outline:none;
+    }
+    textarea{
+      width:100%;
+      padding:4px 4px;
+      border-radius:0px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#ffffff;
+      color:#111;
+      font-size:0.7rem;
+      outline:none;
+    }
+
+    select:disabled, textarea:disabled{
+      background:var(--inactive) !important;
+      color:#e5e7eb !important;
+      border-color:rgba(255,255,255,.14) !important;
+    }
+    .labelDisabled{ color:var(--inactiveLbl) !important; }
+
+    /* ✅ max 2 sor magas megjegyzés */
+    #noteTxt{
+      line-height:1.2;
+      min-height:2.6em;
+      max-height:2.6em;
+      resize:none;
+      overflow:auto;
+    }
+
+    .gap10{height:10px;}
+    .gap20{height:20px;}
+    .gap30{height:30px;}
+    .gap40{height:40px;}
+    .gap50{height:50px;}
+
+    .btnRow{display:flex; gap:12px; margin-top:12px;}
+    .btn{
+      border:0; border-radius:6px;
+      padding:0px 0px;
+      font-size:1rem;
+      cursor:pointer;
+      flex:1;
+      height:34px;
+    }
+    .btn.danger{background:#c9cbd1; color:#111; font-weight:900;}
+    .btn.mentes{background:#1ecb5b; color:#111; font-weight:900;}
+    .btn:disabled{opacity:.55; cursor:not-allowed;}
+
+    .errBig{font-size:22px; color:#ff3b30; margin-top:10px; font-weight:900;}
+    .invalid select{background:#ffd1d1 !important; border:3px solid #ff3b30 !important;}
+
+    .noVac{
+      font-size:12px;
+      color:var(--piros);
+      font-weight:800;
+    }
+
+    .noSick{
+      font-size:12px;
+      color:var(--piros);
+      font-weight:800;
+    }
+
+    /* ✅ QUICK BUTTONS (dátum alatt, Érkezés előtt) */
+    .qpRow{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-start;
+      gap:8px;
+
+      /* könnyen állítható */
+      margin: 0 0 10px 0;
+      padding: 0;
+    }
+    .qpBtn{
+      background: var(--zold);
+      color:#111;
+      border:0;
+      border-radius:6px;
+      cursor:pointer;
       font-weight:900;
+      font-size:1rem;
+      line-height:1;
+
+      /* könnyen állítható */
+      padding: 6px 10px;
+      margin: 0;
+
+      -webkit-tap-highlight-color:transparent;
+    }
+    .qpBtn:active{opacity:.9;}
+    .qpBtn:disabled{opacity:.55; cursor:not-allowed;}
+
+    @media (max-width:520px){
+      .title{font-size:1rem;}
+      .dow div{font-size:14px;}
+      .modalHeader{font-size:1.2rem;}
+      .row label{font-size:1rem;}
+      select, textarea{font-size:0.7rem;}
+      .btn{font-size:1rem;}
+      .tDay{font-size:1rem;}
+      .line{font-size:0.625rem;}
+      .nav-item{width:42px;}
+      .user-name{max-width:64vw;}
+
+      select{width:30%;}
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
 <body>
   <header class="header">
     <div class="user-block">
-      <div id="userName" class="user-name"></div>
+      <div class="user-meta">
+        <div id="userName" class="user-name"></div>
+      </div>
+
       <button id="logoutBtn" class="nav-item logout-item" type="button" aria-label="Kilépés">
         <span class="material-symbols-outlined">logout</span>
         <span class="menu-label">Kilépés</span>
@@ -322,12 +459,7 @@
     </div>
 
     <nav class="nav-container">
-      <button id="calendarBtn" class="nav-item rec-item hidden" type="button" aria-label="Rögzítés">
-        <span class="material-symbols-outlined">edit_calendar</span>
-        <span class="menu-label">Rögzítés</span>
-      </button>
-
-      <button id="sumBtn" class="nav-item sum-item" type="button" aria-label="Összesítő">
+      <button id="sumBtn" class="nav-item" type="button" aria-label="Összesítő">
         <span class="material-symbols-outlined">overview</span>
         <span class="menu-label">Összesítő</span>
       </button>
@@ -341,57 +473,88 @@
 
   <main class="wrap">
     <section class="card">
-      <div class="toolbar">
-        <div class="titleRow" style="min-width:0;">
-          <h1 id="monthTitle" class="title">Betöltés…</h1>
-          <div id="monthSub" class="sub">—</div>
-        </div>
+      <div class="pager">
+        <div id="prevBtn" class="arrow">‹</div>
+        <div class="spacer"></div>
+        <div id="monthTitle" class="title">2026 Április</div>
+        <div class="spacer"></div>
+        <div id="nextBtn" class="arrow">›</div>
+      </div>
 
-        <div class="monthNav">
-          <button id="prevBtn" class="btn small" type="button">◀</button>
-          <div id="monthLabel" class="monthLabel">—</div>
-          <button id="nextBtn" class="btn small" type="button">▶</button>
-        </div>
+      <div class="dow">
+        <div>H</div><div>K</div><div>SZ</div><div>CS</div><div>P</div><div>SZO</div><div>V</div>
       </div>
 
       <div class="gridWrap">
         <div id="grid" class="grid"></div>
       </div>
-
-      <div class="formCard">
-        <div class="row">
-          <label for="arrSel">Érkezés</label>
-          <div class="ctrl"><select id="arrSel"></select></div>
-        </div>
-
-        <div class="row">
-          <label for="depSel">Távozás</label>
-          <div class="ctrl"><select id="depSel"></select></div>
-        </div>
-
-        <div class="row">
-          <label for="flexSel">Csúsztatás</label>
-          <div class="ctrl"><select id="flexSel"></select></div>
-        </div>
-
-        <div class="chkRow">
-          <div class="left">Szabadság</div>
-          <input id="vacChk" type="checkbox" />
-        </div>
-
-        <div class="chkRow">
-          <div class="left">Betegállomány</div>
-          <input id="sickChk" type="checkbox" />
-        </div>
-
-        <textarea id="noteTxt" placeholder="Megjegyzés (opcionális)"></textarea>
-
-        <div class="saveWrap">
-          <button id="saveBtn" class="btn primary" type="button">Mentés</button>
-        </div>
+      <div class="jumpWrap">
+        <button id="jumpTodayBtn" class="jumpBtn hidden" type="button">Ugrás a mai napra</button>
       </div>
     </section>
   </main>
+
+  <div id="modalBackdrop" class="modalBackdrop hidden">
+    <div class="modal">
+      <div id="editDate" class="modalHeader">2026.04.16</div>
+
+      <!-- ✅ gyorsgombok: dátum alatt, Érkezés előtt, egy sorban -->
+      <div id="quickPairsRow" class="qpRow hidden"></div>
+
+      <div class="row" style="margin-top:10px;">
+        <label id="arrLbl">Érkezés</label>
+        <div class="ctrl"><select id="arrSel"></select></div>
+      </div>
+
+      <div class="gap10"></div>
+
+      <div class="row">
+        <label id="depLbl">Távozás</label>
+        <div class="ctrl"><select id="depSel"></select></div>
+      </div>
+
+      <div class="gap30"></div>
+
+      <div class="row">
+        <label id="flexLbl">Csúsztatás</label>
+        <div class="ctrl"><select id="flexSel"></select></div>
+      </div>
+
+      <div class="gap20"></div>
+
+      <div class="row">
+        <label id="vacLbl">Szabi ezen a napon</label>
+        <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
+          <input id="vacChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
+          <span id="noVacMsg" class="noVac hidden">Nincs már kiírható szabid.</span>
+        </div>
+      </div>
+
+      <div class="gap10"></div>
+
+      <div class="row">
+        <label id="sickLbl">Betegállomány</label>
+        <div class="ctrl" style="display:flex; align-items:center; justify-content:flex-start; gap:12px;">
+          <input id="sickChk" type="checkbox" style="width:28px; height:28px; cursor:pointer;" />
+          <span id="noSickMsg" class="noSick hidden">Hétvégén / ünnepnapon nem jelölhető.</span>
+        </div>
+      </div>
+
+      <div class="gap20"></div>
+
+      <div class="row">
+        <label id="noteLbl">Megjegyzés</label>
+        <div class="ctrl"><textarea id="noteTxt" placeholder="pl. csúsztatás oka, rendezvény neve, stb."></textarea></div>
+      </div>
+
+      <div id="editErr" class="errBig hidden"></div>
+
+      <div class="btnRow">
+        <button id="delBtn" class="btn danger" type="button">Törlés</button>
+        <button id="saveBtn" class="btn mentes" type="button">Vissza</button>
+      </div>
+    </div>
+  </div>
 
   <script>
   (() => {
@@ -404,24 +567,33 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // ✅ TESZT "mai nap" - marad 2026-04-16
+    // DEV_TODAY: ha null/'' => valódi mai nap
     const DEV_TODAY = '2026-04-16';
-    const YEAR = 2026;
 
     let supabase = null;
     let profile = null;
-    let isMgr = false;
     let currentUserId = null;
 
-    // selected month
-    let month = 4; // default
-    // selected day in month grid (iso)
-    let selectedIso = null;
+    // quick_pairs (max 3) – DB tábla: user_quick_pairs, fallback localStorage
+    let quickPairs = []; // [{arrival:'08:00', departure:'16:00', id?}]
 
-    // computed for status / checks
-    let expectedTotalToToday = 0;
-    let fulfilledTotalToToday = 0;
-    let vacTakenToToday = 0;
+    let curYear = 2026;
+    let curMonth = 4;
+
+    let monthRows = [];
+    let entriesByDate = new Map();
+
+    let editingDate = null;
+    let editingCalRow = null;
+
+    let yearCalMap = new Map();
+    let yearEntryMap = new Map();
+    let yearVacUsed = 0;
+    let vacTotalEntitlement = 0;
+
+    let initialEditState = null;
+    let formDirty = false;
+    let formInvalid = false;
 
     function getTodayISO(){
       if(DEV_TODAY) return DEV_TODAY;
@@ -436,17 +608,54 @@
       return String(d).slice(0,10);
     }
 
+
+
+
+
+
+function applyTheme(theme){
+  const t = (theme === 'light') ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+
+  // (opcionális) meta theme-color frissítés
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta){
+    meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+  }
+}
+
+function nextTheme(theme){
+  return (theme === 'light') ? 'dark' : 'light';
+}
+
+function setThemeButtonLabel(btn, theme){
+  btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
+}
+
+
+
+
+
+
+
+
+
+    
+    function huMonthName(m){
+      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
+      return names[m-1] || '';
+    }
+
     function isWeekendISO(iso){
       const d = new Date(iso+'T12:00:00');
       const wd = d.getDay();
       return wd===0 || wd===6;
     }
 
-    function pad2(n){ return String(n).padStart(2,'0'); }
-
-    function huMonthName(m){
-      const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
-      return names[m-1] || '';
+    function getMonthNav(y,m,dir){
+      const d = new Date(Number(y), Number(m)-1, 15, 12, 0, 0);
+      d.setMonth(d.getMonth()+dir);
+      return { y:d.getFullYear(), m:d.getMonth()+1 };
     }
 
     function hhmmToMins(hhmm){
@@ -457,27 +666,17 @@
     }
 
     function minsToHHMM(mins){
-      const m = Math.abs(Math.trunc(Number(mins)||0));
+      const m = Math.max(0, Number(mins)||0);
       const h = Math.floor(m/60);
       const mm = m%60;
       return `${String(h).padStart(1,'0')}:${String(mm).padStart(2,'0')}`;
     }
 
-    function noStoreFetch(input, init){
-      const o = init ? { ...init } : {};
-      o.cache = 'no-store';
-      return fetch(input, o);
-    }
-
-    // ✅ Theme helper (profilból)
-    function applyTheme(theme){
-      const t = (theme === 'light') ? 'light' : 'dark';
-      document.documentElement.dataset.theme = t;
-
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if(meta){
-        meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
-      }
+    function minsToHColonMM(mins){
+      const abs = Math.abs(Math.round(Number(mins||0)));
+      const h = Math.floor(abs/60);
+      const mm = abs%60;
+      return `${h}:${String(mm).padStart(2,'0')}`;
     }
 
     async function ensureSupabase(){
@@ -498,13 +697,11 @@
 
       supabase = window.supabase.createClient(url, key, {
         auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-        db:{ schema:'app' },
-        global:{ fetch: noStoreFetch }
+        db:{ schema:'app' }
       });
       return supabase;
     }
 
-    // ✅ app.html-es wheel logika (gap blank)
     function buildTimeOptionsWithGap(selectEl, step=15, max=24*60, blankAfterHHMM=null){
       selectEl.innerHTML = '';
       let gapIndex = -1;
@@ -540,6 +737,37 @@
       selectEl.selectedIndex = gapIndex;
     }
 
+    function buildFlexMinutesOptionsWithGap(selectEl, step=15, max=8*60, blankAfterMinutes=null){
+      selectEl.innerHTML = '';
+      let gapIndex = -1;
+
+      for(let t=0; t<=max; t+=step){
+        const opt = document.createElement('option');
+        opt.value = String(t);
+        opt.textContent = minsToHHMM(t);
+        selectEl.appendChild(opt);
+
+        if(blankAfterMinutes != null && t === blankAfterMinutes){
+          const optGapBlank = document.createElement('option');
+          optGapBlank.value = '';
+          optGapBlank.textContent = '';
+          selectEl.appendChild(optGapBlank);
+          gapIndex = selectEl.options.length - 1;
+        }
+      }
+
+      if(gapIndex < 0){
+        const optBlank = document.createElement('option');
+        optBlank.value = '';
+        optBlank.textContent = '';
+        selectEl.insertBefore(optBlank, selectEl.firstChild);
+        gapIndex = 0;
+      }
+
+      selectEl.dataset.gapBlankIndex = String(gapIndex);
+      selectEl.selectedIndex = gapIndex;
+    }
+
     function setSelectToGapBlank(selectEl){
       const idx = Number(selectEl.dataset.gapBlankIndex || 0);
       if(Number.isFinite(idx) && selectEl.options && selectEl.options[idx]){
@@ -549,314 +777,358 @@
       }
     }
 
-    function buildFlexOptions(selectEl){
-      selectEl.innerHTML = '';
-      const optBlank = document.createElement('option');
-      optBlank.value = '';
-      optBlank.textContent = '';
-      selectEl.appendChild(optBlank);
+    // ===== quick pairs: load (db + local fallback) =====
+    function localKey(){
+      return `kultora_quickpairs_${currentUserId || 'anon'}`;
+    }
 
-      // 0..240 perc 15-ösével
-      for(let m=0; m<=240; m+=15){
-        const opt = document.createElement('option');
-        opt.value = String(m);
-        opt.textContent = (m===0) ? '0 perc' : `${m} perc`;
-        selectEl.appendChild(opt);
+    function loadQuickPairsFromLocal(){
+      try{
+        const raw = localStorage.getItem(localKey());
+        const arr = raw ? JSON.parse(raw) : [];
+        return Array.isArray(arr) ? arr : [];
+      }catch(_){
+        return [];
       }
-      selectEl.value = '';
     }
 
-    function getQueryMonth(){
-      const u = new URL(location.href);
-      const qm = Number(u.searchParams.get('m') || '');
-      if(qm>=1 && qm<=12) return qm;
-      return null;
+    function saveQuickPairsToLocal(){
+      try{
+        localStorage.setItem(localKey(), JSON.stringify(quickPairs.slice(0,3).map(p=>({arrival:p.arrival, departure:p.departure}))));
+      }catch(_){}
     }
 
-    function setQueryMonth(m){
-      const u = new URL(location.href);
-      u.searchParams.set('y', String(YEAR));
-      u.searchParams.set('m', String(m));
-      u.searchParams.set('v', String(Date.now()));
-      history.replaceState(null, '', u.toString());
+    async function loadQuickPairs(){
+      // local azonnal
+      quickPairs = loadQuickPairsFromLocal()
+        .map(p => ({ arrival:String(p?.arrival||'').slice(0,5), departure:String(p?.departure||'').slice(0,5) }))
+        .filter(p => p.arrival && p.departure)
+        .slice(0,3);
+
+      if(!currentUserId) return;
+
+      try{
+        const { data, error } = await supabase
+          .from('user_quick_pairs')
+          .select('id,arrival,departure,created_at')
+          .eq('user_id', currentUserId)
+          .order('created_at', { ascending:true });
+
+        if(error) throw error;
+
+        const fromDb = (data||[])
+          .map(r => ({ arrival:String(r.arrival||'').slice(0,5), departure:String(r.departure||'').slice(0,5), id:r.id }))
+          .filter(p => p.arrival && p.departure)
+          .slice(0,3);
+
+        if(fromDb.length){
+          quickPairs = fromDb.map(p => ({ arrival:p.arrival, departure:p.departure, id:p.id }));
+          saveQuickPairsToLocal();
+        }
+      }catch(_e){
+        // marad a local
+      }
     }
 
-    function roleIsMgr(r){
-      const role = String(r||'user');
-      return (role === 'admin' || role === 'manager');
-    }
+    // ===== ✅ quick buttons render (no title, no colored container) =====
+    function renderQuickPairsRow(){
+      const row = $('quickPairsRow');
+      row.innerHTML = '';
 
-    async function loadProfile(){
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
-      currentUserId = uid;
-      if(!uid) return null;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id,display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes,theme')
-        .eq('user_id', uid)
-        .maybeSingle();
-      if(error) throw error;
-
-      profile = data || {
-        user_id: uid,
-        display_name: u.user.email,
-        email: u.user.email,
-        role:'user',
-        daily_expected_minutes:480,
-        vacation_entitlement_days:0,
-        vacation_carryover_days:0,
-        flex_carryover_minutes:0,
-        flex_bonus_minutes:0,
-        theme: null
-      };
-
-      // ✅ Theme alkalmazása (profilból)
-      applyTheme(profile?.theme || 'dark');
-
-      $('userName').textContent = profile.display_name || profile.email || '';
-
-      isMgr = roleIsMgr(profile.role);
-      if(isMgr){
-        $('settingsBtn').classList.remove('hidden');
-      }else{
-        $('settingsBtn').classList.add('hidden');
+      if(!quickPairs.length){
+        row.classList.add('hidden');
+        return;
       }
 
-      return profile;
-    }
-
-    function calcWorkedHoursFromArrivalDeparture(arrival, departure, flexMinutes){
-      const a = hhmmToMins(arrival);
-      const b = hhmmToMins(departure);
-      if(a == null || b == null) return '';
-      if(b < a) return '';
-      let worked = (b - a) - Math.max(0, Number(flexMinutes||0));
-      worked = Math.max(0, worked);
-      return minsToHHMM(worked);
-    }
-
-    function dayPillsFromDay(cal, entry){
-      const pills = [];
-      if(cal && !cal.is_workday && cal.holiday_name){
-        pills.push(`<span class="dayPill pillHoliday">${escapeHtml(cal.holiday_name)}</span>`);
-      }else if(cal && !!cal.special_workday){
-        pills.push(`<span class="dayPill">Szombati munkanap</span>`);
-      }else if(cal && !cal.is_workday){
-        pills.push(`<span class="dayPill">Pihenőnap</span>`);
-      }else if(cal && isWeekendISO(cal.date)){
-        pills.push(`<span class="dayPill">Hétvége</span>`);
-      }
-
-      if(entry?.is_vacation){
-        pills.push(`<span class="dayPill pillVac">Szabadság</span>`);
-      }
-      if(entry?.is_sick){
-        pills.push(`<span class="dayPill pillSick">Betegállomány</span>`);
-      }
-      return pills.join(' ');
-    }
-
-    function escapeHtml(s){
-      return String(s||'')
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#039;");
-    }
-
-    function renderHeader(){
-      $('monthTitle').textContent = `${YEAR}. ${huMonthName(month)}`;
-      $('monthLabel').textContent = `${huMonthName(month)} ${YEAR}`;
-      $('monthSub').textContent = `Válassz napot, majd rögzíts. (Teszt dátum: ${getTodayISO().replaceAll('-','.')})`;
-    }
-
-    function daysInMonth(y,m){
-      return new Date(y, m, 0, 12,0,0).getDate();
-    }
-
-    function isoOf(y,m,day){
-      return `${y}-${pad2(m)}-${pad2(day)}`;
-    }
-
-    function weekdayMonFirst(iso){
-      const d = new Date(iso+'T12:00:00');
-      let wd = d.getDay();
-      if(wd===0) wd=7;
-      return wd; // 1..7 (Mon..Sun)
-    }
-
-    async function loadMonthData(){
-      const start = `${YEAR}-${pad2(month)}-01`;
-      const end = (month===12) ? `${YEAR+1}-01-01` : `${YEAR}-${pad2(month+1)}-01`;
-
-      const { data: days, error: e1 } = await supabase
-        .from('calendar_days')
-        .select('date,is_workday,holiday_name,special_workday,year')
-        .eq('year', YEAR)
-        .gte('date', start)
-        .lt('date', end)
-        .order('date', { ascending:true });
-      if(e1) throw e1;
-
-      const calMap = new Map();
-      (days||[]).forEach(r=>{
-        const iso = normalizeIsoDate(r.date);
-        calMap.set(iso, { ...r, date: iso });
-      });
-
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
-
-      const { data: ents, error: e2 } = await supabase
-        .from('entries')
-        .select('date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
-        .eq('user_id', uid)
-        .gte('date', start)
-        .lt('date', end);
-      if(e2) throw e2;
-
-      const entMap = new Map();
-      (ents||[]).forEach(r=>{
-        const iso = normalizeIsoDate(r.date);
-        entMap.set(iso, { ...r, date: iso });
-      });
-
-      return { calMap, entMap };
-    }
-
-    function renderMonthGrid(calMap, entMap){
-      const host = $('grid');
-      const dim = daysInMonth(YEAR, month);
-
-      const firstIso = isoOf(YEAR, month, 1);
-      const offset = weekdayMonFirst(firstIso) - 1; // 0..6
-
-      let html = '';
-      html += `<table class="grid"><thead><tr>`;
-      html += `<th style="width:16%">Dátum</th>`;
-      html += `<th style="width:18%">Érkezés</th>`;
-      html += `<th style="width:18%">Távozás</th>`;
-      html += `<th style="width:18%">Ledolgozott</th>`;
-      html += `<th style="width:14%">Csúsztatás</th>`;
-      html += `<th style="width:16%">Státusz</th>`;
-      html += `</tr></thead><tbody>`;
-
-      for(let i=0;i<offset;i++){
-        html += `<tr><td class="muted" colspan="6">—</td></tr>`;
-      }
-
-      for(let d=1; d<=dim; d++){
-        const iso = isoOf(YEAR, month, d);
-        const cal = calMap.get(iso);
-        const entry = entMap.get(iso);
-
-        const arrival = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
-        const departure = entry?.departure ? String(entry.departure).slice(0,5) : '';
-        const flexM = entry ? Number(entry.flex_minutes||0) : 0;
-        const flexTxt = (entry && flexM>0) ? `${flexM} perc` : '';
-
-        const worked = calcWorkedHoursFromArrivalDeparture(arrival, departure, flexM);
-        const status = dayPillsFromDay(cal, entry);
-
-        const isSelected = (iso === selectedIso);
-        html += `
-          <tr data-iso="${escapeHtml(iso)}" style="${isSelected ? 'outline:2px solid var(--accent); outline-offset:-2px;' : ''}">
-            <td>${escapeHtml(iso.replaceAll('-','.'))}</td>
-            <td>${escapeHtml(arrival)}</td>
-            <td>${escapeHtml(departure)}</td>
-            <td>${escapeHtml(worked)}</td>
-            <td>${escapeHtml(flexTxt)}</td>
-            <td>${status || '<span class="muted">—</span>'}</td>
-          </tr>
-        `;
-      }
-
-      html += `</tbody></table>`;
-      host.innerHTML = html;
-
-      host.querySelectorAll('tr[data-iso]').forEach(tr=>{
-        tr.addEventListener('click', ()=>{
-          const iso = tr.getAttribute('data-iso');
-          if(!iso) return;
-          selectedIso = iso;
-          setFormFromEntry(entMap.get(iso));
-          renderMonthGrid(calMap, entMap);
+      quickPairs.slice(0,3).forEach((p, idx)=>{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'qpBtn';
+        btn.textContent = `${p.arrival}–${p.departure}`;
+        btn.addEventListener('click', async ()=>{
+          await applyQuickPairAndSave(idx);
         });
+        row.appendChild(btn);
+      });
+
+      row.classList.remove('hidden');
+      updateQuickButtonsEnabledState();
+    }
+
+    function updateQuickButtonsEnabledState(){
+      const row = $('quickPairsRow');
+      const disabled =
+        !editingDate ||
+        !!$('sickChk').checked ||
+        !!$('arrSel').disabled ||
+        !!$('depSel').disabled;
+
+      Array.from(row.querySelectorAll('button')).forEach(b=>{
+        b.disabled = disabled;
       });
     }
 
-    function setFormFromEntry(entry){
-      if(entry){
-        const arr = entry.arrival ? String(entry.arrival).slice(0,5) : '';
-        const dep = entry.departure ? String(entry.departure).slice(0,5) : '';
-        const flex = (Number(entry.flex_minutes||0) > 0) ? String(Number(entry.flex_minutes||0)) : '';
+    async function applyQuickPairAndSave(idx){
+      const iso = editingDate;
+      if(!iso) return;
 
-        $('arrSel').value = arr || '';
-        $('depSel').value = dep || '';
-        $('flexSel').value = flex || '';
-        $('vacChk').checked = !!entry.is_vacation;
-        $('sickChk').checked = !!entry.is_sick;
-        $('noteTxt').value = entry.note || '';
-      }else{
-        setSelectToGapBlank($('arrSel'));
-        setSelectToGapBlank($('depSel'));
-        $('flexSel').value = '';
-        $('vacChk').checked = false;
+      const p = quickPairs[idx];
+      if(!p) return;
+
+      if($('sickChk').checked){
         $('sickChk').checked = false;
-        $('noteTxt').value = '';
+      }
+
+      const a = String(p.arrival||'').slice(0,5);
+      const d = String(p.departure||'').slice(0,5);
+
+      const hasA = Array.from($('arrSel').options).some(o=>o.value===a);
+      const hasD = Array.from($('depSel').options).some(o=>o.value===d);
+
+      if(!hasA || !hasD){
+        toast('Gyorsgomb időpontja nem választható.');
+        return;
+      }
+
+      $('arrSel').value = a;
+      $('depSel').value = d;
+      setSelectToGapBlank($('flexSel'));
+
+      onFormChanged();
+      if(!validateEditForm()) return;
+
+      try{
+        await saveCurrentEdit();
+
+        // ✅ zárás és vissza a naptárra
+        closeEdit();
+        await loadMonth();
+
+        toast('Mentve.');
+      }catch(e){
+        toast('Mentés hiba: ' + (e?.message||String(e)));
       }
     }
 
-    async function computeYearToTodayStats(){
+    function tileClass(row){
+      const iso = row.date;
+      const isHol = (!row.is_workday && !!row.holiday_name);
+      if(isHol) return 'tile holiday';
+      if(!!row.special_workday) return 'tile workSaturday';
+      if(isWeekendISO(iso)) return 'tile weekend';
+      if(!row.is_workday) return 'tile rest';
+      return 'tile';
+    }
+
+    function updateJumpButton(){
       const today = getTodayISO();
-      const start = `${YEAR}-01-01`;
-      const end = `${YEAR+1}-01-01`;
+      const ty = Number(today.slice(0,4));
+      const tm = Number(today.slice(5,7));
+      const show = !(curYear === ty && curMonth === tm);
+      $('jumpTodayBtn').classList.toggle('hidden', !show);
+    }
 
-      const { data: days, error: e1 } = await supabase
-        .from('calendar_days')
-        .select('date,is_workday,holiday_name,special_workday,year')
-        .eq('year', YEAR)
-        .order('date', { ascending:true });
-      if(e1) throw e1;
+    function isWorkdayForVacation(iso){
+      const cal = yearCalMap.get(iso);
+      if(!cal) return false;
+      const isSpecial = !!cal.special_workday;
+      const isNonWork = (!cal.is_workday && !isSpecial);
+      if(isNonWork) return false;
+      if(!cal.is_workday) return false;
+      return true;
+    }
 
-      const calRows = (days||[]).map(r=>({ ...r, date: normalizeIsoDate(r.date) }))
-        .sort((a,b)=>a.date.localeCompare(b.date));
+    function isSickAllowedOnDay(iso){
+      const cal = yearCalMap.get(iso);
+      if(!cal) return false;
 
-      const { data: u } = await supabase.auth.getUser();
-      const uid = u?.user?.id;
+      const isSpecial = !!cal.special_workday;
+      const isNonWork = (!cal.is_workday && !isSpecial);
+      if(isNonWork) return false;
 
-      const { data: ents, error: e2 } = await supabase
-        .from('entries')
-        .select('date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
-        .eq('user_id', uid)
-        .gte('date', start)
-        .lt('date', end);
-      if(e2) throw e2;
+      if(!!cal.holiday_name) return false;
 
-      const eMap = new Map();
-      (ents||[]).forEach(r=>{
-        const iso = normalizeIsoDate(r.date);
-        eMap.set(iso, { ...r, date: iso });
-      });
+      return true;
+    }
 
-      const expPerDay = Number(profile?.daily_expected_minutes || 480);
-      expectedTotalToToday = 0;
-      fulfilledTotalToToday = 0;
-      vacTakenToToday = 0;
+    function renderGrid(){
+      const grid = $('grid');
+      grid.innerHTML = '';
+
+      const firstIso = monthRows[0]?.date;
+      if(!firstIso) return;
+
+      const todayIso = getTodayISO();
+
+      const firstDate = new Date(firstIso+'T12:00:00');
+      let wd = firstDate.getDay();
+      wd = wd===0 ? 7 : wd;
+      const offset = wd-1;
+
+      for(let i=0;i<42;i++){
+        if(i<offset || (i-offset)>=monthRows.length){
+          const empty = document.createElement('div');
+          empty.className = 'tile rest';
+          empty.style.opacity = '.15';
+          grid.appendChild(empty);
+          continue;
+        }
+
+        const row = monthRows[i-offset];
+        const iso = row.date;
+
+        const tile = document.createElement('div');
+        tile.className = tileClass(row);
+
+        if(iso===todayIso) tile.classList.add('todayFill');
+
+        const top = document.createElement('div');
+        top.className = 'tTop';
+        const dn = document.createElement('div');
+        dn.className = 'tDay';
+        dn.textContent = String(Number(iso.slice(8,10)));
+        top.appendChild(dn);
+
+        const lines = document.createElement('div');
+        lines.className = 'lines';
+
+        const l1 = document.createElement('div'); l1.className='line';
+        const l2 = document.createElement('div'); l2.className='line';
+        const l3 = document.createElement('div'); l3.className='line';
+
+        const entry = entriesByDate.get(iso);
+
+        const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
+        const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
+        const flexMin = Number(entry?.flex_minutes || 0);
+        const isVac = !!entry?.is_vacation;
+        const isSick = !!entry?.is_sick;
+
+        if(isVac){
+          tile.classList.remove('holiday','weekend','rest','workSaturday','sick');
+          tile.classList.add('vac');
+        }
+
+        if(isSick){
+          tile.classList.remove('holiday','weekend','rest','workSaturday','vac');
+          tile.classList.add('sick');
+        }
+
+        if(arr) l1.textContent = arr;
+        if(dep) l2.textContent = dep;
+
+        if(isSick){
+          l3.textContent = 'Beteg';
+          l3.classList.add('black');
+        }else if(flexMin > 0){
+          l3.textContent = minsToHHMM(flexMin);
+          if(iso === todayIso){
+            l3.classList.add('black');
+          }else{
+            l3.classList.add('red');
+          }
+        }else if(isVac){
+          l3.textContent = 'Szabi';
+          l3.classList.add('black');
+        }else if(row.holiday_name && !entry){
+          l3.textContent = row.holiday_name;
+          l3.classList.add('black');
+        }else{
+          l3.textContent = '';
+        }
+
+        lines.appendChild(l1); lines.appendChild(l2); lines.appendChild(l3);
+        tile.appendChild(top);
+        tile.appendChild(lines);
+
+        tile.addEventListener('click', ()=>openEdit(iso, row));
+        grid.appendChild(tile);
+      }
+    }
+
+    function calcVacationRemaining(){
+      const remain = (vacTotalEntitlement || 0) - (yearVacUsed || 0);
+      return remain;
+    }
+
+    // ✅ összesítő-féle vacTakenToToday (csak munkanapos szabi <= ma)
+    function calcVacationTakenToToday(){
+      const today = getTodayISO();
+      let taken = 0;
+
+      for(const [d, e] of yearEntryMap.entries()){
+        if(d > today) continue;
+        if(e?.is_vacation && isWorkdayForVacation(d)){
+          taken++;
+        }
+      }
+      return taken;
+    }
+
+    function applyVacationAvailability(entry){
+      const remaining = calcVacationRemaining();
+      const alreadyVac = !!entry?.is_vacation;
+      const shouldDisable = (!alreadyVac && remaining <= 0);
+
+      $('vacChk').disabled = shouldDisable;
+      $('noVacMsg').classList.toggle('hidden', !shouldDisable);
+      $('vacChk').style.cursor = shouldDisable ? 'not-allowed' : 'pointer';
+    }
+
+    function applySickAvailability(iso, entry){
+      const allowedByDay = isSickAllowedOnDay(iso);
+      const alreadySick = !!entry?.is_sick;
+
+      const shouldDisable = (!alreadySick && !allowedByDay);
+      $('sickChk').disabled = shouldDisable;
+      $('noSickMsg').classList.toggle('hidden', !(shouldDisable && !alreadySick));
+      $('sickChk').style.cursor = shouldDisable ? 'not-allowed' : 'pointer';
+    }
+
+    function setWorkControlsEnabled(enabled){
+      $('arrSel').disabled = !enabled;
+      $('depSel').disabled = !enabled;
+      $('flexSel').disabled = !enabled;
+
+      $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+      $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+    }
+
+    function calcBalanceMinToToday(){
+      const today = getTodayISO();
+
+      const expPerDay = Number(profile?.daily_expected_minutes ?? 480);
+      const carry = Number(profile?.flex_carryover_minutes || 0);
+      const bonus = Number(profile?.flex_bonus_minutes || 0);
+
+      let expectedTotal = 0;
+      let fulfilledTotal = 0;
+
+      const calRows = Array.from(yearCalMap.values()).sort((a,b)=>a.date.localeCompare(b.date));
 
       for(const cal of calRows){
         const iso = cal.date;
         if(iso > today) break;
 
-        const entry = eMap.get(iso);
-        const isWorkday = !!cal.is_workday;
         const isSpecial = !!cal.special_workday;
+        const isExpectedDay = !!cal.is_workday || isSpecial;
 
-        const expected = isWorkday ? expPerDay : 0;
-        expectedTotalToToday += expected;
+        const entry = yearEntryMap.get(iso);
+
+        if(iso === today){
+          const meaningful = !!(entry && (
+            (entry.arrival && entry.departure) ||
+            (Number(entry.flex_minutes||0) > 0) ||
+            !!entry.is_vacation ||
+            !!entry.is_sick ||
+            (!!entry.note && String(entry.note).trim().length > 0)
+          ));
+          if(!meaningful) continue;
+        }
+
+        const expected = isExpectedDay ? expPerDay : 0;
+        expectedTotal += expected;
 
         let fulfilled = 0;
 
@@ -864,18 +1136,14 @@
           const vac = !!entry.is_vacation;
           const sick = !!entry.is_sick;
 
-          if((vac || sick) && isWorkday){
+          if((vac || sick) && isExpectedDay){
             fulfilled += expected;
-          }
-
-          if(vac && isWorkday && iso <= today){
-            vacTakenToToday++;
           }
 
           let worked = 0;
           if(entry.arrival && entry.departure){
-            const inM = hhmmToMins(entry.arrival);
-            const outM = hhmmToMins(entry.departure);
+            const inM = hhmmToMins(String(entry.arrival).slice(0,5));
+            const outM = hhmmToMins(String(entry.departure).slice(0,5));
             if(inM != null && outM != null && outM >= inM){
               worked = outM - inM;
             }
@@ -883,43 +1151,42 @@
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
-          const isWeekendOrHolidayDouble = (!isWorkday && !isSpecial);
-          let mult = 1;
-          if(isWeekendOrHolidayDouble) mult = 2;
-          if(vac && worked > 0) mult = 2;
+          const isDouble = (!isExpectedDay) || (vac && worked > 0);
+          const mult = isDouble ? 2 : 1;
 
-          fulfilled += (worked * mult);
+          fulfilled += worked * mult;
         }
 
-        fulfilledTotalToToday += fulfilled;
+        fulfilledTotal += fulfilled;
       }
+
+      return (carry + bonus) + (fulfilledTotal - expectedTotal);
     }
 
     function updateStatusBar(){
-      // (A státusz sor opcionális; ha nincs a DOM-ban, nem csinálunk semmit)
       const vacEl = $('statVac');
       const balEl = $('statBal');
-      if(!vacEl && !balEl) return;
+      if(!vacEl || !balEl) return;
+      // ✅ statVac = összesítő-féle X (csak a mai napig kiírt szabik)
+      const vacTakenToToday = calcVacationTakenToToday();
+      const vacTotal = (vacTotalEntitlement || 0); // = vacEnt + vacCarry
+      const X = Math.max(0, vacTotal - vacTakenToToday);
+      vacEl.textContent = String(Math.round(X));
 
-      const E = Number(profile?.vacation_entitlement_days || 0) + Number(profile?.vacation_carryover_days || 0);
-      const X = Math.max(0, E - (vacTakenToToday || 0));
+      const balMin = calcBalanceMinToToday();
+      const dayBase = Number(profile?.daily_expected_minutes ?? 480) || 480;
+      const days = Math.round(Math.abs(balMin) / dayBase);
 
-      if(vacEl){
-        vacEl.textContent = String(Math.round(X));
-      }
+      const txt = (balMin === 0)
+        ? `0:00 (${days})`
+        : `${balMin > 0 ? '+' : '-'}${minsToHColonMM(balMin)} (${days})`;
 
-      if(!balEl) return;
+      const el = balEl;
+      el.textContent = txt;
 
-      const carry = Number(profile?.flex_carryover_minutes || 0);
-      const bonus = Number(profile?.flex_bonus_minutes || 0);
-      const balance = (carry + bonus) + (fulfilledTotalToToday - expectedTotalToToday);
-
-      const abs = Math.abs(Math.round(balance));
-      const hhmm = minsToHHMM(abs);
-
-      balEl.textContent = (balance >= 0) ? `+${hhmm}` : `-${hhmm}`;
-      balEl.classList.toggle('pos', balance >= 0);
-      balEl.classList.toggle('neg', balance < 0);
+      el.classList.remove('green','red');
+      if(balMin > 0) el.classList.add('green');
+      else if(balMin < 0) el.classList.add('red');
     }
 
     function getCurrentFormState(){
@@ -933,133 +1200,479 @@
       };
     }
 
-    function validateFormState(st){
-      // ha szabi vagy beteg: arrival/dep optional
-      if(st.vac || st.sick) return true;
+    function statesEqual(a,b){
+      return (
+        (a.arrival||'') === (b.arrival||'') &&
+        (a.departure||'') === (b.departure||'') &&
+        (a.flex||'') === (b.flex||'') &&
+        (!!a.vac) === (!!b.vac) &&
+        (!!a.sick) === (!!b.sick) &&
+        (a.note||'') === (b.note||'')
+      );
+    }
 
-      // ha bármelyik idő ki van választva, mindkettő kell és érkezés<=távozás
-      if(st.arrival || st.departure){
-        if(!st.arrival || !st.departure) return false;
-        const a = hhmmToMins(st.arrival);
-        const d = hhmmToMins(st.departure);
-        if(a == null || d == null) return false;
-        if(d < a) return false;
+    function updateSaveButton(){
+      if(!initialEditState){
+        formDirty = false;
+      }else{
+        formDirty = !statesEqual(initialEditState, getCurrentFormState());
       }
+
+      $('saveBtn').textContent = formDirty ? 'Mentés' : 'Vissza';
+      $('saveBtn').disabled = (formDirty && formInvalid);
+    }
+
+    function validateEditForm(){
+      if($('sickChk').checked){
+        $('editErr').classList.add('hidden');
+        formInvalid = false;
+        updateSaveButton();
+        return true;
+      }
+
+      const inV = $('arrSel').value;
+      const outV = $('depSel').value;
+
+      const inWrap = $('arrSel').parentElement;
+      const outWrap = $('depSel').parentElement;
+
+      if(inV && outV){
+        const inM = hhmmToMins(inV);
+        const outM = hhmmToMins(outV);
+        if(outM < inM){
+          $('editErr').textContent = 'Hiba: Távozás nem lehet korábbi, mint Érkezés!';
+          $('editErr').classList.remove('hidden');
+          inWrap.classList.add('invalid');
+          outWrap.classList.add('invalid');
+          formInvalid = true;
+          updateSaveButton();
+          return false;
+        }
+      }
+
+      $('editErr').classList.add('hidden');
+      inWrap.classList.remove('invalid');
+      outWrap.classList.remove('invalid');
+      formInvalid = false;
+      updateSaveButton();
       return true;
     }
 
-    async function saveSelectedDay(){
-      if(!selectedIso){
-        toast('Válassz napot a táblázatból');
-        return;
+    function openEdit(iso, calRow){
+      editingDate = iso;
+      editingCalRow = calRow;
+
+      const todayIso = getTodayISO();
+      const isFuture = iso > todayIso;
+
+      $('editDate').textContent = iso.replaceAll('-', '.');
+      $('editErr').classList.add('hidden');
+      formInvalid = false;
+
+      const entry = entriesByDate.get(iso) || {};
+
+      const arr = entry.arrival ? String(entry.arrival).slice(0,5) : '';
+      const dep = entry.departure ? String(entry.departure).slice(0,5) : '';
+      const flexMin = Number(entry.flex_minutes || 0);
+      const flexVal = flexMin > 0 ? String(flexMin) : '';
+
+      if(arr) $('arrSel').value = arr; else setSelectToGapBlank($('arrSel'));
+      if(dep) $('depSel').value = dep; else setSelectToGapBlank($('depSel'));
+      if(flexVal) $('flexSel').value = flexVal; else setSelectToGapBlank($('flexSel'));
+
+      $('vacChk').checked = !!entry.is_vacation;
+      $('sickChk').checked = !!entry.is_sick;
+      $('noteTxt').value = entry.note ? String(entry.note) : '';
+
+      const isSpecial = !!calRow.special_workday;
+      const isNonWork = (!calRow.is_workday && !isSpecial);
+      const isWeekend = isWeekendISO(iso);
+      const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
+
+      $('arrSel').disabled = isFuture;
+      $('depSel').disabled = isFuture;
+      $('flexSel').disabled = isFuture ? true : disFlexByDayType;
+
+      $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+      $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+
+      applyVacationAvailability(entry);
+      applySickAvailability(iso, entry);
+
+      if($('sickChk').checked){
+        setSelectToGapBlank($('arrSel'));
+        setSelectToGapBlank($('depSel'));
+        setSelectToGapBlank($('flexSel'));
+        setWorkControlsEnabled(false);
       }
 
-      const st = getCurrentFormState();
-      if(!validateFormState(st)){
-        toast('Hiba: az időpontok nem jók');
-        return;
+      // ✅ quick buttons kirajzolás
+      renderQuickPairsRow();
+
+      initialEditState = getCurrentFormState();
+      updateSaveButton();
+
+      $('modalBackdrop').classList.remove('hidden');
+      validateEditForm();
+      updateQuickButtonsEnabledState();
+    }
+
+    function closeEdit(){
+      $('modalBackdrop').classList.add('hidden');
+      editingDate = null;
+      editingCalRow = null;
+      initialEditState = null;
+      formDirty = false;
+      formInvalid = false;
+      $('noVacMsg').classList.add('hidden');
+      $('noSickMsg').classList.add('hidden');
+      $('quickPairsRow').classList.add('hidden');
+    }
+
+    function clearEditForm(){
+      setSelectToGapBlank($('arrSel'));
+      setSelectToGapBlank($('depSel'));
+      setSelectToGapBlank($('flexSel'));
+      $('vacChk').checked = false;
+      $('sickChk').checked = false;
+      $('noteTxt').value = '';
+
+      applyVacationAvailability({ is_vacation:false });
+      applySickAvailability(editingDate, { is_sick:false });
+
+      if(editingDate && editingCalRow){
+        const iso = editingDate;
+        const calRow = editingCalRow;
+
+        const todayIso = getTodayISO();
+        const isFuture = iso > todayIso;
+
+        const isSpecial = !!calRow.special_workday;
+        const isNonWork = (!calRow.is_workday && !isSpecial);
+        const isWeekend = isWeekendISO(iso);
+        const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
+
+        $('arrSel').disabled = isFuture;
+        $('depSel').disabled = isFuture;
+        $('flexSel').disabled = isFuture ? true : disFlexByDayType;
+
+        $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+        $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+        $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
       }
+
+      validateEditForm();
+      updateSaveButton();
+      updateQuickButtonsEnabledState();
+    }
+
+    function isPayloadEmpty(payload){
+      return (
+        !payload.arrival &&
+        !payload.departure &&
+        (payload.flex_minutes === 0) &&
+        !payload.is_vacation &&
+        !payload.is_sick &&
+        (!payload.note || payload.note.length === 0)
+      );
+    }
+
+    async function refreshYearCachesAfterSave(iso, newEntryOrNull){
+      if(newEntryOrNull){
+        yearEntryMap.set(iso, newEntryOrNull);
+      }else{
+        yearEntryMap.delete(iso);
+      }
+
+      yearVacUsed = 0;
+      for(const [d, e] of yearEntryMap.entries()){
+        if(e?.is_vacation && isWorkdayForVacation(d)){
+          yearVacUsed++;
+        }
+      }
+
+      updateStatusBar();
+    }
+
+    async function saveCurrentEdit(){
+      const iso = editingDate;
+      if(!iso) return;
+
+      const before = entriesByDate.get(iso) || null;
+      const beforeVac = !!before?.is_vacation;
+
+      const wantSick = !!$('sickChk').checked;
+      if(wantSick && !isSickAllowedOnDay(iso)){
+        throw new Error('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
+      }
+
+      const sickMode = wantSick;
 
       const payload = {
-        user_id: currentUserId,
-        date: selectedIso,
-        arrival: st.arrival || null,
-        departure: st.departure || null,
-        flex_minutes: st.flex ? Number(st.flex || 0) : 0,
-        is_vacation: st.vac,
-        is_sick: st.sick,
-        note: st.note || null
+        date: iso,
+        arrival: sickMode ? null : ($('arrSel').value || null),
+        departure: sickMode ? null : ($('depSel').value || null),
+        flex_minutes: sickMode ? 0 : ($('flexSel').value ? Number($('flexSel').value) : 0),
+        is_vacation: sickMode ? false : $('vacChk').checked,
+        is_sick: sickMode,
+        note: ($('noteTxt').value || '').trim()
       };
 
-      // ha minden üres és nincs státusz -> törlés
-      const nothing =
-        !payload.arrival && !payload.departure &&
-        !(Number(payload.flex_minutes||0) > 0) &&
-        !payload.is_vacation && !payload.is_sick &&
-        !payload.note;
-
-      try{
-        if(nothing){
-          const { error } = await supabase
-            .from('entries')
-            .delete()
-            .eq('user_id', currentUserId)
-            .eq('date', selectedIso);
-          if(error) throw error;
-          toast('Törölve');
-        }else{
-          const { error } = await supabase
-            .from('entries')
-            .upsert(payload, { onConflict:'user_id,date' });
-          if(error) throw error;
-          toast('Mentve');
+      if(payload.is_vacation && !beforeVac){
+        const remaining = calcVacationRemaining();
+        if(remaining <= 0){
+          throw new Error('Nincs már kiírható szabid.');
         }
+      }
 
-        // újratöltjük a hónapot
-        const { calMap, entMap } = await loadMonthData();
-        renderMonthGrid(calMap, entMap);
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) throw new Error('Nincs user session.');
 
-        // újra számolunk az évre, státusz frissítés (ha van)
-        await computeYearToTodayStats();
-        updateStatusBar();
-      }catch(e){
-        toast(e?.message || String(e));
+      const { error } = await supabase
+        .from('entries')
+        .upsert({ user_id: uid, ...payload }, { onConflict: 'user_id,date' });
+      if(error) throw error;
+
+      const empty = isPayloadEmpty(payload);
+
+      if(empty){
+        entriesByDate.delete(iso);
+      }else{
+        const merged = { user_id: uid, ...payload };
+        entriesByDate.set(iso, merged);
+      }
+
+      await refreshYearCachesAfterSave(iso, empty ? null : entriesByDate.get(iso));
+    }
+
+    async function loadProfile(){
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      currentUserId = uid;
+      if(!uid) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name,email,role,vacation_entitlement_days,vacation_carryover_days,daily_expected_minutes,flex_carryover_minutes,flex_bonus_minutes')
+        .eq('user_id', uid)
+        .maybeSingle();
+
+      if(error) throw error;
+
+      profile = data || {
+        display_name: u.user.email,
+        email: u.user.email,
+        role: 'user',
+        vacation_entitlement_days:0,
+        vacation_carryover_days:0,
+        daily_expected_minutes:480,
+        flex_carryover_minutes:0,
+        flex_bonus_minutes:0
+      };
+
+      $('userName').textContent = profile.display_name || profile.email || '';
+
+      vacTotalEntitlement =
+        Number(profile.vacation_entitlement_days || 0) +
+        Number(profile.vacation_carryover_days || 0);
+
+      const role = String(profile.role || 'user');
+      if(role === 'admin' || role === 'manager'){
+        $('settingsBtn').classList.remove('hidden');
+      }else{
+        $('settingsBtn').classList.add('hidden');
+      }
+
+      await loadQuickPairs();
+    }
+
+    async function loadYearCalendar(){
+      const { data: days, error } = await supabase
+        .from('calendar_days')
+        .select('date,is_workday,holiday_name,special_workday,year')
+        .eq('year', curYear)
+        .order('date', { ascending:true });
+      if(error) throw error;
+
+      yearCalMap = new Map();
+      (days||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        yearCalMap.set(iso, { ...r, date: iso });
+      });
+    }
+
+    async function loadYearEntries(){
+      const start = `${curYear}-01-01`;
+      const end = `${curYear+1}-01-01`;
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if(!uid) throw new Error('Nincs user session.');
+
+      const { data: ents, error } = await supabase
+        .from('entries')
+        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
+        .eq('user_id', uid)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending:true });
+
+      if(error) throw error;
+
+      yearEntryMap = new Map();
+      (ents||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        yearEntryMap.set(iso, { ...r, date: iso });
+      });
+
+      yearVacUsed = 0;
+      for(const [d, e] of yearEntryMap.entries()){
+        if(e?.is_vacation && isWorkdayForVacation(d)){
+          yearVacUsed++;
+        }
       }
     }
 
-    function applyMonthFromUrl(){
-      const qm = getQueryMonth();
-      if(qm) month = qm;
+    async function loadMonth(){
+      const start = `${curYear}-${String(curMonth).padStart(2,'0')}-01`;
+      const end = curMonth===12 ? `${curYear+1}-01-01` : `${curYear}-${String(curMonth+1).padStart(2,'0')}-01`;
+
+      const { data: days, error: e1 } = await supabase
+        .from('calendar_days')
+        .select('date,is_workday,holiday_name,special_workday,year')
+        .eq('year', curYear)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending:true });
+      if(e1) throw e1;
+
+      monthRows = (days || []).map(r => ({ ...r, date: normalizeIsoDate(r.date) }));
+
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+
+      const { data: ents, error: e2 } = await supabase
+        .from('entries')
+        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
+        .eq('user_id', uid)
+        .gte('date', start)
+        .lt('date', end)
+        .order('date', { ascending:true });
+      if(e2) throw e2;
+
+      entriesByDate = new Map();
+      (ents||[]).forEach(r=>{
+        const iso = normalizeIsoDate(r.date);
+        entriesByDate.set(iso, { ...r, date: iso });
+      });
+
+      $('monthTitle').textContent = `${curYear} ${huMonthName(curMonth)}`;
+      renderGrid();
+      updateJumpButton();
     }
 
-    async function refreshMonth(){
-      renderHeader();
-      const { calMap, entMap } = await loadMonthData();
-
-      // ha nincs kiválasztott nap, álljon a mai napra (ha ebben a hónapban van)
+    function applyInitialMonthFromQueryOrToday(){
       const today = getTodayISO();
-      const todayM = Number(today.slice(5,7));
-      if(!selectedIso && todayM === month){
-        selectedIso = today;
-      }
-      // ha kiválasztott nap másik hónap -> null
-      if(selectedIso && Number(String(selectedIso).slice(5,7)) !== month){
-        selectedIso = null;
-      }
+      const ty = Number(today.slice(0,4));
+      const tm = Number(today.slice(5,7));
 
-      setFormFromEntry(selectedIso ? entMap.get(selectedIso) : null);
-      renderMonthGrid(calMap, entMap);
+      const p = new URLSearchParams(location.search);
+      const qy = Number(p.get('y'));
+      const qm = Number(p.get('m'));
+
+      if(Number.isFinite(qy) && Number.isFinite(qm) && qy === 2026 && qm >= 1 && qm <= 12){
+        curYear = qy;
+        curMonth = qm;
+      }else{
+        curYear = ty;
+        curMonth = tm;
+      }
     }
 
-    let refreshing = false;
-    async function refresh(){
-      if(refreshing) return;
-      refreshing = true;
-      try{
-        await ensureSupabase();
+    function onFormChanged(){
+      const iso = editingDate;
 
-        const { data } = await supabase.auth.getSession();
-        if(!data.session){
-          location.replace('/index.html?v=' + Date.now());
-          return;
+      if(iso){
+        const entry = entriesByDate.get(iso) || {};
+        const alreadyVac = !!entry.is_vacation;
+
+        if($('vacChk').checked && !alreadyVac){
+          const remaining = calcVacationRemaining();
+          if(remaining <= 0){
+            $('vacChk').checked = false;
+            $('vacChk').disabled = true;
+            $('noVacMsg').classList.remove('hidden');
+            toast('Nincs már kiírható szabid.');
+          }
         }
 
-        applyMonthFromUrl();
-        await loadProfile();
-        renderHeader();
+        if($('sickChk').checked){
+          if(!isSickAllowedOnDay(iso)){
+            $('sickChk').checked = false;
+            toast('Betegállomány hétvégén vagy ünnepnapon nem jelölhető.');
+          }else{
+            setSelectToGapBlank($('arrSel'));
+            setSelectToGapBlank($('depSel'));
+            setSelectToGapBlank($('flexSel'));
+            setWorkControlsEnabled(false);
 
-        // selectek
-        buildTimeOptionsWithGap($('arrSel'), 15, 24*60, '08:00');
-        buildTimeOptionsWithGap($('depSel'), 15, 24*60, '16:00');
-        buildFlexOptions($('flexSel'));
+            if($('vacChk').checked){
+              $('vacChk').checked = false;
+            }
+          }
+        }else{
+          if(editingCalRow){
+            const calRow = editingCalRow;
 
-        await computeYearToTodayStats();
-        updateStatusBar();
+            const todayIso = getTodayISO();
+            const isFuture = iso > todayIso;
 
-        await refreshMonth();
-      }finally{
-        refreshing = false;
+            const isSpecial = !!calRow.special_workday;
+            const isNonWork = (!calRow.is_workday && !isSpecial);
+            const isWeekend = isWeekendISO(iso);
+            const disFlexByDayType = (!isSpecial) && (isWeekend || isNonWork);
+
+            $('arrSel').disabled = isFuture;
+            $('depSel').disabled = isFuture;
+            $('flexSel').disabled = isFuture ? true : disFlexByDayType;
+
+            $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
+            $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+            $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
+          }
+        }
+
+        applySickAvailability(iso, entry);
       }
+
+      validateEditForm();
+      updateSaveButton();
+      updateQuickButtonsEnabledState();
+    }
+
+    async function boot(){
+      await ensureSupabase();
+
+      const { data } = await supabase.auth.getSession();
+      if(!data.session){
+        location.replace('/index.html?v=' + Date.now());
+        return;
+      }
+
+      await loadProfile();
+
+      await loadYearCalendar();
+      await loadYearEntries();
+      updateStatusBar();
+
+      buildTimeOptionsWithGap($('arrSel'), 15, 24*60, '08:00');
+      buildTimeOptionsWithGap($('depSel'), 15, 24*60, '16:00');
+      buildFlexMinutesOptionsWithGap($('flexSel'), 15, 8*60, 240);
+
+      applyInitialMonthFromQueryOrToday();
+      await loadMonth();
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
@@ -1080,26 +1693,55 @@
       });
 
       $('prevBtn').addEventListener('click', async ()=>{
-        month = (month<=1) ? 12 : (month-1);
-        setQueryMonth(month);
-        await refreshMonth().catch(e=>toast(e?.message||String(e)));
+        const nav = getMonthNav(curYear, curMonth, -1);
+        if(nav.y!==2026) return;
+        curYear = nav.y; curMonth = nav.m;
+        await loadMonth();
       });
-
       $('nextBtn').addEventListener('click', async ()=>{
-        month = (month>=12) ? 1 : (month+1);
-        setQueryMonth(month);
-        await refreshMonth().catch(e=>toast(e?.message||String(e)));
+        const nav = getMonthNav(curYear, curMonth, +1);
+        if(nav.y!==2026) return;
+        curYear = nav.y; curMonth = nav.m;
+        await loadMonth();
       });
 
-      $('saveBtn').addEventListener('click', saveSelectedDay);
-
-      refresh().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
-
-      window.addEventListener('pageshow', ()=>{ refresh().catch(()=>{}); });
-      window.addEventListener('focus', ()=>{ refresh().catch(()=>{}); });
-      document.addEventListener('visibilitychange', ()=>{
-        if(!document.hidden) refresh().catch(()=>{});
+      $('jumpTodayBtn').addEventListener('click', async ()=>{
+        const today = getTodayISO();
+        curYear = Number(today.slice(0,4));
+        curMonth = Number(today.slice(5,7));
+        await loadMonth();
       });
+
+      $('modalBackdrop').addEventListener('click', (e)=>{
+        if(e.target === $('modalBackdrop')) closeEdit();
+      });
+
+      $('arrSel').addEventListener('change', onFormChanged);
+      $('depSel').addEventListener('change', onFormChanged);
+      $('flexSel').addEventListener('change', onFormChanged);
+      $('vacChk').addEventListener('change', onFormChanged);
+      $('sickChk').addEventListener('change', onFormChanged);
+      $('noteTxt').addEventListener('input', onFormChanged);
+
+      $('delBtn').addEventListener('click', ()=>clearEditForm());
+
+      $('saveBtn').addEventListener('click', async ()=>{
+        if(!formDirty){
+          closeEdit();
+          return;
+        }
+        if(!validateEditForm()) return;
+
+        try{
+          await saveCurrentEdit();
+          closeEdit();
+          await loadMonth();
+        }catch(e){
+          toast('Mentés hiba: ' + (e?.message||String(e)));
+        }
+      });
+
+      boot().catch(e=>toast('Indulási hiba: ' + (e?.message||String(e))));
     });
   })();
   </script>
