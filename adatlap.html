@@ -146,7 +146,6 @@
       margin-bottom:10px;
     }
 
-    /* ✅ gomb alap (eddig hiányzott), + small megvolt */
     .btn{
       border:0;
       border-radius:12px;
@@ -160,7 +159,6 @@
       user-select:none;
       -webkit-tap-highlight-color:transparent;
     }
-    .btn:hover{background:rgba(255,255,255,.16);}
     .btn:active{transform:scale(.98);}
     .btn.small{padding:8px 10px; font-size:13px; border-radius:10px;}
 
@@ -184,7 +182,6 @@
       color:var(--text);
     }
 
-    /* ✅ piros kis négyzet a mondatba (szám nélkül) */
     .inlineLegendSquare{
       display:inline-block;
       width:12px;
@@ -291,7 +288,6 @@
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
 
-    /* ✅ Jelmagyarázat (a naptár alatt) */
     .legendWrap{
       margin-top:10px;
       padding:10px;
@@ -330,7 +326,6 @@
     .legendTile.vac{ background:var(--vac); }
     .legendTile.sick{ background:var(--zold); }
 
-    /* ✅ Napi gyorsgomb doboz */
     .quickBox{
       margin-top:10px;
       padding:10px;
@@ -344,7 +339,6 @@
       color:var(--text);
     }
 
-    /* app.html-s select / wheel stílus + elrendezés */
     .row{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
     .row label{font-size:16px; font-weight:400; min-width:120px;}
     .row .ctrl{flex:1; min-width:180px; display:flex; justify-content:flex-end;}
@@ -377,7 +371,7 @@
       margin-top:10px;
       width:100%;
       border:0;
-      border-radius:6px;          /* app gombokhoz közelebb */
+      border-radius:6px;
       height:44px;
       font-size:1rem;
       font-weight:900;
@@ -498,7 +492,6 @@
         </div>
       </div>
 
-      <!-- ✅ ÚJ: Napi gyorsgomb létrehozása (app.html-es wheel/Select logika) -->
       <div class="quickBox" aria-label="Napi gyorsgomb létrehozása">
         <div class="quickTitle">Napi gyorsgomb létrehozása</div>
 
@@ -520,11 +513,10 @@
         <div id="quickList" class="quickList"></div>
       </div>
 
-      <!-- ✅ Téma kapcsoló gomb legalul, jobbra -->
+      <!-- ✅ Theme toggle gomb (adatlap alján, jobbra) -->
       <div style="display:flex; justify-content:flex-end; margin-top:12px;">
         <button id="themeToggleBtn" class="btn small" type="button">Világos mód</button>
       </div>
-
     </section>
   </main>
 
@@ -559,7 +551,9 @@
       return `${y}-${m}-${day}`;
     }
 
-    // ====== ✅ THEME ======
+    // ====== ✅ THEME (profilban mentve) ======
+    const THEME_LOCAL_KEY = 'kultora_theme';
+
     function applyTheme(theme){
       const t = (theme === 'light') ? 'light' : 'dark';
       document.documentElement.dataset.theme = t;
@@ -569,13 +563,56 @@
         meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
       }
     }
+
     function nextTheme(theme){
       return (theme === 'light') ? 'dark' : 'light';
     }
+
     function setThemeButtonLabel(btn, theme){
       btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
     }
 
+    function getThemeFromLocal(){
+      try{
+        return localStorage.getItem(THEME_LOCAL_KEY);
+      }catch(_){
+        return null;
+      }
+    }
+
+    function setThemeToLocal(theme){
+      try{
+        localStorage.setItem(THEME_LOCAL_KEY, theme);
+      }catch(_){}
+    }
+
+    async function saveThemeToProfile(theme){
+      // ✅ fontos: auth user_id-t használunk, nem profile.user_id-t
+      if(!supabase || !currentUserId) return;
+
+      // ha nincs oszlop: hibát dob, de a localStorage akkor is működik
+      const { error } = await supabase
+        .from('profiles')
+        .update({ theme: theme })
+        .eq('user_id', currentUserId);
+
+      if(error) throw error;
+    }
+
+    async function loadThemeFromProfileOrLocal(){
+      const local = getThemeFromLocal();
+      if(local === 'light' || local === 'dark'){
+        applyTheme(local);
+        return local;
+      }
+
+      // ha nincs profile / nincs theme mező: marad sötét
+      const t = (profile && (profile.theme === 'light' || profile.theme === 'dark')) ? profile.theme : 'dark';
+      applyTheme(t);
+      return t;
+    }
+
+    // ====== egyéb utilok ======
     function huMonthName(m){
       const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
       return names[m-1] || '';
@@ -988,31 +1025,27 @@
       currentUserId = uid;
       if(!uid) return null;
 
-      // ✅ THEME mezőt is lekérjük
+      // ✅ FONTOS: user_id + theme is kell (különben undefined és/vagy nem tölt)
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name,email,role,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes,theme')
+        .select('user_id,display_name,email,role,theme,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
         .eq('user_id', uid)
         .maybeSingle();
 
       if(error) throw error;
 
       profile = data || {
+        user_id: uid,
         display_name: u.user.email,
         email: u.user.email,
         role:'user',
+        theme:'dark',
         daily_expected_minutes:480,
         vacation_entitlement_days:0,
         vacation_carryover_days:0,
         flex_carryover_minutes:0,
-        flex_bonus_minutes:0,
-        theme:'dark'
+        flex_bonus_minutes:0
       };
-
-      // ✅ téma alkalmazás + gomb felirat
-      const themeBtn = $('themeToggleBtn');
-      applyTheme(profile.theme || 'dark');
-      setThemeButtonLabel(themeBtn, profile.theme || 'dark');
 
       $('userName').textContent = profile.display_name || profile.email || '';
 
@@ -1029,6 +1062,10 @@
       await loadQuickPairs();
       renderQuickPairs();
       updateQuickAddBtn();
+
+      // ✅ theme betöltés (profil/local alapján)
+      const t = await loadThemeFromProfileOrLocal();
+      setThemeButtonLabel($('themeToggleBtn'), t);
     }
 
     async function loadYearDataAndCompute(){
@@ -1215,7 +1252,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
-      // ✅ wheel-ek: ugyanaz a mechanika mint app.html-ben
+      // ✅ wheel-ek
       buildTimeOptionsWithGap($('quickArrSel'), 15, 24*60, '08:00');
       buildTimeOptionsWithGap($('quickDepSel'), 15, 24*60, '16:00');
 
@@ -1239,32 +1276,27 @@
       $('quickDepSel').addEventListener('change', updateQuickAddBtn);
       $('quickAddBtn').addEventListener('click', addQuickPair);
 
-      // ✅ THEME TOGGLE CLICK HANDLER (itt a helye: DOMContentLoaded-ben, mert már létezik a gomb)
+      // ✅ THEME TOGGLE CLICK HANDLER (itt a helye)
       $('themeToggleBtn').addEventListener('click', async ()=>{
-        if(!profile) return;
-        const oldTheme = (profile.theme === 'light') ? 'light' : 'dark';
-        const newTheme = nextTheme(oldTheme);
-
-        // UI azonnal
-        applyTheme(newTheme);
-        setThemeButtonLabel($('themeToggleBtn'), newTheme);
-
         try{
+          const current = document.documentElement.dataset.theme || 'dark';
+          const t = nextTheme(current);
+
+          // azonnali UI
+          applyTheme(t);
+          setThemeButtonLabel($('themeToggleBtn'), t);
+
+          // local mentés biztosan
+          setThemeToLocal(t);
+
+          // profil mentés (ha van theme oszlop)
           await ensureSupabase();
-
-          const { error } = await supabase
-            .from('profiles')
-            .update({ theme: newTheme })
-            .eq('user_id', profile.user_id);
-
-          if(error) throw error;
-
-          profile.theme = newTheme;
+          if(currentUserId){
+            await saveThemeToProfile(t);
+          }
         }catch(e){
-          // rollback
-          applyTheme(oldTheme);
-          setThemeButtonLabel($('themeToggleBtn'), oldTheme);
-          toast(e?.message || String(e));
+          // ha a DB update nem megy, attól még a local mentés miatt marad a téma
+          toast('Theme mentés hiba: ' + (e?.message || String(e)));
         }
       });
 
