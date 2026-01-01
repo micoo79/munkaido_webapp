@@ -166,12 +166,7 @@
 
     .settings-item .menu-label{display:none !important;}
 
-    
-
-    .theme-item .menu-label{opacity:0;}
-    .theme-item:hover .material-symbols-outlined,
-    .theme-item:hover .menu-label{ opacity:1; color:var(--accent); }
-/* ---------- MAIN ---------- */
+    /* ---------- MAIN ---------- */
     .wrap{max-width:900px; margin:0 auto; padding:0px;}
     .card{background:var(--panel); border:0; border-radius:16px; padding:6px;}
     .hidden{display:none !important;}
@@ -500,12 +495,7 @@
       <button id="sumBtn" class="nav-item" type="button" aria-label="Összesítő">
         <span class="material-symbols-outlined">overview</span>
         <span class="menu-label">Összesítő</span>
-      </button>      <button id="themeBtn" class="nav-item theme-item" type="button" aria-label="Téma váltás">
-        <span id="themeIcon" class="material-symbols-outlined">light_mode</span>
-        <span id="themeLbl" class="menu-label">Téma</span>
       </button>
-
-
 
       <button id="settingsBtn" class="nav-item settings-item hidden" type="button" aria-label="Beállítások">
         <span class="material-symbols-outlined">settings</span>
@@ -530,14 +520,7 @@
 
       <div class="gridWrap">
         <div id="grid" class="grid"></div>
-      </div>
-
-      <div id="statusBar" class="status-bar">
-        <div class="status-item" title="Hátralévő szabadságok">
-          <span class="material-symbols-outlined">beach_access</span>
-          <span id="statVac" class="status-text blue">—</span>
-        </div>
-        <div class="status-item" title="Túlóra / hátralék">
+      </div><div class="status-item" title="Túlóra / hátralék">
           <span class="material-symbols-outlined">schedule</span>
           <span id="statBal" class="status-text">—</span>
         </div>
@@ -622,84 +605,8 @@
       setTimeout(()=>el.remove(), 2200);
     };
 
-    // DEV_TODAY
-
-    // ====== ✅ TÉMA (világos/sötét) – profilba mentve + localStorage fallback ======
-    const THEME_KEY = 'kultora_theme';
-
-    function normTheme(t){
-      const s = String(t||'').toLowerCase();
-      return (s === 'light' || s === 'dark') ? s : null;
-    }
-    function getStoredTheme(){
-      try{ return normTheme(localStorage.getItem(THEME_KEY)); }catch(_){ return null; }
-    }
-    function storeTheme(theme){
-      try{ localStorage.setItem(THEME_KEY, theme); }catch(_){}
-    }
-    function applyTheme(theme){
-      const t = normTheme(theme) || 'dark';
-      document.documentElement.dataset.theme = t;
-
-      const meta = document.querySelector('meta[name="theme-color"]');
-      if(meta){
-        meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
-      }
-    }
-    function setThemeBtnUI(theme){
-      const t = normTheme(theme) || 'dark';
-      const iconEl = $('themeIcon');
-      const lblEl  = $('themeLbl');
-      if(iconEl) iconEl.textContent = (t === 'light') ? 'dark_mode' : 'light_mode';
-      if(lblEl)  lblEl.textContent  = (t === 'light') ? 'Sötét mód' : 'Világos mód';
-    }
-    async function persistThemeToProfile(theme){
-      const t = normTheme(theme);
-      if(!t) return;
-
-      // ✅ csak akkor írunk DB-be, ha már van user_id (különben: uuid undefined)
-      if(!supabase || !currentUserId) return;
-
-      try{
-        const { error } = await supabase
-          .from('profiles')
-          .update({ theme: t })
-          .eq('user_id', currentUserId);
-
-        if(error) throw error;
-      }catch(_e){}
-    }
-    async function initThemeAfterProfileLoaded(){
-      const local = getStoredTheme();
-      const db = normTheme(profile?.theme);
-
-      let theme = db || local;
-      if(!theme){
-        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-      }
-
-      applyTheme(theme);
-      setThemeBtnUI(theme);
-      storeTheme(theme);
-
-      if(!db){
-        await persistThemeToProfile(theme);
-      }
-    }
-    async function toggleTheme(){
-      const cur = normTheme(document.documentElement.dataset.theme) || 'dark';
-      const next = (cur === 'light') ? 'dark' : 'light';
-
-      applyTheme(next);
-      setThemeBtnUI(next);
-      storeTheme(next);
-
-      await persistThemeToProfile(next);
-    }
-
-
     // DEV_TODAY: ha null/'' => valódi mai nap
-    const DEV_TODAY = null;
+    const DEV_TODAY = '2026-04-16';
 
     let supabase = null;
     let profile = null;
@@ -1564,8 +1471,7 @@
         vacation_carryover_days:0,
         daily_expected_minutes:480,
         flex_carryover_minutes:0,
-        flex_bonus_minutes:0,
-        theme: null
+        flex_bonus_minutes:0
       };
 
       $('userName').textContent = profile.display_name || profile.email || '';
@@ -1787,11 +1693,6 @@
       $('settingsBtn').addEventListener('click', ()=>{
         location.href = '/manager.html?v=' + Date.now();
       });
-
-      // ✅ téma gomb (azonnali váltás + mentés)
-      setThemeBtnUI(normTheme(document.documentElement.dataset.theme) || getStoredTheme() || 'dark');
-      applyTheme(normTheme(document.documentElement.dataset.theme) || getStoredTheme() || 'dark');
-      $('themeBtn')?.addEventListener('click', ()=>{ toggleTheme(); });
 
       $('prevBtn').addEventListener('click', async ()=>{
         const nav = getMonthNav(curYear, curMonth, -1);
