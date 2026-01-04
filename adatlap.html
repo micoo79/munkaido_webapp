@@ -1071,6 +1071,17 @@
       setThemeButtonLabel($('themeToggleBtn'), t);
     }
 
+    // ✅ ÜRES (törölt) entry sorok kezelése: ha van rekord, de nincs benne semmi,
+    // akkor ugyanúgy "hiányzó rögzítés" legyen.
+    function isMeaningfulEntry(entry){
+      if(!entry) return false;
+      const hasTime = !!(entry.arrival && entry.departure);
+      const flexVal = Number(entry.flex_minutes || 0);
+      const hasFlex = (flexVal > 0);
+      const hasTags = (!!entry.is_vacation || !!entry.is_sick);
+      return hasTime || hasFlex || hasTags;
+    }
+
     async function loadYearDataAndCompute(){
       const today = getTodayISO();
       const start = `${YEAR}-01-01`;
@@ -1127,25 +1138,23 @@
         const iso = cal.date;
 
         const entry = entriesMap.get(iso);
+        const meaningful = isMeaningfulEntry(entry);
 
-        if(iso <= today){
-          const isToday = (iso === today);
-          const meaningfulToday =
-            !!(entry && (
-              (entry.arrival && entry.departure) ||
-              (Number(entry.flex_minutes||0) > 0) ||
-              !!entry.is_vacation ||
-              !!entry.is_sick
-            ));
-          if(!(isToday && !meaningfulToday)){
-            const isWorkday = !!cal.is_workday;
-            const isSpecial = !!cal.special_workday;
-            if((isWorkday || isSpecial) && !entry){
-              missingIso.push(iso);
-            }
+        // --- HIÁNYZÓ RÖGZÍTÉSEK ---
+        // Past napokon: hiányzó, ha nincs entry VAGY van entry, de "üres" (minden törölve).
+        // Mai napon: ha nincs meaningful adat, nem jelöljük hiányzónak.
+        if(iso < today){
+          const isWorkday = !!cal.is_workday;
+          const isSpecial = !!cal.special_workday;
+          if((isWorkday || isSpecial) && !meaningful){
+            missingIso.push(iso);
           }
+        }else if(iso === today){
+          // ma: csak akkor lenne értelme hiányzót jelölni, ha meaningful false,
+          // de a korábbi logika szerint ezt nem jelöljük.
         }
 
+        // --- SZÁMOLÁS csak today-ig ---
         if(iso > today) continue;
 
         const isWorkday = !!cal.is_workday;
@@ -1156,7 +1165,7 @@
 
         let fulfilled = 0;
 
-        if(entry){
+        if(entry && meaningful){
           const vac = !!entry.is_vacation;
           const sick = !!entry.is_sick;
 
