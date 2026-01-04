@@ -43,9 +43,6 @@
       --inactiveLbl:#9ca3af;/* inaktív felirat */
     }
 
-
-
-
 html[data-theme="light"]{
   --bg:#f3f4f6;
   --panel:#ffffff;
@@ -67,11 +64,6 @@ html[data-theme="light"]{
   /* ha kell: a zöld/piros maradhat */
 }
 
-
-
-
-
-    
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
 
@@ -608,39 +600,41 @@ html[data-theme="light"]{
       return String(d).slice(0,10);
     }
 
+    // ====== ✅ THEME átvétel adatlapról (localStorage kulcs alapján) ======
+    const THEME_LOCAL_KEY = 'kultora_theme';
 
+    function applyTheme(theme){
+      const t = (theme === 'light') ? 'light' : 'dark';
+      document.documentElement.dataset.theme = t;
 
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if(meta){
+        meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+      }
+    }
 
+    function getThemeFromLocal(){
+      try{
+        return localStorage.getItem(THEME_LOCAL_KEY);
+      }catch(_){
+        return null;
+      }
+    }
 
+    // induláskor: ha adatlap mentett valamit localStorage-be, azt használjuk
+    function applyThemeFromLocalEarly(){
+      const t = getThemeFromLocal();
+      if(t === 'light' || t === 'dark'){
+        applyTheme(t);
+      }else{
+        // default marad a CSS szerinti (dark)
+        applyTheme('dark');
+      }
+    }
 
-function applyTheme(theme){
-  const t = (theme === 'light') ? 'light' : 'dark';
-  document.documentElement.dataset.theme = t;
+    // ✅ már a script elején ráhúzzuk (minél kevesebb "villanás")
+    applyThemeFromLocalEarly();
 
-  // (opcionális) meta theme-color frissítés
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if(meta){
-    meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
-  }
-}
-
-function nextTheme(theme){
-  return (theme === 'light') ? 'dark' : 'light';
-}
-
-function setThemeButtonLabel(btn, theme){
-  btn.textContent = (theme === 'light') ? 'Sötét mód' : 'Világos mód';
-}
-
-
-
-
-
-
-
-
-
-    
     function huMonthName(m){
       const names = ['Január','Február','Március','Április','Május','Június','Július','Augusztus','Szeptember','Október','November','December'];
       return names[m-1] || '';
