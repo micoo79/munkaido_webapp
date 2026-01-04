@@ -20,6 +20,24 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
 
+  <!-- ✅ KORAI THEME INIT (nincs villanás): localStorage-ból azonnal beállítjuk a témát, még a CSS előtt -->
+  <script>
+  (function(){
+    try{
+      var t = localStorage.getItem('kultora_theme');
+      if(t !== 'light' && t !== 'dark') t = null;
+      if(t){
+        document.documentElement.dataset.theme = t;
+        document.documentElement.style.colorScheme = t;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if(meta){
+          meta.setAttribute('content', t === 'light' ? '#f3f4f6' : '#27272a');
+        }
+      }
+    }catch(_e){}
+  })();
+  </script>
+
   <link rel="icon" type="image/png" href="/kult_logo.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=1" />
@@ -558,6 +576,7 @@
     function applyTheme(theme){
       const t = (theme === 'light') ? 'light' : 'dark';
       document.documentElement.dataset.theme = t;
+      document.documentElement.style.colorScheme = t;
 
       const meta = document.querySelector('meta[name="theme-color"]');
       if(meta){
@@ -1139,17 +1158,12 @@
         const meaningful = isMeaningfulEntry(entry);
 
         // --- HIÁNYZÓ RÖGZÍTÉSEK ---
-        // Past napokon: hiányzó, ha nincs entry VAGY van entry, de "üres" (minden törölve).
-        // Mai napon: ha nincs meaningful adat, nem jelöljük hiányzónak.
         if(iso < today){
           const isWorkday = !!cal.is_workday;
           const isSpecial = !!cal.special_workday;
           if((isWorkday || isSpecial) && !meaningful){
             missingIso.push(iso);
           }
-        }else if(iso === today){
-          // ma: csak akkor lenne értelme hiányzót jelölni, ha meaningful false,
-          // de a korábbi logika szerint ezt nem jelöljük.
         }
 
         // --- SZÁMOLÁS csak today-ig ---
