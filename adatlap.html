@@ -309,44 +309,7 @@
     .dTile.weekend span{color:#fff;}
     .dTile.rest span{color:#9ca3af;}
 
-    .legendWrap{
-      margin-top:10px;
-      padding:10px;
-      border-radius:14px;
-      background:rgba(255,255,255,.06);
-      gap:10px;
-      flex-wrap:wrap;
-      justify-content:center;
-      align-items:center;
-    }
-    .legendItem{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      color:var(--text);
-      font-size:12px;
-      font-weight:700;
-      white-space:nowrap;
-      padding-top:5px;
-    }
-    .legendTile{
-      width:18px;
-      height:18px;
-      border-radius:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      user-:none;
-      font-size:11px;
-      font-weight:900;
-      line-height:1;
-      color:#111;
-    }
-    .legendTile.holiday{ background:var(--holiday); }
-    .legendTile.missing{ background:#ff4500; color:#111; }
-    .legendTile.vac{ background:var(--vac); }
-    .legendTile.sick{ background:var(--zold); }
-
+    /* ----- QUICK BLOCKS ----- */
     .quickBox{
       margin-top:10px;
       padding:10px;
@@ -358,6 +321,25 @@
       font-weight:800;
       margin:0 0 10px 0;
       color:var(--text);
+    }
+
+    .savedBox{
+      margin-top:10px;
+      padding:10px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+    }
+    .savedTitle{
+      font-size:13px;
+      font-weight:800;
+      margin:0 0 10px 0;
+      color:var(--text);
+    }
+    .savedEmpty{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:800;
+      margin:0;
     }
 
     .row{display:flex; align-items:center; justify-content:left; gap:10px; flex-wrap:wrap;}
@@ -409,12 +391,16 @@
       font-weight:700;
     }
 
+    /* ✅ egymás alatt */
     .quickList{
       margin-top:10px;
       display:flex;
+      flex-direction:column;
       gap:8px;
+      width:100%;
     }
     .quickItem{
+      width:100%;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -438,6 +424,7 @@
       cursor:pointer;
       background:#c9cbd1;
       color:#111;
+      flex:0 0 auto;
     }
 
     .toast{
@@ -492,24 +479,7 @@
 
       <div id="monthsWrap" class="monthsWrap"></div>
 
-      <div class="legendWrap" aria-label="Jelmagyarázat">
-        <div class="legendItem">
-          <div class="legendTile holiday" aria-hidden="true"></div>
-          <div>Ünnepnapok</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile missing" aria-hidden="true"></div>
-          <div>Hiányzó rögzítések</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile vac" aria-hidden="true"></div>
-          <div>Szabadságok</div>
-        </div>
-        <div class="legendItem">
-          <div class="legendTile sick" aria-hidden="true"></div>
-          <div>Betegállomány</div>
-        </div>
-      </div>
+      <!-- ✅ Jelmagyarázat blokk kivéve (nem kell) -->
 
       <div class="quickBox" aria-label="Napi gyorsgomb létrehozása">
         <div class="quickTitle">Napi gyorsgomb létrehozása</div>
@@ -528,7 +498,11 @@
 
         <button id="quickAddBtn" class="quickAddBtn hidden" type="button">Hozzáadás</button>
         <div id="quickHint" class="quickHint hidden"></div>
+      </div>
 
+      <!-- ✅ ÚJ BLOKK: Elmentett saját gombok -->
+      <div class="savedBox" aria-label="Elmentett saját gombok">
+        <div class="savedTitle">Elmentett saját gombok</div>
         <div id="quickList" class="quickList"></div>
       </div>
 
@@ -607,10 +581,8 @@
     }
 
     async function saveThemeToProfile(theme){
-      // ✅ fontos: auth user_id-t használunk, nem profile.user_id-t
       if(!supabase || !currentUserId) return;
 
-      // ha nincs oszlop: hibát dob, de a localStorage akkor is működik
       const { error } = await supabase
         .from('profiles')
         .update({ theme: theme })
@@ -626,7 +598,6 @@
         return local;
       }
 
-      // ha nincs profile / nincs theme mező: marad sötét
       const t = (profile && (profile.theme === 'light' || profile.theme === 'dark')) ? profile.theme : 'dark';
       applyTheme(t);
       return t;
@@ -974,6 +945,10 @@
       host.innerHTML = '';
 
       if(!quickPairs.length){
+        const p = document.createElement('p');
+        p.className = 'savedEmpty';
+        p.textContent = 'nincs saját gomb';
+        host.appendChild(p);
         return;
       }
 
@@ -1045,7 +1020,6 @@
       currentUserId = uid;
       if(!uid) return null;
 
-      // ✅ FONTOS: user_id + theme is kell (különben undefined és/vagy nem tölt)
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id,display_name,email,role,theme,daily_expected_minutes,vacation_entitlement_days,vacation_carryover_days,flex_carryover_minutes,flex_bonus_minutes')
@@ -1083,13 +1057,10 @@
       renderQuickPairs();
       updateQuickAddBtn();
 
-      // ✅ theme betöltés (profil/local alapján)
       const t = await loadThemeFromProfileOrLocal();
       setThemeButtonLabel($('themeToggleBtn'), t);
     }
 
-    // ✅ ÜRES (törölt) entry sorok kezelése: ha van rekord, de nincs benne semmi,
-    // akkor ugyanúgy "hiányzó rögzítés" legyen.
     function isMeaningfulEntry(entry){
       if(!entry) return false;
       const hasTime = !!(entry.arrival && entry.departure);
@@ -1157,7 +1128,6 @@
         const entry = entriesMap.get(iso);
         const meaningful = isMeaningfulEntry(entry);
 
-        // --- HIÁNYZÓ RÖGZÍTÉSEK ---
         if(iso < today){
           const isWorkday = !!cal.is_workday;
           const isSpecial = !!cal.special_workday;
@@ -1166,7 +1136,6 @@
           }
         }
 
-        // --- SZÁMOLÁS csak today-ig ---
         if(iso > today) continue;
 
         const isWorkday = !!cal.is_workday;
@@ -1276,7 +1245,6 @@
     }
 
     window.addEventListener('DOMContentLoaded', ()=>{
-      // ✅ wheel-ek
       buildTimeOptionsWithGap($('quickArrSel'), 15, 24*60, '08:00');
       buildTimeOptionsWithGap($('quickDepSel'), 15, 24*60, '16:00');
 
@@ -1300,26 +1268,21 @@
       $('quickDepSel').addEventListener('change', updateQuickAddBtn);
       $('quickAddBtn').addEventListener('click', addQuickPair);
 
-      // ✅ THEME TOGGLE CLICK HANDLER (itt a helye)
       $('themeToggleBtn').addEventListener('click', async ()=>{
         try{
           const current = document.documentElement.dataset.theme || 'dark';
           const t = nextTheme(current);
 
-          // azonnali UI
           applyTheme(t);
           setThemeButtonLabel($('themeToggleBtn'), t);
 
-          // local mentés biztosan
           setThemeToLocal(t);
 
-          // profil mentés (ha van theme oszlop)
           await ensureSupabase();
           if(currentUserId){
             await saveThemeToProfile(t);
           }
         }catch(e){
-          // ha a DB update nem megy, attól még a local mentés miatt marad a téma
           toast('Theme mentés hiba: ' + (e?.message || String(e)));
         }
       });
