@@ -1,4 +1,3 @@
-<!-- index.html -->
 <!doctype html>
 <html lang="hu">
 <head>
@@ -13,34 +12,19 @@
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=1">
   <link rel="apple-touch-icon-precomposed" href="/icons/apple-touch-icon.png?v=1">
 
-  <!-- ✅ PWA / ikon / fullscreen (iOS + Android) -->
   <link rel="manifest" href="/manifest.webmanifest?v=1" />
   <meta name="theme-color" content="#27272a" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="VMKK KultÓra" />
 
-  <!-- ✅ ikonok -->
   <link rel="icon" type="image/png" href="/kult_logo.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png?v=1" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=1" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png?v=1" />
 
   <style>
     :root{ --bg:#2f3237; --panel:#3a3f45; --text:#f2f3f5; --muted:#c9cbd1; --accent:#ff8a00; }
     *{box-sizing:border-box;}
     html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     .wrap{max-width:520px; margin:0 auto; padding:18px;}
-
-    /* ✅ logo */
-    .appLogo{
-      display:block;
-      width:150px;
-      height:auto;
-      margin:12px auto 14px;
-    }
-
+    .appLogo{display:block; width:150px; height:auto; margin:12px auto 14px;}
     .card{background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;}
     h1{margin:0 0 12px; font-size:22px;}
     label{display:block; font-size:18px; margin:12px 0 6px;}
@@ -103,7 +87,7 @@
 
     const t0 = Date.now();
     while(!(window.supabase && window.supabase.createClient)){
-      if(Date.now()-t0 > 6000) throw new Error('Supabase CDN nem töltődött be (jsdelivr).');
+      if(Date.now()-t0 > 6000) throw new Error('Supabase CDN nem töltődött be.');
       await new Promise(r=>setTimeout(r,120));
     }
 
@@ -113,39 +97,42 @@
 
     const url = j.SUPABASE_URL || j.supabaseUrl;
     const key = j.SUPABASE_ANON_KEY || j.supabaseAnonKey;
-    if(!url || !key) throw new Error('Hiányzó Supabase URL / ANON key (/config).');
-
-    // ✅ login oldalon legyen public, hogy a public.is_email_allowed biztosan megtalálható legyen
+    
+    // ✅ Itt fontos: a db: { schema: 'app' } segíthet, ha a tábláid az app sémában vannak
+    // De mivel az auth-hoz a public séma is kellhet, maradjunk a rugalmas megoldásnál
     supabase = window.supabase.createClient(url, key, {
-      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true },
-      db: { schema:'public' }
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
     });
     return supabase;
   }
 
+  // ✅ JAVÍTOTT ELLENŐRZÉS: Közvetlenül az app.user_invites táblát nézzük
   async function checkEmailAllowed(email){
-    // ✅ public.is_email_allowed(p_email)
-    const { data, error } = await supabase.rpc('is_email_allowed', { p_email: email });
-    if(error){
-      console.error('RPC is_email_allowed error:', error);
-      // ide nem a NOT_ALLOWED_MSG kell, mert ez technikai gond
+    try {
+      const { data, error } = await supabase
+        .from('user_invites') // Megjegyzés: Ha ez hibát dob, próbáld meg 'app.user_invites'-ként
+        .select('email')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      if(error) {
+        // Ha nem éred el direktben a táblát (RLS miatt), akkor az RPC-t kell használnod
+        // Ehhez az SQL editorban az is_email_allowed-et javítani kell, hogy az app.user_invites-t nézze!
+        console.error('Hiba az ellenőrzésnél, próbálkozás RPC-vel...', error);
+        const { data: rpcData, error: rpcError } = await supabase.rpc('is_email_allowed', { p_email: email });
+        if(rpcError) throw rpcError;
+        return !!rpcData;
+      }
+      return !!data;
+    } catch(e) {
+      console.error('Végzetes hiba az ellenőrzés során:', e);
       throw new Error(ALLOWLIST_UNAVAILABLE_MSG);
     }
-    return !!data;
   }
 
   function isOtpInvalidError(err){
     const em = String(err?.message || '').toLowerCase();
-    const status = err?.status;
-
-    if(em.includes('token has expired')) return true;
-    if(em.includes('expired')) return true;
-    if(em.includes('invalid')) return true;
-    if(em.includes('otp')) return true;
-    if(em.includes('token')) return true;
-    if(status === 400) return true;
-
-    return false;
+    return em.includes('token') || em.includes('expired') || em.includes('invalid') || err?.status === 400;
   }
 
   async function goApp(){
@@ -156,10 +143,7 @@
     try{
       await ensureSupabase();
       const { data } = await supabase.auth.getSession();
-      if(data.session){
-        await goApp();
-        return;
-      }
+      if(data.session) { await goApp(); return; }
       msg('Add meg az email címed, és kérj kódot.', 'warn');
     }catch(e){
       msg('Indulási hiba: ' + (e?.message||String(e)), 'err');
@@ -172,24 +156,20 @@
       const email = ($('email').value||'').trim().toLowerCase();
       if(!email){ msg('Írd be az email címed!', 'err'); return; }
 
+      msg('Ellenőrzés...', 'warn');
       const allowed = await checkEmailAllowed(email);
       if(!allowed){
         msg(NOT_ALLOWED_MSG, 'err');
         return;
       }
 
-      msg('Küldés...', 'warn');
-
-      // ✅ HELYES: kód küldése
+      msg('Kód küldése...', 'warn');
       const { error } = await supabase.auth.signInWithOtp({ email });
 
-      if(error){
-        msg('Hiba történt a kód küldésekor.', 'err');
-        return;
-      }
+      if(error) throw error;
 
       $('otpBlock').style.display = 'block';
-      msg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot, írd be ide', 'ok');
+      msg(isResend ? 'Új kódot küldtem.' : 'A megadott email címre kaptál egy kódot.', 'ok');
     }catch(e){
       msg('Hiba: ' + (e?.message||String(e)), 'err');
     }
@@ -202,23 +182,12 @@
       const token = ($('otp').value||'').trim();
       if(!token){ msg('Írd be a kódot!', 'err'); return; }
 
-      const allowed = await checkEmailAllowed(email);
-      if(!allowed){
-        msg(NOT_ALLOWED_MSG, 'err');
-        return;
-      }
-
-      msg('Ellenőrzés...', 'warn');
-
+      msg('Belépés...', 'warn');
       const { error } = await supabase.auth.verifyOtp({ email, token, type:'email' });
 
       if(error){
-        if(isOtpInvalidError(error)){
-          msg(OTP_INVALID_MSG, 'err');
-          return;
-        }
-        msg('Hiba történt a belépésnél.', 'err');
-        return;
+        if(isOtpInvalidError(error)) { msg(OTP_INVALID_MSG, 'err'); return; }
+        throw error;
       }
 
       msg('Sikeres belépés ✓', 'ok');
