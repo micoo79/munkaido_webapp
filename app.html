@@ -426,6 +426,13 @@ html[data-theme="light"]{
       .user-name{max-width:64vw;}
 
       select{width:30%;}
+
+      /* ✅ mobilon se törjenek fel a labelek a mezők fölé (modal űrlap) */
+      .modal .row{ flex-wrap:nowrap; align-items:center; }
+      .modal .row label{ min-width:110px; margin-right:10px; }
+      .modal .row .ctrl{ min-width:0; }
+      .modal .row .ctrl select{ width:100%; }
+
     }
   </style>
 
