@@ -1063,9 +1063,15 @@
 
     function isMeaningfulEntry(entry){
       if(!entry) return false;
-      const hasTime = !!(entry.arrival && entry.departure);
+
+      // ✅ két szakasz: elég ha bármelyik szakasz teljes (arrival+departure / arrival2+departure2)
+      const hasTime1 = !!(entry.arrival && entry.departure);
+      const hasTime2 = !!(entry.arrival2 && entry.departure2);
+      const hasTime = hasTime1 || hasTime2;
+
       const flexVal = Number(entry.flex_minutes || 0);
       const hasFlex = (flexVal > 0);
+
       const hasTags = (!!entry.is_vacation || !!entry.is_sick);
       return hasTime || hasFlex || hasTags;
     }
@@ -1093,7 +1099,7 @@
 
       const { data: ents, error: e2 } = await supabase
         .from('entries')
-        .select('date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
+        .select('date,arrival,departure,arrival2,departure2,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end);
@@ -1155,13 +1161,24 @@
           }
 
           let worked = 0;
+
+          // ✅ két szakasz összege (2. szakasz opcionális)
           if(entry.arrival && entry.departure){
             const inM = hhmmToMins(entry.arrival);
             const outM = hhmmToMins(entry.departure);
             if(inM != null && outM != null && outM >= inM){
-              worked = outM - inM;
+              worked += (outM - inM);
             }
           }
+
+          if(entry.arrival2 && entry.departure2){
+            const inM2 = hhmmToMins(entry.arrival2);
+            const outM2 = hhmmToMins(entry.departure2);
+            if(inM2 != null && outM2 != null && outM2 >= inM2){
+              worked += (outM2 - inM2);
+            }
+          }
+
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
