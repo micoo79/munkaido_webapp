@@ -312,7 +312,7 @@ html[data-theme="light"]{
     }
     .modalHeader{font-size:34px; font-weight:800; margin:0 0 8px 0;}
     .row{display:flex; align-items:center; justify-content:space-between; gap:1px; flex-wrap:wrap;}
-    .row label{font-size:20px; font-weight:400; margin-right:10px;} /* min-width:140px;} */
+    .row label{font-size:20px; font-weight:400; margin-right:10px;}
     .row .ctrl{flex:1; min-width:180px;}
 
     /* select külön, textarea külön (✅ megjegyzés full szélesség) */
@@ -394,8 +394,6 @@ html[data-theme="light"]{
       align-items:center;
       justify-content:flex-start;
       gap:8px;
-
-      /* könnyen állítható */
       margin: 0 0 10px 0;
       padding: 0;
     }
@@ -408,11 +406,8 @@ html[data-theme="light"]{
       font-weight:900;
       font-size:1rem;
       line-height:1;
-
-      /* könnyen állítható */
       padding: 6px 10px;
       margin: 0;
-
       -webkit-tap-highlight-color:transparent;
     }
     .qpBtn:active{opacity:.9;}
@@ -493,6 +488,7 @@ html[data-theme="light"]{
       <!-- ✅ gyorsgombok: dátum alatt, Érkezés előtt, egy sorban -->
       <div id="quickPairsRow" class="qpRow hidden"></div>
 
+      <!-- 1. SZAKASZ -->
       <div class="row" style="margin-top:10px;">
         <label id="arrLbl">Érkezés</label>
         <div class="ctrl"><select id="arrSel"></select></div>
@@ -503,6 +499,21 @@ html[data-theme="light"]{
       <div class="row">
         <label id="depLbl">Távozás</label>
         <div class="ctrl"><select id="depSel"></select></div>
+      </div>
+
+      <!-- 2. SZAKASZ (nem kötelező) -->
+      <div class="gap20"></div>
+
+      <div class="row">
+        <label id="arr2Lbl">Érkezés (2. szakasz)</label>
+        <div class="ctrl"><select id="arr2Sel"></select></div>
+      </div>
+
+      <div class="gap10"></div>
+
+      <div class="row">
+        <label id="dep2Lbl">Távozás (2. szakasz)</label>
+        <div class="ctrl"><select id="dep2Sel"></select></div>
       </div>
 
       <div class="gap30"></div>
@@ -627,7 +638,6 @@ html[data-theme="light"]{
       if(t === 'light' || t === 'dark'){
         applyTheme(t);
       }else{
-        // default marad a CSS szerinti (dark)
         applyTheme('dark');
       }
     }
@@ -671,6 +681,43 @@ html[data-theme="light"]{
       const h = Math.floor(abs/60);
       const mm = abs%60;
       return `${h}:${String(mm).padStart(2,'0')}`;
+    }
+
+    function fmtSeg(a,d){
+      const aa = a ? String(a).slice(0,5) : '';
+      const dd = d ? String(d).slice(0,5) : '';
+      if(aa && dd) return `${aa}–${dd}`;
+      if(aa && !dd) return aa;
+      if(!aa && dd) return dd;
+      return '';
+    }
+
+    function calcWorkedMinutesFromEntry(entry){
+      if(!entry) return 0;
+
+      let m1 = 0;
+      const a1 = entry.arrival ? String(entry.arrival).slice(0,5) : '';
+      const d1 = entry.departure ? String(entry.departure).slice(0,5) : '';
+      if(a1 && d1){
+        const inM = hhmmToMins(a1);
+        const outM = hhmmToMins(d1);
+        if(inM != null && outM != null && outM >= inM){
+          m1 = outM - inM;
+        }
+      }
+
+      let m2 = 0;
+      const a2 = entry.arrival2 ? String(entry.arrival2).slice(0,5) : '';
+      const d2 = entry.departure2 ? String(entry.departure2).slice(0,5) : '';
+      if(a2 && d2){
+        const inM2 = hhmmToMins(a2);
+        const outM2 = hhmmToMins(d2);
+        if(inM2 != null && outM2 != null && outM2 >= inM2){
+          m2 = outM2 - inM2;
+        }
+      }
+
+      return Math.max(0, m1 + m2);
     }
 
     async function ensureSupabase(){
@@ -884,8 +931,11 @@ html[data-theme="light"]{
         return;
       }
 
+      // 1. szakasz kitöltése, 2. szakasz ürítése
       $('arrSel').value = a;
       $('depSel').value = d;
+      setSelectToGapBlank($('arr2Sel'));
+      setSelectToGapBlank($('dep2Sel'));
       setSelectToGapBlank($('flexSel'));
 
       onFormChanged();
@@ -893,11 +943,8 @@ html[data-theme="light"]{
 
       try{
         await saveCurrentEdit();
-
-        // ✅ zárás és vissza a naptárra
         closeEdit();
         await loadMonth();
-
         toast('Mentve.');
       }catch(e){
         toast('Mentés hiba: ' + (e?.message||String(e)));
@@ -992,8 +1039,11 @@ html[data-theme="light"]{
 
         const entry = entriesByDate.get(iso);
 
-        const arr = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
-        const dep = entry?.departure ? String(entry.departure).slice(0,5) : '';
+        const a1 = entry?.arrival ? String(entry.arrival).slice(0,5) : '';
+        const d1 = entry?.departure ? String(entry.departure).slice(0,5) : '';
+        const a2 = entry?.arrival2 ? String(entry.arrival2).slice(0,5) : '';
+        const d2 = entry?.departure2 ? String(entry.departure2).slice(0,5) : '';
+
         const flexMin = Number(entry?.flex_minutes || 0);
         const isVac = !!entry?.is_vacation;
         const isSick = !!entry?.is_sick;
@@ -1008,8 +1058,12 @@ html[data-theme="light"]{
           tile.classList.add('sick');
         }
 
-        if(arr) l1.textContent = arr;
-        if(dep) l2.textContent = dep;
+        // 1. és 2. szakasz megjelenítés
+        const seg1 = fmtSeg(a1, d1);
+        const seg2 = fmtSeg(a2, d2);
+
+        if(seg1) l1.textContent = seg1;
+        if(seg2) l2.textContent = seg2;
 
         if(isSick){
           l3.textContent = 'Beteg';
@@ -1082,10 +1136,14 @@ html[data-theme="light"]{
     function setWorkControlsEnabled(enabled){
       $('arrSel').disabled = !enabled;
       $('depSel').disabled = !enabled;
+      $('arr2Sel').disabled = !enabled;
+      $('dep2Sel').disabled = !enabled;
       $('flexSel').disabled = !enabled;
 
       $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
       $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('arr2Lbl').classList.toggle('labelDisabled', $('arr2Sel').disabled);
+      $('dep2Lbl').classList.toggle('labelDisabled', $('dep2Sel').disabled);
       $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
     }
 
@@ -1112,7 +1170,7 @@ html[data-theme="light"]{
 
         if(iso === today){
           const meaningful = !!(entry && (
-            (entry.arrival && entry.departure) ||
+            ((entry.arrival && entry.departure) || (entry.arrival2 && entry.departure2)) ||
             (Number(entry.flex_minutes||0) > 0) ||
             !!entry.is_vacation ||
             !!entry.is_sick ||
@@ -1134,14 +1192,8 @@ html[data-theme="light"]{
             fulfilled += expected;
           }
 
-          let worked = 0;
-          if(entry.arrival && entry.departure){
-            const inM = hhmmToMins(String(entry.arrival).slice(0,5));
-            const outM = hhmmToMins(String(entry.departure).slice(0,5));
-            if(inM != null && outM != null && outM >= inM){
-              worked = outM - inM;
-            }
-          }
+          let worked = calcWorkedMinutesFromEntry(entry);
+
           const flexM = Math.max(0, Number(entry.flex_minutes || 0));
           worked = Math.max(0, worked - flexM);
 
@@ -1163,7 +1215,7 @@ html[data-theme="light"]{
       if(!vacEl || !balEl) return;
       // ✅ statVac = összesítő-féle X (csak a mai napig kiírt szabik)
       const vacTakenToToday = calcVacationTakenToToday();
-      const vacTotal = (vacTotalEntitlement || 0); // = vacEnt + vacCarry
+      const vacTotal = (vacTotalEntitlement || 0);
       const X = Math.max(0, vacTotal - vacTakenToToday);
       vacEl.textContent = String(Math.round(X));
 
@@ -1187,6 +1239,8 @@ html[data-theme="light"]{
       return {
         arrival: $('arrSel').value || '',
         departure: $('depSel').value || '',
+        arrival2: $('arr2Sel').value || '',
+        departure2: $('dep2Sel').value || '',
         flex: $('flexSel').value || '',
         vac: !!$('vacChk').checked,
         sick: !!$('sickChk').checked,
@@ -1198,6 +1252,8 @@ html[data-theme="light"]{
       return (
         (a.arrival||'') === (b.arrival||'') &&
         (a.departure||'') === (b.departure||'') &&
+        (a.arrival2||'') === (b.arrival2||'') &&
+        (a.departure2||'') === (b.departure2||'') &&
         (a.flex||'') === (b.flex||'') &&
         (!!a.vac) === (!!b.vac) &&
         (!!a.sick) === (!!b.sick) &&
@@ -1227,9 +1283,21 @@ html[data-theme="light"]{
       const inV = $('arrSel').value;
       const outV = $('depSel').value;
 
+      const in2V = $('arr2Sel').value;
+      const out2V = $('dep2Sel').value;
+
       const inWrap = $('arrSel').parentElement;
       const outWrap = $('depSel').parentElement;
+      const in2Wrap = $('arr2Sel').parentElement;
+      const out2Wrap = $('dep2Sel').parentElement;
 
+      // alap: semmi invalid
+      inWrap.classList.remove('invalid');
+      outWrap.classList.remove('invalid');
+      in2Wrap.classList.remove('invalid');
+      out2Wrap.classList.remove('invalid');
+
+      // 1. szakasz: ha mindkettő van, ellenőrizzük
       if(inV && outV){
         const inM = hhmmToMins(inV);
         const outM = hhmmToMins(outV);
@@ -1244,9 +1312,46 @@ html[data-theme="light"]{
         }
       }
 
+      // 2. szakasz: ha bármelyik van, akkor mindkettő kell + ellenőrzés
+      const seg2Touched = !!(in2V || out2V);
+      if(seg2Touched && !(in2V && out2V)){
+        $('editErr').textContent = 'A 2. szakaszhoz mindkét időpontot add meg (Érkezés és Távozás).';
+        $('editErr').classList.remove('hidden');
+        if(!in2V) in2Wrap.classList.add('invalid');
+        if(!out2V) out2Wrap.classList.add('invalid');
+        formInvalid = true;
+        updateSaveButton();
+        return false;
+      }
+      if(in2V && out2V){
+        const inM2 = hhmmToMins(in2V);
+        const outM2 = hhmmToMins(out2V);
+        if(outM2 < inM2){
+          $('editErr').textContent = 'Hiba: 2. szakasz Távozás nem lehet korábbi, mint Érkezés!';
+          $('editErr').classList.remove('hidden');
+          in2Wrap.classList.add('invalid');
+          out2Wrap.classList.add('invalid');
+          formInvalid = true;
+          updateSaveButton();
+          return false;
+        }
+
+        // ha 1. szakasz is teljes, akkor ne fedjen át (gyakorlatban elvárt)
+        if(inV && outV){
+          const outM1 = hhmmToMins(outV);
+          if(outM1 != null && inM2 != null && inM2 < outM1){
+            $('editErr').textContent = 'Hiba: A 2. szakasz Érkezés nem lehet korábbi, mint az 1. szakasz Távozás.';
+            $('editErr').classList.remove('hidden');
+            in2Wrap.classList.add('invalid');
+            outWrap.classList.add('invalid');
+            formInvalid = true;
+            updateSaveButton();
+            return false;
+          }
+        }
+      }
+
       $('editErr').classList.add('hidden');
-      inWrap.classList.remove('invalid');
-      outWrap.classList.remove('invalid');
       formInvalid = false;
       updateSaveButton();
       return true;
@@ -1267,11 +1372,15 @@ html[data-theme="light"]{
 
       const arr = entry.arrival ? String(entry.arrival).slice(0,5) : '';
       const dep = entry.departure ? String(entry.departure).slice(0,5) : '';
+      const arr2 = entry.arrival2 ? String(entry.arrival2).slice(0,5) : '';
+      const dep2 = entry.departure2 ? String(entry.departure2).slice(0,5) : '';
       const flexMin = Number(entry.flex_minutes || 0);
       const flexVal = flexMin > 0 ? String(flexMin) : '';
 
       if(arr) $('arrSel').value = arr; else setSelectToGapBlank($('arrSel'));
       if(dep) $('depSel').value = dep; else setSelectToGapBlank($('depSel'));
+      if(arr2) $('arr2Sel').value = arr2; else setSelectToGapBlank($('arr2Sel'));
+      if(dep2) $('dep2Sel').value = dep2; else setSelectToGapBlank($('dep2Sel'));
       if(flexVal) $('flexSel').value = flexVal; else setSelectToGapBlank($('flexSel'));
 
       $('vacChk').checked = !!entry.is_vacation;
@@ -1285,10 +1394,14 @@ html[data-theme="light"]{
 
       $('arrSel').disabled = isFuture;
       $('depSel').disabled = isFuture;
+      $('arr2Sel').disabled = isFuture;
+      $('dep2Sel').disabled = isFuture;
       $('flexSel').disabled = isFuture ? true : disFlexByDayType;
 
       $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
       $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+      $('arr2Lbl').classList.toggle('labelDisabled', $('arr2Sel').disabled);
+      $('dep2Lbl').classList.toggle('labelDisabled', $('dep2Sel').disabled);
       $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
 
       applyVacationAvailability(entry);
@@ -1297,6 +1410,8 @@ html[data-theme="light"]{
       if($('sickChk').checked){
         setSelectToGapBlank($('arrSel'));
         setSelectToGapBlank($('depSel'));
+        setSelectToGapBlank($('arr2Sel'));
+        setSelectToGapBlank($('dep2Sel'));
         setSelectToGapBlank($('flexSel'));
         setWorkControlsEnabled(false);
       }
@@ -1327,6 +1442,8 @@ html[data-theme="light"]{
     function clearEditForm(){
       setSelectToGapBlank($('arrSel'));
       setSelectToGapBlank($('depSel'));
+      setSelectToGapBlank($('arr2Sel'));
+      setSelectToGapBlank($('dep2Sel'));
       setSelectToGapBlank($('flexSel'));
       $('vacChk').checked = false;
       $('sickChk').checked = false;
@@ -1349,10 +1466,14 @@ html[data-theme="light"]{
 
         $('arrSel').disabled = isFuture;
         $('depSel').disabled = isFuture;
+        $('arr2Sel').disabled = isFuture;
+        $('dep2Sel').disabled = isFuture;
         $('flexSel').disabled = isFuture ? true : disFlexByDayType;
 
         $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
         $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+        $('arr2Lbl').classList.toggle('labelDisabled', $('arr2Sel').disabled);
+        $('dep2Lbl').classList.toggle('labelDisabled', $('dep2Sel').disabled);
         $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
       }
 
@@ -1365,6 +1486,8 @@ html[data-theme="light"]{
       return (
         !payload.arrival &&
         !payload.departure &&
+        !payload.arrival2 &&
+        !payload.departure2 &&
         (payload.flex_minutes === 0) &&
         !payload.is_vacation &&
         !payload.is_sick &&
@@ -1407,6 +1530,11 @@ html[data-theme="light"]{
         date: iso,
         arrival: sickMode ? null : ($('arrSel').value || null),
         departure: sickMode ? null : ($('depSel').value || null),
+
+        // ✅ új: 2. szakasz
+        arrival2: sickMode ? null : ($('arr2Sel').value || null),
+        departure2: sickMode ? null : ($('dep2Sel').value || null),
+
         flex_minutes: sickMode ? 0 : ($('flexSel').value ? Number($('flexSel').value) : 0),
         is_vacation: sickMode ? false : $('vacChk').checked,
         is_sick: sickMode,
@@ -1507,7 +1635,7 @@ html[data-theme="light"]{
 
       const { data: ents, error } = await supabase
         .from('entries')
-        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
+        .select('user_id,date,arrival,departure,arrival2,departure2,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end)
@@ -1549,7 +1677,7 @@ html[data-theme="light"]{
 
       const { data: ents, error: e2 } = await supabase
         .from('entries')
-        .select('user_id,date,arrival,departure,flex_minutes,is_vacation,is_sick,note')
+        .select('user_id,date,arrival,departure,arrival2,departure2,flex_minutes,is_vacation,is_sick,note')
         .eq('user_id', uid)
         .gte('date', start)
         .lt('date', end)
@@ -1609,6 +1737,8 @@ html[data-theme="light"]{
           }else{
             setSelectToGapBlank($('arrSel'));
             setSelectToGapBlank($('depSel'));
+            setSelectToGapBlank($('arr2Sel'));
+            setSelectToGapBlank($('dep2Sel'));
             setSelectToGapBlank($('flexSel'));
             setWorkControlsEnabled(false);
 
@@ -1630,10 +1760,14 @@ html[data-theme="light"]{
 
             $('arrSel').disabled = isFuture;
             $('depSel').disabled = isFuture;
+            $('arr2Sel').disabled = isFuture;
+            $('dep2Sel').disabled = isFuture;
             $('flexSel').disabled = isFuture ? true : disFlexByDayType;
 
             $('arrLbl').classList.toggle('labelDisabled', $('arrSel').disabled);
             $('depLbl').classList.toggle('labelDisabled', $('depSel').disabled);
+            $('arr2Lbl').classList.toggle('labelDisabled', $('arr2Sel').disabled);
+            $('dep2Lbl').classList.toggle('labelDisabled', $('dep2Sel').disabled);
             $('flexLbl').classList.toggle('labelDisabled', $('flexSel').disabled);
           }
         }
@@ -1663,6 +1797,11 @@ html[data-theme="light"]{
 
       buildTimeOptionsWithGap($('arrSel'), 15, 24*60, '08:00');
       buildTimeOptionsWithGap($('depSel'), 15, 24*60, '16:00');
+
+      // ✅ 2. szakasz: default üres (gap blank pl. 13:00 / 16:00 után)
+      buildTimeOptionsWithGap($('arr2Sel'), 15, 24*60, '13:00');
+      buildTimeOptionsWithGap($('dep2Sel'), 15, 24*60, '16:00');
+
       buildFlexMinutesOptionsWithGap($('flexSel'), 15, 8*60, 240);
 
       applyInitialMonthFromQueryOrToday();
@@ -1712,6 +1851,8 @@ html[data-theme="light"]{
 
       $('arrSel').addEventListener('change', onFormChanged);
       $('depSel').addEventListener('change', onFormChanged);
+      $('arr2Sel').addEventListener('change', onFormChanged);
+      $('dep2Sel').addEventListener('change', onFormChanged);
       $('flexSel').addEventListener('change', onFormChanged);
       $('vacChk').addEventListener('change', onFormChanged);
       $('sickChk').addEventListener('change', onFormChanged);
