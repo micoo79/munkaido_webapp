@@ -124,14 +124,30 @@
   }
 
   async function checkEmailAllowed(email){
-    // ✅ public.is_email_allowed(p_email)
+    // ✅ public.is_email_allowed(p_email) — ellenőrzi user_invites + profiles táblát
     const { data, error } = await supabase.rpc('is_email_allowed', { p_email: email });
     if(error){
       console.error('RPC is_email_allowed error:', error);
-      // ide nem a NOT_ALLOWED_MSG kell, mert ez technikai gond
       throw new Error(ALLOWLIST_UNAVAILABLE_MSG);
     }
-    return !!data;
+    if(data) return true;
+
+    // ✅ Fallback: invite rendszer előtt létrehozott userek (profiles táblában léteznek,
+    //    de user_invites-ban nem). Ha az is_email_allowed DB függvény már frissítve van,
+    //    ide nem jutunk el.
+    try {
+      const { data: profile, error: profErr } = await supabase
+        .schema('app')
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+      if(!profErr && profile) return true;
+    } catch(e) {
+      console.warn('Profiles fallback check failed:', e);
+    }
+
+    return false;
   }
 
   function isOtpInvalidError(err){
